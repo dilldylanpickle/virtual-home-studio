@@ -50,9 +50,9 @@
     <path d="M243 212v-13h31v-12h39v12h31v13Z"/><path d="M858 212v-13h32v-12h37v12h31v13Z"/>
     <path d="M278 208v-18h30v18M894 208v-18h28v18" fill="#15191a" stroke="#444a4b"/><path d="M282 202h22M898 202h20" stroke="#383e40" stroke-width="3"/>
   </g>
-  <rect x="102" y="210" width="999" height="783" rx="4" fill="url(#chassis-edge)" stroke="#b5b9b7" stroke-width="1"/>
+  <rect id="chassis-outline" x="102" y="210" width="999" height="783" rx="4" fill="url(#chassis-edge)" stroke="#b5b9b7" stroke-width="1"/>
   <rect x="103" y="211" width="997" height="778" rx="3" fill="url(#chassis)"/>
-  <path d="M108 989h986" stroke="#bcc1bd" stroke-opacity=".65"/>
+  <path id="chassis-seam" d="M108 989h986" stroke="#bcc1bd" stroke-opacity=".65"/>
   <!-- 45 adaptor and spare headshell socket: passive physical details. -->
   <g aria-label="45 RPM adapter storage; display detail">
     <circle cx="180" cy="289" r="46" fill="#101315" stroke="#707676" stroke-width="1"/>
@@ -139,12 +139,12 @@
     <circle cx="1022" cy="628" r="19" fill="#111719" stroke="#8a9493" stroke-width="1"/><circle cx="1022" cy="628" r="14.5" fill="url(#button)" stroke="#050b0c" stroke-width="1"/>
     <text x="1022" y="659" class="deck-lettering" text-anchor="middle" font-size="7">TEMPO RANGE</text><circle cx="1022" cy="628" r="24" fill="transparent"/><title id="range-label">Pitch range ±8%</title>
   </g>
-  <rect id="pitch-rail" x="997" y="670" width="50" height="281" rx="6" fill="#9b9f9c" stroke="#929994" stroke-width="1.2"/><rect x="1000" y="673" width="44" height="275" rx="4" fill="#bdc0bc"/>
+  <rect id="pitch-rail" x="997" y="670" width="50" height="281" rx="6" fill="#9b9f9c" stroke="#929994" stroke-width="1.2"/><rect id="pitch-rail-inset" x="1000" y="673" width="44" height="275" rx="4" fill="#bdc0bc"/>
   <path d="M1021 690v243" stroke="#303734" stroke-width="5.5" stroke-linecap="round"/><path d="M1023 691v241" stroke="#747d77" stroke-width=".7"/>
   <g id="pitch-ticks" stroke="#505a53" stroke-width="1.1"/>
   <g class="deck-lettering" font-size="10"><circle cx="975" cy="700" r="4.4" fill="none" stroke="currentColor" stroke-width="1"/><path d="M972.5 700h5" stroke="currentColor"/><circle cx="975" cy="924" r="4.4" fill="none" stroke="currentColor" stroke-width="1"/><path d="M972.5 924h5M975 921.5v5" stroke="currentColor"/></g>
-  <path d="M945 812h16m19 0h15" stroke="#5b645e" stroke-width="1"/><rect id="pitch-zero" x="965" y="809.5" width="11" height="4.5" rx="2" fill="#ec5663"/>
-  <g id="quartz" class="hardware-button" role="button" tabindex="0" aria-label="Quartz lock" aria-pressed="true"><path d="M942 834v57" stroke="#778079" stroke-width="1"/><circle cx="942" cy="912" r="19" fill="#181f20" stroke="#838e86" stroke-width="1"/><circle cx="942" cy="912" r="14.5" fill="url(#button)" stroke="#080e0f" stroke-width="1"/><text x="942" y="940" class="deck-lettering" text-anchor="middle" font-size="7">QUARTZ</text><circle cx="942" cy="912" r="24" fill="transparent"/><title>Lock pitch to the selected nominal RPM</title></g>
+  <path id="pitch-zero-mark" d="M945 812h16m19 0h15" stroke="#5b645e" stroke-width="1"/><rect id="pitch-zero" x="965" y="809.5" width="11" height="4.5" rx="2" fill="#ec5663"/>
+  <g id="quartz" class="hardware-button" role="button" tabindex="0" aria-label="Quartz lock" aria-pressed="true"><path id="quartz-mark" d="M942 834v57" stroke="#778079" stroke-width="1"/><circle cx="942" cy="912" r="19" fill="#181f20" stroke="#838e86" stroke-width="1"/><circle cx="942" cy="912" r="14.5" fill="url(#button)" stroke="#080e0f" stroke-width="1"/><text x="942" y="940" class="deck-lettering" text-anchor="middle" font-size="7">QUARTZ</text><circle cx="942" cy="912" r="24" fill="transparent"/><title>Lock pitch to the selected nominal RPM</title></g>
   <!-- The complete photographed arm silhouette rotates around its measured bearing. -->
   <g id="tonearm" role="slider" tabindex="0" aria-label="Tonearm groove position. Arrow keys seek, Home for outer groove, End for inner groove." aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="On arm rest">
     <g id="arm-reference"><g id="arm-elevation" filter="url(#arm-shadow)">
@@ -193,7 +193,7 @@
       </div>
       <div class="hud-listening">
         <label class="hud-volume" for="volume"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 8c3 2 3 6 0 8"/></svg><span class="sr-only">Output volume</span><input id="volume" type="range" min="0" max="1" step=".01" value="0.69" aria-label="Output volume"><output id="volume-value">69%</output></label>
-        <div class="hud-actions" role="group" aria-label="Record actions"><button id="customize-open" class="record-action" aria-haspopup="dialog" aria-label="Customize record">Customize</button><button id="load" class="record-action" aria-label="Choose a record"><span>Choose a record</span></button><button id="eject" class="record-action record-action-quiet" aria-label="Eject record" disabled>Eject</button></div>
+        <div class="hud-actions" role="group" aria-label="Record actions"><button id="customize-open" class="record-action" aria-haspopup="dialog" aria-label="Customize turntable and record">Customize</button><button id="load" class="record-action" aria-label="Choose a record"><span>Choose a record</span></button><button id="eject" class="record-action record-action-quiet" aria-label="Eject record" disabled>Eject</button></div>
         <input id="file-input" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" hidden>
       </div>
       <details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button></span></div></details>
@@ -201,10 +201,11 @@
     <p id="notice" class="notice" role="status"></p>
   </main>
   <dialog id="customize" aria-labelledby="customize-title">
-    <button id="customize-close" class="dialog-close" aria-label="Close record customization">×</button>
-    <span id="customize-preview" class="mini-record loaded customize-preview" aria-hidden="true"></span><h2 id="customize-title">Customize record</h2>
+    <button id="customize-close" class="dialog-close" aria-label="Close customization">×</button>
+    <span id="customize-preview" class="mini-record loaded customize-preview" aria-hidden="true"></span><h2 id="customize-title">Make it yours</h2>
     <section class="customize-section" aria-labelledby="appearance-title">
       <h3 id="appearance-title">Appearance</h3>
+      <fieldset class="palette"><legend>Turntable <span id="turntable-selection">Silver</span></legend><div id="turntable-swatches" class="swatches"></div></fieldset>
       <fieldset class="palette"><legend>Vinyl <span id="vinyl-selection">Black</span></legend><div id="vinyl-swatches" class="swatches"></div></fieldset>
       <fieldset class="palette"><legend>Label <span id="label-selection">Blue</span></legend><div id="label-swatches" class="swatches"></div></fieldset>
     </section>
@@ -282,8 +283,8 @@
       </details>
     </section>
     <section class="help-customize" aria-labelledby="help-customize-title">
-      <h3 id="help-customize-title">Make it yours <span>Customize Record</span></h3>
-      <ul><li>Vinyl color</li><li>Label color</li><li>Record condition</li><li>Mechanical character</li></ul>
+      <h3 id="help-customize-title">Make it yours <span>Customize</span></h3>
+      <ul><li>Turntable color</li><li>Vinyl color</li><li>Label color</li><li>Record condition</li><li>Mechanical character</li></ul>
       <p>Condition changes wear, crackle, pops and groove character.</p>
     </section>
   </dialog>

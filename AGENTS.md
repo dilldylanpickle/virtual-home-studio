@@ -44,7 +44,7 @@ Paths below are relative to the repository root; module names are under `static/
 | `static/listening-hud.js` | Snapshot presentation; actions delegate to the model command API |
 | `static/progress-control.js` | Timeline pointer capture, latest-event drag, click and hover preview |
 | `static/record-lifecycle.js` | Validation/decode, serialized removal/insertion, stale-request rejection |
-| `static/record-customization.js` | Material palettes, condition UI and coordinated record/thumbnail appearance |
+| `static/record-customization.js` | Chassis finishes, material palettes, condition UI and coordinated record/thumbnail appearance |
 | `static/style.css` | Hardware and software presentation, hit areas and responsive layout |
 | `tests/` | Standalone browser scripts, Node DSP suites and generated-fixture helpers |
 | `docs/` | Focused engineering diagnostics and public screenshots |
@@ -133,7 +133,8 @@ Each button toggles independently; the printed 78 bracket is inert. Tempo Range 
 
 ## Presentation and keyboard
 
-- Preserve the established geometry, silver chassis and dark physical controls.
+- Preserve the established geometry and dark physical controls. Silver is the default chassis finish; the eight turntable palettes recolor chassis paint, fader surround and contrasting printed markings only.
+- `turntableColor` belongs to the model, persists across media changes within the page session, and never changes audio settings, chrome, controls or vinyl/label colors.
 - Hardware controls retain physical shapes; transparent hit areas must stay invisible.
 - Use muted-blue software accents. Default media is black vinyl with a blue label.
 - Site, chassis, slipmat and record-label identity is **Virtual Home Studio**.

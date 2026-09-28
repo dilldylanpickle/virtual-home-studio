@@ -5,7 +5,7 @@ import { NOMINAL_RPM, deriveSpeed, derivePhysical } from './simulation-state.js'
 import { ListeningHUD } from './listening-hud.js';
 import { CartridgeOutput } from './audio-chain.js';
 import { RecordLifecycle } from './record-lifecycle.js';
-import { setupCustomization, renderMaterial, VINYL, LABELS } from './record-customization.js';
+import { setupCustomization, renderMaterial, VINYL, LABELS, FINISHES } from './record-customization.js';
 
 const $ = (id) => document.getElementById(id);
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -59,7 +59,7 @@ class Turntable extends EventTarget {
       tonearmAngle: geometry.rest, stylusRaised: true, tonearmMotion: null,
       actualRate: 0, motorActualRate: 0, motorRamping: false, rotation: 0, recordRotation: 0,
       targetLight: false, coverClosed: false,
-      vinylColor: 'Black', labelColor: 'Blue', condition: DEFAULT_CONDITION, surface: true, contacts: true, wow: 0, centering: 0, cartridge: true,
+      turntableColor: 'Silver', vinylColor: 'Black', labelColor: 'Blue', condition: DEFAULT_CONDITION, surface: true, contacts: true, wow: 0, centering: 0, cartridge: true,
       volume: 0.69, loading: false, dragging: false, scratching: false, seeking: false, seekTarget: null,
       directScrubbing: false, scrubVelocity: 0, preScrubTransportState: null,
     };
@@ -415,14 +415,15 @@ class Turntable extends EventTarget {
     this.engine?.port.postMessage({ type: 'settings', settings: { surface, contacts, condition, wow, centering } });
   }
   customize(key, value) {
-    if (key === 'vinylColor') { if (!Object.hasOwn(VINYL, value)) return; }
+    if (key === 'turntableColor') { if (!Object.hasOwn(FINISHES, value)) return; }
+    else if (key === 'vinylColor') { if (!Object.hasOwn(VINYL, value)) return; }
     else if (key === 'labelColor') { if (!Object.hasOwn(LABELS, value)) return; }
     else if (key === 'condition') { if (!Object.hasOwn(CONDITIONS, value)) return; }
     else if (['surface', 'contacts', 'cartridge'].includes(key)) { if (typeof value !== 'boolean') return; }
     else if (['wow', 'centering'].includes(key)) { if (!Number.isFinite(value)) return; value = clamp(value, 0, 1); }
     else return;
     this.state[key] = value;
-    this.sendSettings();
+    if (key !== 'turntableColor') this.sendSettings();
     if (key === 'cartridge') this.chain?.color(value);
     this.emit();
   }

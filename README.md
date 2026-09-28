@@ -26,12 +26,13 @@ Open **http://127.0.0.1:42069**. Stop the server with Ctrl+C.
 - MP3/WAV playback with assisted Play or manual tonearm control.
 - 33⅓ / 45 / 78 RPM, pitch adjustment and Quartz lock.
 - Vinyl scratching, direct scrubbing and audible motor transitions.
-- Vinyl/label colors, record condition, surface texture and cartridge character.
+- Eight turntable finishes, vinyl/label colors, record condition, surface texture and cartridge character.
+- Open **Customize** to change the chassis color, including Black, Red, and the default Silver. Colors stay selected through record changes within the session.
 
 <details>
-<summary>Record customization</summary>
+<summary>Turntable and record customization</summary>
 
-![Record customization](docs/images/customize-record.png)
+![Turntable and record customization](docs/images/customize-record.png)
 
 </details>
 
@@ -46,7 +47,7 @@ Open **http://127.0.0.1:42069**. Stop the server with Ctrl+C.
 | 33 + 45 | Press both for 78 RPM |
 | Pitch / Quartz | Adjust speed / lock to the selected nominal RPM |
 | Return arm | Lift and park the arm; platter stays independent |
-| Customize / Replace | Change the record's look and sound / choose another file |
+| Customize / Replace | Change the turntable finish and record’s look and sound / choose another file |
 
 Open **How to Play** for the visual cheat sheet and keyboard shortcuts.
 
