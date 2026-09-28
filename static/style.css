@@ -20,7 +20,7 @@ h1{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:clamp(3
 .turntable-stage:after{content:'';position:absolute;z-index:-1;inset:14% 6% 5%;box-shadow:0 35px 45px #20231d42;border-radius:35%}
 .deck-wrap{position:relative;width:100%;line-height:0}
 #deck{display:block;width:100%;height:auto;overflow:visible;user-select:none;-webkit-user-select:none}
-.deck-lettering{font-family:Arial,Helvetica,sans-serif;fill:#3e4a43;color:#3e4a43;user-select:none}
+.deck-lettering{font-family:Arial,Helvetica,sans-serif;fill:var(--deck-ink,#3e4a43);color:var(--deck-ink,#3e4a43);user-select:none}
 .hardware-button{cursor:pointer;outline:none}
 .hardware-button:hover{filter:brightness(1.22)}
 .hardware-button:active{filter:brightness(.85)}

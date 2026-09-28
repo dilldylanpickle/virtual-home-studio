@@ -86,7 +86,7 @@ def run():
             check(all(b['height']>=44 for b in boxes) and max(b['height'] for b in boxes)-min(b['height'] for b in boxes)<1,f'{name}: all record actions have matching accessible heights')
             styles=page.locator('.record-action').evaluate_all("els=>els.map(el=>{const s=getComputedStyle(el);return [s.fontSize,s.borderRadius,s.borderWidth].join('|')})")
             check(len(set(styles))==1,f'{name}: record actions share typography, borders, and corners')
-            check(page.locator('#customize-open').get_attribute('aria-label')=='Customize record', f'{name}: concise visual action keeps its full accessible name')
+            check(page.locator('#customize-open').get_attribute('aria-label')=='Customize turntable and record', f'{name}: concise visual action keeps its full accessible name')
             page.screenshot(path=str(artifacts/f'polish-{name}.png'),full_page=True)
             if name=='mobile':
                 page.evaluate("drag('dragenter');drag('dragover')");page.wait_for_timeout(200)

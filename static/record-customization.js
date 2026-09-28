@@ -1,6 +1,17 @@
 import { CONDITIONS, CONDITION_DESCRIPTIONS } from './condition-profiles.js';
 
 const $ = id => document.getElementById(id);
+// Paint changes belong to the chassis; chrome, controls and media keep their materials.
+export const FINISHES = Object.freeze({
+  Silver: { surface: ['#f1f1ef', '#e4e5e4', '#f2f2f0', '#d9dbda'], edge: ['#dadcda', '#c1c4c2', '#8a8d8b'], rail: ['#9b9f9c', '#bdc0bc'], ink: '#3e4a43', border: '#b5b9b7', seam: '#bcc1bd', ticks: '#505a53', zero: '#5b645e', quartz: '#778079' },
+  Black: { surface: ['#414548', '#292d30', '#383d40', '#202427'], edge: ['#353a3d', '#22272a', '#101416'], rail: ['#171c1f', '#33393d'], ink: '#e5e9e7', border: '#50585b', seam: '#626b6f' },
+  White: { surface: ['#fcfbf7', '#eeede7', '#fffef9', '#deded7'], edge: ['#e7e7e0', '#cccec6', '#92988f'], rail: ['#abb0a7', '#d2d5cd'], ink: '#3e4a43', border: '#babfb5', seam: '#c7cbc2' },
+  Red: { surface: ['#b84a4d', '#923137', '#ad4046', '#75272e'], edge: ['#883138', '#68232b', '#40191f'], rail: ['#411e25', '#6b3037'], ink: '#fff0e8', border: '#68232b', seam: '#cf696d' },
+  Blue: { surface: ['#497894', '#30586f', '#406d88', '#25465c'], edge: ['#31566d', '#243f53', '#142a39'], rail: ['#182e3f', '#2c4d63'], ink: '#edf5f7', border: '#26485c', seam: '#7096ab' },
+  Green: { surface: ['#577d6a', '#365b49', '#49715b', '#294938'], edge: ['#375946', '#284333', '#192d23'], rail: ['#20372a', '#365540'], ink: '#eef4e6', border: '#2d4c3a', seam: '#80a08c' },
+  Purple: { surface: ['#78648e', '#564369', '#6a567e', '#413250'], edge: ['#564367', '#3f314d', '#281e32'], rail: ['#30253b', '#514061'], ink: '#f6eef8', border: '#453552', seam: '#9a85af' },
+  Rose: { surface: ['#e6b9ba', '#cd999e', '#ddb0b4', '#bc878f'], edge: ['#c59299', '#a77680', '#794e59'], rail: ['#a77984', '#c79aa2'], ink: '#412a34', border: '#a67680', seam: '#ecc6c9' },
+});
 export const VINYL = Object.freeze({
   Black: ['#0b0c0d', '#25282a', 1], Clear: ['#cadbd3', '#f4fbf8', .22],
   Smoke: ['#46504c', '#929c96', .62], White: ['#c5c8c1', '#f1f0e8', 1],
@@ -29,13 +40,13 @@ export function contrastColor(hex) {
   return (light + .05) / .05 >= 1.05 / (light + .05) ? '#000000' : '#ffffff';
 }
 export function setupCustomization(change) {
-  for (const [id, values, key] of [['vinyl-swatches', VINYL, 'vinylColor'], ['label-swatches', LABELS, 'labelColor']]) {
+  for (const [id, values, key] of [['turntable-swatches', FINISHES, 'turntableColor'], ['vinyl-swatches', VINYL, 'vinylColor'], ['label-swatches', LABELS, 'labelColor']]) {
     for (const [name, color] of Object.entries(values)) {
       const button = document.createElement('button');
       button.className = 'swatch'; button.type = 'button'; button.dataset.name = name;
-      button.setAttribute('aria-label', `${id === 'vinyl-swatches' ? 'Vinyl' : 'Label'}: ${name}`);
+      button.setAttribute('aria-label', `${id === 'turntable-swatches' ? 'Turntable' : id === 'vinyl-swatches' ? 'Vinyl' : 'Label'}: ${name}`);
       button.setAttribute('aria-pressed', 'false'); button.title = name;
-      button.style.setProperty('--swatch', Array.isArray(color) ? color[1] : color);
+      button.style.setProperty('--swatch', color.surface ? color.surface[1] : Array.isArray(color) ? color[1] : color);
       if (name === 'Clear') button.classList.add('clear-swatch');
       button.addEventListener('click', () => change(key, name));
       $(id).append(button);
@@ -70,7 +81,27 @@ export function setupCustomization(change) {
   $('record-wear').append(marks);
 }
 let previousMaterial = '';
+let previousFinish = '';
 export function renderMaterial(state) {
+  if (state.turntableColor !== previousFinish) {
+    previousFinish = state.turntableColor;
+    const finish = FINISHES[state.turntableColor];
+    for (const [id, colors] of [['chassis', finish.surface], ['chassis-edge', finish.edge]]) {
+      $(id).querySelectorAll('stop').forEach((stop, i) => stop.setAttribute('stop-color', colors[i]));
+    }
+    $('chassis-outline').setAttribute('stroke', finish.border);
+    $('chassis-seam').setAttribute('stroke', finish.seam);
+    $('pitch-rail').setAttribute('fill', finish.rail[0]);
+    $('pitch-rail').setAttribute('stroke', state.turntableColor === 'Silver' ? '#929994' : finish.border);
+    $('pitch-rail-inset').setAttribute('fill', finish.rail[1]);
+    $('pitch-ticks').setAttribute('stroke', finish.ticks || finish.ink);
+    $('pitch-zero-mark').setAttribute('stroke', finish.zero || finish.ink);
+    $('quartz-mark').setAttribute('stroke', finish.quartz || finish.ink);
+    $('deck').style.setProperty('--deck-ink', finish.ink);
+    $('deck').setAttribute('aria-label', `${state.turntableColor} Virtual Home Studio VHS-42069 turntable`);
+    $('turntable-selection').textContent = state.turntableColor;
+    $('turntable-swatches').querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', button.dataset.name === state.turntableColor));
+  }
   for (const input of $('condition').querySelectorAll('input')) input.checked = input.value === state.condition;
   for (const key of ['wow', 'centering']) if ($(key).value !== String(state[key])) $(key).value = state[key];
   const key = [state.vinylColor, state.labelColor, state.condition].join('|');

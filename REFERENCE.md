@@ -2,7 +2,7 @@
 
 ## Hardware model
 
-The VHS-42069 is a fictional direct-drive deck with a manual S-shaped tonearm, two speed buttons, pitch adjustment and Quartz lock. Its silver chassis, dark controls and original vinyl-disc branding form the public product identity.
+The VHS-42069 is a fictional direct-drive deck with a manual S-shaped tonearm, two speed buttons, pitch adjustment and Quartz lock. Its chassis defaults to Silver, with Black, White, Red, Blue, Green, Purple and Rose finishes available in Customize. Dark controls and original vinyl-disc branding retain the public product identity. The selected finish persists through media changes within the page session; reloading restores Silver.
 
 Geometry below defines the simulator's established layout, not dimensions for a commercial product. Developer ownership and interaction rules are in [AGENTS.md](AGENTS.md).
 
