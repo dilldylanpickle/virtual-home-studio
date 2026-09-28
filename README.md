@@ -1,5 +1,7 @@
 # Virtual Home Studio
 
+> This is 100% vibe coded and I did this because I didn't want to buy a turntable for my home lab lol.
+
 Why spend $449 on a turntable when you can vibe code one for $10?
 
 Drop in an MP3 or WAV and play it like a record.
