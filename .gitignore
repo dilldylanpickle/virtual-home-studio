@@ -1,0 +1,31 @@
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated browser screenshots and test reports
+/artifacts/
+.coverage
+htmlcov/
+
+# Editors, OS metadata, and temporary files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+
+# Local configuration; examples remain shareable
+.env
+.env.*
+!.env.example
+
+# Private development photography is not public artwork
+/docs/reference/

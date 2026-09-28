@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#eae8e1">
+  <title>Virtual Home Studio</title>
+  <link rel="icon" href="/static/assets/virtual-home-studio-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <main class="room">
+    <header class="masthead">
+      <a class="brand" href="/" aria-label="Virtual Home Studio home"><svg class="brand-mark" viewBox="-12 -12 24 24" aria-hidden="true"><use href="/static/assets/virtual-home-studio-logo.svg#disc"/></svg> VIRTUAL HOME STUDIO</a>
+      <button id="help-open" class="text-button">How to play <span>↗</span></button>
+    </header>
+    <section class="intro">
+      <h1>Why spend $449 on a turntable when you can vibe code one for $10?</h1>
+      <p class="intro-note">Drop in an MP3 or WAV and play it like a record.</p>
+    </section>
+
+    <section class="turntable-stage" id="drop-zone" aria-label="Interactive Virtual Home Studio VHS-42069 turntable. Drop an MP3 or WAV here.">
+      <div class="deck-wrap">
+        <svg id="deck" viewBox="90 180 1024 828" xmlns="http://www.w3.org/2000/svg" aria-label="Silver Virtual Home Studio VHS-42069 turntable">
+  <defs>
+    <linearGradient id="chassis" x1="0" y1="0" x2=".65" y2="1"><stop stop-color="#f1f1ef"/><stop offset=".24" stop-color="#e4e5e4"/><stop offset=".57" stop-color="#f2f2f0"/><stop offset="1" stop-color="#d9dbda"/></linearGradient>
+    <linearGradient id="chassis-edge" x2="0" y2="1"><stop stop-color="#dadcda"/><stop offset=".8" stop-color="#c1c4c2"/><stop offset="1" stop-color="#8a8d8b"/></linearGradient>
+    <radialGradient id="mat"><stop stop-color="#1d1e1f"/><stop offset=".75" stop-color="#1b1c1d"/><stop offset="1" stop-color="#171819"/></radialGradient>
+    <radialGradient id="vinyl"><stop stop-color="#0b0c0d"/><stop offset=".4" stop-color="#181a1b"/><stop offset=".75" stop-color="#0b0c0d"/><stop offset="1" stop-color="#191b1d"/></radialGradient>
+    <radialGradient id="base-metal" cx=".57" cy=".43" r=".59"><stop stop-color="#34383b"/><stop offset=".67" stop-color="#282d30"/><stop offset=".84" stop-color="#1c2225"/><stop offset=".94" stop-color="#121416"/><stop offset="1" stop-color="#333537"/></radialGradient>
+    <linearGradient id="chrome"><stop stop-color="#171a1c"/><stop offset=".14" stop-color="#787f81"/><stop offset=".34" stop-color="#d9dede"/><stop offset=".47" stop-color="#f4f5f4"/><stop offset=".55" stop-color="#909697"/><stop offset=".73" stop-color="#d2d7d7"/><stop offset="1" stop-color="#373d3f"/></linearGradient>
+    <linearGradient id="button" x1=".15" y1="0" x2=".75" y2="1"><stop stop-color="#373a3c"/><stop offset=".4" stop-color="#222527"/><stop offset="1" stop-color="#181b1d"/></linearGradient>
+    <linearGradient id="tube-metal"><stop stop-color="#090c0d"/><stop offset=".22" stop-color="#454b4d"/><stop offset=".38" stop-color="#62696b"/><stop offset=".53" stop-color="#262b2e"/><stop offset=".82" stop-color="#141819"/><stop offset="1" stop-color="#070a0b"/></linearGradient>
+    <linearGradient id="shine"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".48" stop-color="#fff" stop-opacity=".08"/><stop offset=".5" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="cover-glass" x2=".8" y2="1"><stop stop-color="#b6d6e2" stop-opacity=".16"/><stop offset=".5" stop-color="#f2f8ff" stop-opacity=".035"/><stop offset="1" stop-color="#b6d6e2" stop-opacity=".14"/></linearGradient>
+    <linearGradient id="light-metal"><stop stop-color="#152126"/><stop offset=".22" stop-color="#46565f"/><stop offset=".48" stop-color="#65757d"/><stop offset=".65" stop-color="#34444d"/><stop offset=".86" stop-color="#1b2a32"/><stop offset="1" stop-color="#101c22"/></linearGradient>
+    <radialGradient id="target-spill"><stop stop-color="#c4e4f4" stop-opacity=".4"/><stop offset="1" stop-color="#98bdd2" stop-opacity="0"/></radialGradient>
+    <filter id="arm-shadow" x="-25%" y="-20%" width="170%" height="150%"><feDropShadow dx="5" dy="6" stdDeviation="3" flood-color="#101416" flood-opacity=".5"/></filter>
+    <filter id="soft-shadow" x="-35%" y="-35%" width="170%" height="180%"><feDropShadow dx="1" dy="3" stdDeviation="2" flood-opacity=".32"/></filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="6"/></filter>
+    <pattern id="felt-fibers" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M.2 1.7l1.2-.6M3 4l1-.5M4 .4l.5 1.1" stroke="#777b7a" stroke-opacity=".08" stroke-width=".65"/><path d="M1.8 3l.4 1.4M3.2 1.2l-1 .4" stroke="#050707" stroke-opacity=".25" stroke-width=".6"/></pattern>
+    <pattern id="rubber-grain" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx=".8" cy=".8" r=".4" fill="#969b9b" opacity=".15"/><circle cx="2.5" cy="2.4" r=".4" fill="#000" opacity=".25"/></pattern>
+    <mask id="record-hole" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x="160" y="260" width="676" height="676"><circle cx="498" cy="598" r="337" fill="white"/><circle cx="498" cy="598" r="6" fill="black"/></mask>
+    <mask id="strobe-mask"><circle cx="498" cy="598" r="377" fill="white"/><circle cx="498" cy="598" r="339" fill="black"/></mask>
+    <g id="screw-head"><circle r="4" fill="url(#chrome)" stroke="#404648" stroke-width=".65"/><path d="M-2.1-1.6l4.2 3.2M-1.5 2l3-4" stroke="#575d5e" stroke-width=".9"/></g>
+  </defs>
+  <!-- Established hardware coordinates; branding remains separate from controls. -->
+  <g id="hinges" fill="#222628" stroke="#101314" stroke-width="1.6">
+    <path d="M243 212v-13h31v-12h39v12h31v13Z"/><path d="M858 212v-13h32v-12h37v12h31v13Z"/>
+    <path d="M278 208v-18h30v18M894 208v-18h28v18" fill="#15191a" stroke="#444a4b"/><path d="M282 202h22M898 202h20" stroke="#383e40" stroke-width="3"/>
+  </g>
+  <rect x="102" y="210" width="999" height="783" rx="4" fill="url(#chassis-edge)" stroke="#b5b9b7" stroke-width="1"/>
+  <rect x="103" y="211" width="997" height="778" rx="3" fill="url(#chassis)"/>
+  <path d="M108 989h986" stroke="#bcc1bd" stroke-opacity=".65"/>
+  <!-- 45 adaptor and spare headshell socket: passive physical details. -->
+  <g aria-label="45 RPM adapter storage; display detail">
+    <circle cx="180" cy="289" r="46" fill="#101315" stroke="#707676" stroke-width="1"/>
+    <circle cx="180" cy="289" r="40" fill="#303537" stroke="#070b0c" stroke-width="2"/>
+    <circle cx="180" cy="289" r="38" fill="url(#rubber-grain)"/>
+    <path d="M170 250l6 22M219 302l-22-8M151 318l18-17" stroke="#111617" stroke-width="3.5"/>
+    <circle cx="180" cy="289" r="18" fill="#191e20" stroke="#090d0e" stroke-width="2"/><circle cx="180" cy="289" r="12" fill="#111517" stroke="#555d5e" stroke-width="2"/><circle cx="180" cy="289" r="7.5" fill="#0b0e0f"/>
+  </g>
+  <g aria-label="Spare headshell receptacle; display detail"><ellipse cx="805" cy="269" rx="15" ry="16" fill="#a3aaa8"/><ellipse cx="805" cy="269" rx="11" ry="14" fill="#4e5654"/><path d="M806 255c2 7 8 8 6 16-1 5-8 7-9 11-1-8-8-8-8-14 0-7 9-7 11-13" fill="#c5ccca" stroke="#666e6b" stroke-width="1"/></g>
+  <!-- Asymmetric cast tonearm base, gimbal rings, lift platform and anti-skate. -->
+  <g id="tonearm-base">
+    <circle cx="945" cy="419" r="130" fill="#101315" stroke="#9ca19f" stroke-width="1.3"/>
+    <circle cx="945" cy="419" r="127" fill="url(#base-metal)"/>
+    <circle cx="952" cy="418" r="106" fill="none" stroke="#080b0c" stroke-width="4"/>
+    <circle cx="952" cy="418" r="101" fill="none" stroke="#727778" stroke-width="1.2"/>
+    <circle cx="952" cy="418" r="97" fill="none" stroke="#131719" stroke-width="1.5" stroke-dasharray="1.4 3.6"/>
+    <path d="M870 354Q893 321 937 316M1049 396Q1047 348 1000 327" stroke="#3d4244" stroke-width="2" fill="none"/>
+    <path d="M869 354l22-4 38 57-5 28-56-31Z" fill="#1d2529" stroke="#3c484e" stroke-width="1.2"/>
+    <path d="M967 405h62l18 26-21 34-57 5Z" fill="#2d3438" stroke="#15191b" stroke-width="2"/>
+    <circle cx="951" cy="415" r="45" fill="#101416" stroke="#606667" stroke-width="1.6"/><circle cx="951" cy="415" r="35" fill="#292e30" stroke="#080d0e" stroke-width="3"/>
+    <path d="M880 450Q899 497 947 509" fill="none" stroke="#0a0f10" stroke-width="14" stroke-linecap="round"/><path d="M880 447Q898 491 947 503" fill="none" stroke="#666d6e" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M930 507l2 29h8l-1-30M969 505l1 26 12-2-4-29" fill="#171c1e" stroke="#697072" stroke-width="1"/>
+    <path d="M932 519l-4 1 1 14 10-1-1-14Z" fill="url(#chrome)"/><path d="M975 505l3 26" stroke="#b4bab9" stroke-width="1.5"/>
+    <g aria-label="Anti-skate adjustment; display detail"><circle cx="1045" cy="425" r="22" fill="#171c1e" stroke="#080d0f" stroke-width="2"/><circle cx="1045" cy="425" r="19" fill="#4d5354" stroke="#afb3b0" stroke-dasharray=".8 2.4" stroke-width="2"/><circle cx="1045" cy="425" r="15.5" fill="#3c4445"/><path d="M1034 413l4 5" stroke="#d7d9d4" stroke-width="1.3"/><g fill="#b6c0bc" font-size="4.5" text-anchor="middle"><text x="1045" y="413">0</text><text x="1059" y="427" transform="rotate(90 1059 427)">1</text><text x="1045" y="440" transform="rotate(180 1045 440)">2</text><text x="1031" y="427" transform="rotate(-90 1031 427)">3</text></g><title>Anti-skate is a display detail in this simulation</title></g>
+    <g id="cue" class="hardware-button" role="button" tabindex="0" aria-label="Lower cue lever" aria-pressed="false">
+      <path d="M980 470v-18l45-8" fill="none" stroke="#080d0f" stroke-width="7" stroke-linecap="round"/>
+      <path d="M980 469v-16l43-7" fill="none" stroke="#5b6465" stroke-width="1.4"/>
+      <g id="cue-handle"><path d="M1000 450l31-9 6 3-2 7-32 9Z" fill="#111719" stroke="#4b5354" stroke-width="1"/></g>
+      <path d="M991 449l39-9" fill="none" stroke="transparent" stroke-width="23"/>
+      <path d="M989 482h5l-2-7M989 470h5l-2 7" fill="none" stroke="#9fa6a3" stroke-width=".8"/>
+      <title>Raise or lower the cue lever (C)</title>
+    </g>
+  </g>
+  <!-- Platter overlaps the left edge of the tonearm base, as in the reference. -->
+  <circle cx="498" cy="598" r="379" fill="#111517" stroke="#b6bcba" stroke-width="1.5"/>
+  <circle cx="498" cy="598" r="375.5" fill="#131719" stroke="url(#chrome)" stroke-width="3"/>
+  <g id="platter-rotation">
+    <g id="strobe-dots"></g>
+    <circle cx="498" cy="598" r="340" fill="url(#mat)" stroke="#d7dcda" stroke-width="2.6"/>
+    <circle cx="498" cy="598" r="338" fill="url(#felt-fibers)"/>
+    <g id="mat-brand" fill="#aeb2b0" color="#aeb2b0"><use href="/static/assets/virtual-home-studio-logo.svg#disc" transform="translate(222 594) scale(2.2)"/><text x="253" y="600" font-family="Arial,Helvetica,sans-serif" font-size="16.5" font-weight="500" letter-spacing="1.2">VIRTUAL HOME STUDIO</text></g>
+  </g>
+  <circle id="record-shadow" cx="498" cy="598" r="333" fill="#080c09" opacity="0" pointer-events="none"/>
+  <!-- Permanent spindle sits beneath the media; the moving hole exposes its tip. -->
+  <g id="spindle"><ellipse cx="498" cy="600" rx="7" ry="6" fill="#0c1112" opacity=".7"/><circle cx="498" cy="597" r="5.4" fill="url(#chrome)" stroke="#2d3436" stroke-width="1"/><ellipse cx="497" cy="595" rx="2.2" ry="1.7" fill="#f6faf6"/></g>
+  <g id="record-lift"><g id="record" class="is-hidden" mask="url(#record-hole)">
+      <g id="vinyl-body">
+      <circle cx="498" cy="598" r="335" fill="url(#vinyl)" stroke="#080b0c" stroke-width="2"/>
+      <g id="grooves" fill="none"></g>
+      <path d="M498 598L225 402A335 335 0 0 1 797 445Z" fill="url(#shine)"/><path d="M498 598L757 807A335 335 0 0 1 195 740Z" fill="url(#shine)"/>
+      <g id="record-wear" fill="none" stroke="#e3e7de" opacity="0"></g></g>
+      <g id="record-label"><circle class="label-paper" cx="498" cy="598" r="110" fill="#6a948b"/><circle cx="498" cy="598" r="102" fill="none" stroke="#213d38" stroke-opacity=".35"/>
+      <g fill="#122f29" text-anchor="middle"><text x="498" y="537" font-size="9" letter-spacing="3.5">VIRTUAL HOME STUDIO</text><path d="M420 554h156" stroke="#213d38" stroke-opacity=".4"/><text id="label-title" x="498" y="576" font-family="Georgia,serif" font-size="18">Your own pressing</text><text x="498" y="637" font-size="9" letter-spacing="3">SIDE A</text><text x="498" y="663" font-size="8" letter-spacing="1">33⅓ RPM · STEREO</text><text x="498" y="678" font-size="7" letter-spacing="1">PRESSED LOCALLY. PLAYED HERE.</text></g>
+      <circle cx="498" cy="598" r="32" fill="none" stroke="#213d38" stroke-opacity=".28"/></g>
+    </g>
+  </g>
+  <circle id="vinyl-hit-area" class="is-hidden" cx="498" cy="598" r="334" fill="transparent" role="slider" tabindex="0" aria-label="Vinyl record. Drag around its center to scratch. Left and right arrows also turn the record." aria-valuemin="0" aria-valuemax="1" aria-valuenow="0"><title>Grab the vinyl and turn it backward or forward to scratch</title></circle>
+  <g id="strobe-light" pointer-events="none"><g mask="url(#strobe-mask)"><ellipse cx="208" cy="815" rx="25" ry="33" transform="rotate(-40 208 815)" fill="#f53649" opacity=".36" filter="url(#glow)"/><ellipse cx="208" cy="815" rx="17" ry="27" transform="rotate(-40 208 815)" fill="#fb3b51" opacity=".13"/></g></g>
+  <g id="power" class="hardware-button" role="slider" tabindex="0" aria-label="Power knob. Drag to rotate between OFF and ON." aria-valuemin="0" aria-valuemax="90" aria-valuenow="90" aria-valuetext="ON">
+    <ellipse cx="156" cy="834" rx="36" ry="34" fill="#1b2022" stroke="#727b7c" stroke-width="1.4" transform="rotate(-32 156 834)"/>
+    <circle cx="149" cy="837" r="32" fill="#0b1012" stroke="#798182" stroke-width="1"/><g id="power-rotor"><circle cx="149" cy="837" r="29" fill="#3b4244" stroke="#555d60" stroke-width="1"/>
+    <circle cx="149" cy="837" r="27" fill="url(#rubber-grain)"/>
+    <g id="power-notch"><path d="M146 812A26 26 0 0 1 172 837" fill="none" stroke="#d3d9d7" stroke-width="1"/><path d="M146 812l5-2-1 4" fill="#d3d9d7"/><path d="M157 814l2-4M166 821l3-3M172 832l4-1" stroke="#ced3d1" stroke-width=".8"/></g>
+    <g fill="#e4e8e4" font-family="Arial,sans-serif" font-size="6.8"><text x="137" y="815" transform="rotate(-15 137 815)">off</text><text x="171" y="841" transform="rotate(70 171 841)">on</text><text x="125" y="848" transform="rotate(53 125 848)">POWER</text></g>
+    </g><circle cx="149" cy="837" r="37" fill="transparent"/><title>Drag clockwise for ON, counterclockwise for OFF. Keyboard: arrows, Home (OFF), End (ON).</title>
+  </g>
+  <g class="deck-lettering" font-size="6.5"><circle cx="201" cy="860" r="1.6"/><circle cx="201" cy="868" r="2.7"/><circle cx="201" cy="876" r="1.9"/><circle cx="201" cy="884" r="2.6"/><text x="206" y="862">78</text><text x="206" y="878">33</text><text x="206" y="886">45</text></g>
+  <g id="start-stop" class="hardware-button" role="button" tabindex="0" aria-label="Start platter" aria-pressed="false">
+    <path d="M125 895h96v74h-96Z" fill="#151a1c" stroke="#8f9695" stroke-width="1.2"/><path d="M129 899h88v66h-88Z" fill="#080d0f" stroke="#626b6d" stroke-width="1"/><rect x="133" y="903" width="80" height="57" fill="url(#button)"/>
+    <path d="M134 904h77M134 904v54" stroke="#434c4f" stroke-width="1"/><text x="173" y="936" fill="#f0f4ef" font-family="Arial,sans-serif" font-size="8.1" text-anchor="middle" font-weight="600">START/STOP</text><title>Start or stop the platter (Space)</title>
+  </g>
+  <g id="rpm-78" class="deck-lettering" aria-label="78 RPM: both speed buttons latched">
+    <path d="M263 946v-10h21m8 0h24v10" fill="none" stroke="currentColor" stroke-width="1"/><text x="288" y="939" font-size="9" text-anchor="middle">78</text><title>78 RPM — latch both 33 and 45</title>
+  </g>
+  <g id="rpm-33" class="hardware-button speed-key" role="button" tabindex="0" aria-label="33 RPM speed latch" aria-pressed="false"><rect x="234" y="949" width="53" height="20" fill="#161b1d" stroke="#666e70" stroke-width="1.2"/><rect x="238" y="952" width="45" height="13" fill="url(#button)" stroke="#080d0f" stroke-width="1"/><text x="242" y="962" fill="#edf1ed" font-size="8.5">33</text><rect class="speed-led" x="270" y="957" width="10" height="2.7" rx="1"/><rect x="230" y="948" width="57" height="25" fill="transparent"/></g>
+  <g id="rpm-45" class="hardware-button speed-key" role="button" tabindex="0" aria-label="45 RPM speed latch" aria-pressed="false"><rect x="287" y="949" width="53" height="20" fill="#161b1d" stroke="#666e70" stroke-width="1.2"/><rect x="291" y="952" width="45" height="13" fill="url(#button)" stroke="#080d0f" stroke-width="1"/><text x="295" y="962" fill="#edf1ed" font-size="8.5">45</text><rect class="speed-led" x="323" y="957" width="10" height="2.7" rx="1"/><rect x="287" y="948" width="57" height="25" fill="transparent"/></g>
+  <g id="target-light" class="hardware-button" role="button" tabindex="0" aria-label="Stylus target light" aria-pressed="false"><ellipse cx="680" cy="963" rx="16" ry="19" fill="#a5afae" opacity=".55"/><ellipse cx="680" cy="959" rx="15" ry="18" fill="url(#light-metal)" stroke="#34464e" stroke-width="1"/><ellipse cx="680" cy="953" rx="12.5" ry="13" fill="#3c4c55" stroke="#7f929a" stroke-width="1"/><path d="M669 944l5 4" stroke="#e5f1f2" stroke-width="3" stroke-linecap="round"/><ellipse cx="680" cy="959" rx="23" ry="23" fill="transparent"/><title>Toggle the plug-in stylus target light</title></g>
+  <g id="light-beam" pointer-events="none"><g id="light-glow"><ellipse cx="655" cy="917" rx="43" ry="49" fill="url(#target-spill)"/><circle cx="669" cy="943" r="5" fill="#9ae0ff" opacity=".65" filter="url(#glow)"/></g><circle id="light-bulb" cx="669" cy="943" r="2.7" fill="#f1fdff"/></g>
+  <!-- Range selector above the fader, quartz alongside its lower left. -->
+  <g id="pitch-range" class="hardware-button" role="button" tabindex="0" aria-label="Pitch range plus or minus 8 percent" aria-pressed="false">
+    <rect id="range-16-led" x="1016" y="568" width="12" height="4.5" rx="2" fill="#797b79" stroke="#666c6a" stroke-width=".7"/>
+    <rect id="range-8-led" x="1016" y="589" width="12" height="4.5" rx="2" fill="#ef5363" stroke="#696f6c" stroke-width=".7"/>
+    <g class="deck-lettering" text-anchor="middle" font-size="7"><text x="1022" y="582">16%</text><text x="1022" y="603">8%</text></g>
+    <circle cx="1022" cy="628" r="19" fill="#111719" stroke="#8a9493" stroke-width="1"/><circle cx="1022" cy="628" r="14.5" fill="url(#button)" stroke="#050b0c" stroke-width="1"/>
+    <text x="1022" y="659" class="deck-lettering" text-anchor="middle" font-size="7">TEMPO RANGE</text><circle cx="1022" cy="628" r="24" fill="transparent"/><title id="range-label">Pitch range ±8%</title>
+  </g>
+  <rect id="pitch-rail" x="997" y="670" width="50" height="281" rx="6" fill="#9b9f9c" stroke="#929994" stroke-width="1.2"/><rect x="1000" y="673" width="44" height="275" rx="4" fill="#bdc0bc"/>
+  <path d="M1021 690v243" stroke="#303734" stroke-width="5.5" stroke-linecap="round"/><path d="M1023 691v241" stroke="#747d77" stroke-width=".7"/>
+  <g id="pitch-ticks" stroke="#505a53" stroke-width="1.1"/>
+  <g class="deck-lettering" font-size="10"><circle cx="975" cy="700" r="4.4" fill="none" stroke="currentColor" stroke-width="1"/><path d="M972.5 700h5" stroke="currentColor"/><circle cx="975" cy="924" r="4.4" fill="none" stroke="currentColor" stroke-width="1"/><path d="M972.5 924h5M975 921.5v5" stroke="currentColor"/></g>
+  <path d="M945 812h16m19 0h15" stroke="#5b645e" stroke-width="1"/><rect id="pitch-zero" x="965" y="809.5" width="11" height="4.5" rx="2" fill="#ec5663"/>
+  <g id="quartz" class="hardware-button" role="button" tabindex="0" aria-label="Quartz lock" aria-pressed="true"><path d="M942 834v57" stroke="#778079" stroke-width="1"/><circle cx="942" cy="912" r="19" fill="#181f20" stroke="#838e86" stroke-width="1"/><circle cx="942" cy="912" r="14.5" fill="url(#button)" stroke="#080e0f" stroke-width="1"/><text x="942" y="940" class="deck-lettering" text-anchor="middle" font-size="7">QUARTZ</text><circle cx="942" cy="912" r="24" fill="transparent"/><title>Lock pitch to the selected nominal RPM</title></g>
+  <!-- The complete photographed arm silhouette rotates around its measured bearing. -->
+  <g id="tonearm" role="slider" tabindex="0" aria-label="Tonearm groove position. Arrow keys seek, Home for outer groove, End for inner groove." aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="On arm rest">
+    <g id="arm-reference"><g id="arm-elevation" filter="url(#arm-shadow)">
+      <path d="M965 322L958 391" stroke="#060b0d" stroke-width="16"/><path d="M965 323l-3 40" stroke="url(#chrome)" stroke-width="9"/>
+      <g transform="rotate(3 965 300)"><path d="M931 272Q965 256 999 272v57q-32 17-68 0Z" fill="#0d1214" stroke="#313b3f" stroke-width="1"/><ellipse cx="965" cy="273" rx="34" ry="11" fill="#3b464b" stroke="#79868b" stroke-width="1.4"/><ellipse cx="965" cy="268" rx="16" ry="4" fill="url(#chrome)"/><path d="M932 279h66v34h-66Z" fill="url(#chrome)"/><path d="M933 316v13M937 317v14M941 318v14M945 319v14M949 320v14M953 321v13M957 321v14M961 322v13M965 322v13M969 322v13M973 321v13M977 320v13M981 319v13M985 318v13M989 317v13M993 315v14M997 313v14" stroke="#687276" stroke-width=".8"/><path d="M936 269v12M942 266v14M948 264v14M954 263v14M960 262v14M966 262v14M972 262v14M978 263v14M984 265v14M990 267v14M996 269v13" stroke="#68757a" stroke-width=".7"/><ellipse cx="965" cy="268" rx="29" ry="6" fill="#1c2428" stroke="#49565d" stroke-width=".8"/><ellipse cx="965" cy="266" rx="10" ry="2.7" fill="#849299"/><g fill="#dce3e2" font-size="8"><text x="941" y="334" transform="rotate(22 941 334)">2.5</text><text x="966" y="340">3.0</text></g><text x="934" y="302" fill="#414f53" font-size="11">2</text></g>
+      <path d="M958 365L958 437" stroke="#0a0f11" stroke-width="24"/><path d="M964 366l-3 70" stroke="#697275" stroke-width="3" opacity=".65"/>
+      <path d="M958 438C953 463 950 482 953 513C956 550 977 642 981 681C987 725 966 756 933 804" fill="none" stroke="#080d0f" stroke-width="20"/>
+      <path d="M958 438C953 463 950 482 953 513C956 550 977 642 981 681C987 725 966 756 933 804" fill="none" stroke="url(#tube-metal)" stroke-width="15"/>
+      <path d="M954 438C949 463 946 482 949 513C952 550 973 642 977 681C983 725 962 756 929 804" fill="none" stroke="#90999b" stroke-opacity=".32" stroke-width="1.5"/>
+      <path d="M889 359l116 51-11 27-116-50Z" fill="#171d20" stroke="#37454c" stroke-width="1.5"/><path d="M894 363l105 47-5 16-105-48Z" fill="url(#rubber-grain)"/><path d="M899 377l36 15-3 6-36-15Z" fill="#0e1518"/>
+      <circle cx="965" cy="398" r="8" fill="url(#chrome)" stroke="#555f62" stroke-width="1.4"/><use href="#screw-head" transform="translate(965 398) scale(1.2)"/>
+      <g transform="rotate(31 927 819)"><rect x="915" y="801" width="24" height="37" rx="2" fill="url(#tube-metal)" stroke="#131b1e"/><path d="M914 804h26M914 809h26M914 814h26M914 819h26M914 824h26" stroke="#080f12" stroke-width="1.8"/><path d="M915 805h24M915 815h24M915 825h24" stroke="#a1abad" stroke-width=".7"/><rect x="917" y="833" width="20" height="5" fill="url(#chrome)"/></g>
+      <path d="M918 830L933 840L902 887L895 911Q891 919 884 926L876 935Q870 940 863 935L846 924Q840 920 845 912L858 891Q861 887 870 885Q878 881 885 871Z" fill="#242e32" stroke="#0a1216" stroke-width="3"/>
+      <path d="M918 834l10 7-33 48-8 22-19 19-21-10 14-25 14-6Z" fill="#303c41" stroke="#596a71" stroke-width=".9"/>
+      <path d="M853 904l7-7 7 4-6 14-8 1Z M876 918l7-8 8 4-8 15-8 1Z" fill="#0e181e" stroke="#6a7a81" stroke-width=".8"/>
+      <use href="#screw-head" transform="translate(858 907) scale(1.2)"/><use href="#screw-head" transform="translate(881 921) scale(1.2)"/>
+      <use href="/static/assets/virtual-home-studio-logo.svg#disc" transform="translate(883 897) rotate(32) scale(.8)" color="#c3d1d1"/>
+      <path d="M904 885l43 26-3 4-43-26Z" fill="#59696f" stroke="#14222a" stroke-width="1" pointer-events="none"/>
+      <path d="M848 920l10 6 3 5-7 1-10-7Z" fill="#4c7b6a"/><path d="M854 924l2 2" stroke="#e2f1e9" stroke-width="1.8"/>
+    </g>
+    <path class="arm-hit-area" d="M958 438C953 463 950 482 953 513C956 550 977 642 981 681C987 725 966 756 933 804L883 897 856 926" fill="none" stroke="transparent" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+    </g><title>Drag the headshell. The cue lever stays where you set it.</title>
+  </g>
+  <g id="tonearm-focus" aria-hidden="true" pointer-events="none" transform="translate(1005 538)"><rect width="80" height="22" rx="11"/><text x="40" y="15" text-anchor="middle">← → Seek</text></g>
+  <g id="chassis-brand" class="deck-lettering" aria-label="Virtual Home Studio VHS-42069">
+    <use href="/static/assets/virtual-home-studio-logo.svg#disc" transform="translate(786 959)"/>
+    <text x="803" y="953" font-family="Arial,Helvetica,sans-serif" font-size="9.5" font-weight="600" letter-spacing=".7">VIRTUAL HOME STUDIO</text>
+    <text x="803" y="966" font-family="Arial,Helvetica,sans-serif" font-size="7.2" letter-spacing="1.3">VHS-42069</text>
+  </g>
+  <g id="dust-cover" class="is-hidden" pointer-events="none"><rect x="109" y="214" width="984" height="767" rx="4" fill="url(#cover-glass)" stroke="#a9c3ca" stroke-opacity=".7" stroke-width="1.5"/><path d="M115 219h967L115 650Z" fill="#fff" opacity=".035"/><path d="M119 975h963" stroke="#effbff" stroke-opacity=".35" stroke-width="3"/></g>
+</svg>
+        <input id="pitch" class="pitch-control" type="range" min="-8" max="8" step="0.1" value="0" aria-label="Pitch adjustment" aria-valuetext="0 percent, quartz locked" orient="vertical">
+      </div>
+      <div class="drop-overlay" aria-hidden="true"><div class="drop-message"><span>Make it a record</span><p>Drop your MP3 or WAV</p></div></div>
+    </section>
+
+    <section id="listening-hud" class="listening-hud" aria-label="Listening controls">
+      <div class="hud-record">
+        <span class="mini-record" id="mini-record" aria-hidden="true"></span>
+        <div class="hud-record-copy"><p class="eyebrow" id="record-caption"></p><h2 id="track-name">Choose a record</h2><p id="track-meta">MP3 or WAV</p></div>
+      </div>
+      <div class="hud-transport">
+        <div class="transport-row"><button id="arm-rest" class="hud-icon" aria-label="Return arm" data-tooltip="Return arm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7H4V4M4 7a8 8 0 1 1-1 8"/></svg></button><button id="transport" class="transport-button" aria-label="Play record" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path class="play-symbol" d="m9 6 10 6-10 6Z"/><path class="pause-symbol" d="M8 6h3v12H8zM15 6h3v12h-3z"/></svg><span id="transport-label">Play</span></button></div>
+        <div class="groove-timeline"><span id="elapsed">00:00</span><div class="timeline-control"><input id="groove-progress" type="range" min="0" max="100" step=".01" value="0" aria-label="Groove position" disabled><div class="timeline-preview" aria-hidden="true"><span class="timeline-preview-marker"></span><span class="timeline-preview-time"></span></div></div><span id="duration">00:00</span></div>
+        <p id="transport-hint">Place a record to begin</p>
+      </div>
+      <div class="hud-listening">
+        <label class="hud-volume" for="volume"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 8c3 2 3 6 0 8"/></svg><span class="sr-only">Output volume</span><input id="volume" type="range" min="0" max="1" step=".01" value="0.69" aria-label="Output volume"><output id="volume-value">69%</output></label>
+        <div class="hud-actions" role="group" aria-label="Record actions"><button id="customize-open" class="record-action" aria-haspopup="dialog" aria-label="Customize record">Customize</button><button id="load" class="record-action" aria-label="Choose a record"><span>Choose a record</span></button><button id="eject" class="record-action record-action-quiet" aria-label="Eject record" disabled>Eject</button></div>
+        <input id="file-input" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" hidden>
+      </div>
+      <details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button></span></div></details>
+    </section>
+    <p id="notice" class="notice" role="status"></p>
+  </main>
+  <dialog id="customize" aria-labelledby="customize-title">
+    <button id="customize-close" class="dialog-close" aria-label="Close record customization">×</button>
+    <span id="customize-preview" class="mini-record loaded customize-preview" aria-hidden="true"></span><h2 id="customize-title">Customize record</h2>
+    <section class="customize-section" aria-labelledby="appearance-title">
+      <h3 id="appearance-title">Appearance</h3>
+      <fieldset class="palette"><legend>Vinyl <span id="vinyl-selection">Black</span></legend><div id="vinyl-swatches" class="swatches"></div></fieldset>
+      <fieldset class="palette"><legend>Label <span id="label-selection">Blue</span></legend><div id="label-swatches" class="swatches"></div></fieldset>
+    </section>
+    <fieldset class="condition-section" aria-describedby="condition-help">
+      <legend>Record condition</legend>
+      <div id="condition" class="condition-segments"></div>
+      <p id="condition-help" class="panel-note" aria-live="polite" aria-atomic="true"></p>
+    </fieldset>
+    <section class="customize-section mechanical-section" aria-labelledby="mechanical-title">
+      <h3 id="mechanical-title">Mechanical character</h3>
+      <label class="setting-slider" for="wow"><span>Wow / flutter <output id="wow-value">Off</output></span><input id="wow" type="range" min="0" max="1" step=".05" value="0" aria-valuetext="Off"><span class="slider-scale" aria-hidden="true"><span>Off</span><span>Noticeable</span></span></label>
+      <label class="setting-slider" for="centering"><span>Pressing / centering <output id="centering-value">Perfect</output></span><input id="centering" type="range" min="0" max="1" step=".05" value="0" aria-valuetext="Perfect"><span class="slider-scale" aria-hidden="true"><span>Perfect</span><span>Off-center</span></span></label>
+    </section>
+  </dialog>
+  <dialog id="help" aria-labelledby="help-title">
+    <button id="help-close" class="dialog-close" aria-label="Close How to Play">×</button>
+    <h2 id="help-title">How to Play</h2>
+    <section class="help-start" aria-labelledby="help-start-title">
+      <h3 id="help-start-title">Just play something</h3>
+      <ol class="help-steps">
+        <li><strong>Choose a record</strong><span>Choose or drop an MP3 or WAV.</span></li>
+        <li><strong>Press Play</strong><span>We'll cue the tonearm for you.</span></li>
+        <li><strong>That's it</strong><span>Explore the timeline or turntable.</span></li>
+      </ol>
+    </section>
+    <div class="help-grid">
+      <div>
+        <section aria-labelledby="help-hands-title">
+          <h3 id="help-hands-title">Hands on</h3>
+          <dl class="help-actions">
+            <div><dt>Tonearm</dt><dd>Drag to another groove.</dd></div>
+            <div><dt>CUE</dt><dd>Lift to move silently. Lower to listen.</dd></div>
+            <div><dt>Vinyl</dt><dd>Drag to scratch with the stylus down.</dd></div>
+          </dl>
+        </section>
+        <section aria-labelledby="help-timeline-title">
+          <h3 id="help-timeline-title">Timeline</h3>
+          <dl class="help-actions help-timeline">
+            <div><dt>Hover</dt><dd>Preview time</dd></div>
+            <div><dt>Click</dt><dd>Move the stylus there</dd></div>
+            <div><dt>Drag</dt><dd>Scrub through the record</dd></div>
+          </dl>
+        </section>
+      </div>
+      <section aria-labelledby="help-deck-title">
+        <h3 id="help-deck-title">Turntable controls</h3>
+        <dl class="help-actions help-hardware">
+          <div><dt>POWER</dt><dd>Rotate to turn on / off.</dd></div>
+          <div><dt>START / STOP</dt><dd>Start or coast the platter.</dd></div>
+          <div><dt>33 + 45</dt><dd>Latch both for 78 RPM. Click again to release.</dd></div>
+          <div><dt>TEMPO RANGE</dt><dd>Switch ±8% / ±16%.</dd></div>
+          <div><dt>QUARTZ</dt><dd>Lock pitch to the selected RPM.</dd></div>
+          <div><dt>PITCH</dt><dd>Speed up / slow down with Quartz off.</dd></div>
+        </dl>
+      </section>
+    </div>
+    <section class="help-keyboard" aria-labelledby="help-keyboard-title">
+      <h3 id="help-keyboard-title">Keyboard <span>With the deck focused</span></h3>
+      <dl class="help-shortcuts">
+        <div><dt><kbd>Space</kbd></dt><dd>Start / stop platter</dd></div>
+        <div><dt><kbd>C</kbd></dt><dd>Raise / lower stylus</dd></div>
+        <div><dt><kbd>R</kbd></dt><dd>Lift &amp; park arm</dd></div>
+      </dl>
+      <details class="help-focus-keys">
+        <summary>More keys for focused controls</summary>
+        <dl class="help-actions">
+          <div><dt><kbd>Tab</kbd></dt><dd>Move focus between controls.</dd></div>
+          <div><dt><kbd>Enter</kbd> / <kbd>Space</kbd></dt><dd>Activate a focused button.</dd></div>
+          <div><dt>Tonearm</dt><dd><kbd>←</kbd> <kbd>↓</kbd> / <kbd>→</kbd> <kbd>↑</kbd> seek back / forward. Add <kbd>Shift</kbd> for bigger steps. <kbd>Home</kbd> / <kbd>End</kbd> select first / last groove.</dd></div>
+          <div><dt>Vinyl</dt><dd>Hold <kbd>←</kbd> / <kbd>→</kbd> to scratch. Release to let go.</dd></div>
+          <div><dt>POWER</dt><dd><kbd>←</kbd> <kbd>↓</kbd> / <kbd>→</kbd> <kbd>↑</kbd> rotate. <kbd>Home</kbd> off / <kbd>End</kbd> on.</dd></div>
+          <div><dt>Sliders</dt><dd><kbd>←</kbd> <kbd>↓</kbd> / <kbd>→</kbd> <kbd>↑</kbd> adjust. <kbd>Home</kbd> / <kbd>End</kbd> select limits.</dd></div>
+          <div><dt><kbd>Esc</kbd></dt><dd>Dismiss a panel or file-drop preview.</dd></div>
+        </dl>
+      </details>
+    </section>
+    <section class="help-customize" aria-labelledby="help-customize-title">
+      <h3 id="help-customize-title">Make it yours <span>Customize Record</span></h3>
+      <ul><li>Vinyl color</li><li>Label color</li><li>Record condition</li><li>Mechanical character</li></ul>
+      <p>Condition changes wear, crackle, pops and groove character.</p>
+    </section>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 24 24" color="#516d80">
+  <title>Virtual Home Studio vinyl-disc mark</title>
+  <!-- Original project artwork; shared by header, hardware and favicon. -->
+  <g id="disc" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+    <circle r="10"/>
+    <circle r="3.1"/>
+    <circle r=".7" fill="currentColor" stroke="none"/>
+    <path d="M-7 0a7 7 0 0 1 7-7M7 0a7 7 0 0 1-7 7"/>
+  </g>
+</svg>
