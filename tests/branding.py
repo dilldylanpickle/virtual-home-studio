@@ -160,6 +160,7 @@ def run():
         screenshot('replaced')
         with page.expect_file_chooser() as chooser:
             page.locator('#load').click()
+            page.locator('#source-local').click()
         check(page.evaluate("turntable.state.recordPresent && turntable.state.recordPhase === 'ready'"),
               'Replace opens the chooser while the current record remains seated')
         screenshot('replace-choosing-file')

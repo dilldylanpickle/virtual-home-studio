@@ -4,7 +4,7 @@
 
 Why spend $449 on a turntable when you can vibe code one for $10?
 
-Drop in an MP3 or WAV and play it like a record.
+Choose an MP3 or WAV, or drop one onto the deck and play it like a record.
 
 ![Virtual Home Studio](docs/images/virtual-home-studio.png)
 
@@ -24,6 +24,8 @@ Open **http://127.0.0.1:42069**. Stop the server with Ctrl+C.
 ## What it does
 
 - MP3/WAV playback with assisted Play or manual tonearm control.
+- **Choose Record / Replace Record** opens a compact source chooser. Pick **Local File**, or drag and drop an MP3/WAV anywhere on the page.
+- A bright blue empty-state glow highlights where to begin, with a static highlight when reduced motion is enabled.
 - 33⅓ / 45 / 78 RPM, pitch adjustment and Quartz lock.
 - Vinyl scratching, direct scrubbing and audible motor transitions.
 - Eight turntable finishes, vinyl/label colors, record condition, surface texture and cartridge character.
@@ -50,6 +52,8 @@ Open **http://127.0.0.1:42069**. Stop the server with Ctrl+C.
 | Pitch / Quartz | Adjust speed / lock to the selected nominal RPM |
 | Return arm | Lift and park the arm; platter stays independent |
 | Customize / Replace | Change the turntable finish and record’s look and sound / choose another file |
+
+The source chooser also shows a grey, disabled **YouTube link — Coming soon** placeholder.
 
 Open **How to Play** for the visual cheat sheet and keyboard shortcuts.
 

@@ -44,6 +44,7 @@ Paths below are relative to the repository root; module names are under `static/
 | `static/playback-presets.js` | Physical speed/pitch presets, derived selection and cancellable fader motion |
 | `static/listening-hud.js` | Snapshot presentation; actions delegate to the model command API |
 | `static/progress-control.js` | Timeline pointer capture, latest-event drag, click and hover preview |
+| `static/media-source-ui.js` | Local-file source chooser and empty-state attention |
 | `static/record-lifecycle.js` | Validation/decode, serialized removal/insertion, stale-request rejection |
 | `static/record-customization.js` | Chassis finishes, material palettes, condition UI and coordinated record/thumbnail appearance |
 | `static/style.css` | Hardware and software presentation, hit areas and responsive layout |
@@ -97,8 +98,8 @@ SVG + HUD       worklet control messages
 ## Record lifecycle
 
 ```text
-Choose / Drop / Replace
-    ↓ file selection (picker cancellation ends here)
+Choose / Replace → source chooser → Local File
+    ↓ file selection, or Drop (picker cancellation ends here)
 validate extension → park arm / stop motor → decode
     ↓ success
 remove old record if present → transfer PCM → insert → ready
@@ -106,7 +107,10 @@ remove old record if present → transfer PCM → insert → ready
 Eject: ready → park / stop → lift / fade → clear PCM → empty
 ```
 
-- Picker opening alone changes nothing; same-file selection works because the input resets.
+- Opening the source chooser or file picker alone changes nothing; same-file selection works because the input resets.
+- Local File and drag-and-drop use the same `load(file)` command. The grey, disabled “YouTube link — Coming soon” entry is only a placeholder.
+- Keep the Choose/Replace action label stable during decoding, removal and insertion; update it only when the lifecycle settles empty or ready. Keep the action row’s dimensions stable across those labels and avoid helper text that shifts it when media loads.
+- Empty-state attention belongs to the source chooser: fade it after media loads, let valid file dragging take priority, and use a static highlight for reduced motion.
 - Generation checks discard stale decodes; insertion/removal operations serialize.
 - Decode failure retains existing media, though parking may already have lifted/stopped it.
 - `pendingFilename` labels incoming media; active filename/duration change after seating.
@@ -174,7 +178,7 @@ Use the same Python prefix or `node` with the relevant paths below. There is no 
 | Physical controls, RPM and geometry | `controls.py`, `hardware.py`, `motor.py` |
 | Assisted transport and arm motion | `assisted.py`, `return_arm.py`, `phase2.py`, `replay.py`, `presets.py`, `preset_motion.py` |
 | Scratching, seeking and HUD input | `scratching.py`, `seeking.py`, `direct_scrub.py`, `timeline_hover.py` |
-| Media handling and appearance | `record_paths.py`, `customization.py`, `branding.py`, `occlusion.py` |
+| Media handling and appearance | `media_sources.py`, `record_paths.py`, `customization.py`, `branding.py`, `occlusion.py` |
 | Effects and UI polish | `realism.py`, `condition_audio.py`, `polish.py` |
 
 | DSP coverage | Node files under `tests/` |

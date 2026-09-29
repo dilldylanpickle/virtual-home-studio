@@ -164,7 +164,8 @@ def run():
         page.locator('#file-input').set_input_files(paths[3]);phase('loading');click('eject');phase('empty');page.wait_for_timeout(650)
         check(state()['recordPhase']=='empty' and not state()['filename'], 'Eject invalidates an outstanding decode')
         page.locator('#file-input').set_input_files(paths[0]);phase('ready')
-        with page.expect_file_chooser() as chooser: click('load')
+        click('load')
+        with page.expect_file_chooser() as chooser: click('source-local')
         check(state()['recordPhase']=='ready' and state()['filename']=='first.wav',
               'Replace opens the picker before changing or ejecting the current record')
         chooser.value.set_files(paths[2]);phase('loading');phase('ready')

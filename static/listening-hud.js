@@ -91,7 +91,7 @@ export class ListeningHUD {
     $('transport-label').textContent = starting ? 'Starting…' : playing ? 'Pause' : ended ? 'Play again' : 'Play';
     $('transport-hint').textContent = s.busy ? 'Handling record' : !s.recordLoaded ? ''
       : starting ? 'Cueing your record · click to pause' : s.directScrubbing ? '' : s.seeking ? 'Traversing grooves' : ended ? 'Ready for another listen'
-      : s.transportPaused ? 'Paused' : s.grooveRegion === 'run-in' && s.stylusContact ? 'Finding the first groove' : '';
+      : s.transportPaused ? '' : s.grooveRegion === 'run-in' && s.stylusContact ? 'Finding the first groove' : '';
     const progress = $('groove-progress');
     progress.disabled = s.busy || !s.recordLoaded;
     // During drag this state is the pointer anchor; click seeks follow the audio cursor.

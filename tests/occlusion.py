@@ -150,6 +150,7 @@ def run():
             # Use the real chooser entry point, then the same record lifecycle.
             with page.expect_file_chooser() as picker:
                 page.locator('#load').click()
+                page.locator('#source-local').click()
             picker.value.set_files(RAW)
             motion('insert', color)
             seated = page.screenshot(clip=clip)
