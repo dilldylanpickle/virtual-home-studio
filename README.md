@@ -1,5 +1,12 @@
 # Virtual Home Studio
 
+> [!NOTE]
+> **Your music stays on your device.** Selected MP3/WAV files are decoded and played entirely in your browser. The app does not upload your music to GitHub or another server.
+>
+> The hosted version uses GitHub Pages over HTTPS. The deployment publishes only the website's HTML, CSS, JavaScript and assets; you do not need to run a server or create an account to listen.
+>
+> GitHub logs visitors' IP addresses for security purposes, so local audio processing does not mean anonymous browsing. See [GitHub's data collection disclosure](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection).
+
 > This is 100% vibe coded and I did this because I didn't want to buy a turntable for my home lab lol.
 
 Why spend $449 on a turntable when you can vibe code one for $10?
