@@ -82,6 +82,7 @@ SVG + HUD       worklet control messages
 | Automated | Assisted Play; Return Arm; record parking | Shared cancellable `TonearmMotion` sweep |
 
 - Cue position belongs to the user during manual movement and seeking.
+- `replayEnabled` defaults off. The HUD repeat toggle persists within the page session; natural worklet completion reuses assisted Play to lift, sweep and cue the current record. Manual end-seeks, scratching, Pause and record handling never trigger replay. Turning repeat off prevents the next replay; an already-started cue sequence remains cancellable through the normal controls.
 - Play can lower the stylus; it chooses 33⅓ only when no speed is selected and respects a chosen groove.
 - Direct gestures cancel older commanded/automated moves; canceled callbacks must not regain ownership.
 - Return Arm lifts, sweeps outward and settles; it does not reset platter settings.
@@ -168,7 +169,7 @@ Use the same Python prefix or `node` with the relevant paths below. There is no 
 | --- | --- |
 | Broad acceptance | `acceptance.py` |
 | Physical controls, RPM and geometry | `controls.py`, `hardware.py`, `motor.py` |
-| Assisted transport and arm motion | `assisted.py`, `return_arm.py`, `phase2.py` |
+| Assisted transport and arm motion | `assisted.py`, `return_arm.py`, `phase2.py`, `replay.py` |
 | Scratching, seeking and HUD input | `scratching.py`, `seeking.py`, `direct_scrub.py`, `timeline_hover.py` |
 | Media handling and appearance | `record_paths.py`, `customization.py`, `branding.py`, `occlusion.py` |
 | Effects and UI polish | `realism.py`, `condition_audio.py`, `polish.py` |

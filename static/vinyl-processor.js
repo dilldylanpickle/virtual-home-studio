@@ -18,7 +18,7 @@ class VinylProcessor extends AudioWorkletProcessor {
     this.rpm = null; this.enabled = false; this.contact = false; this.powered = true;
     this.holding = false; this.revision = 0; this.rampRemaining = 0;
     this.gain = 0; this.colored = [0, 0]; this.last = [0, 0]; this.blendFrom = [0, 0]; this.blendRemaining = 0;
-    this.reportFrames = 0; this.clock = 0;
+    this.reportFrames = 0; this.clock = 0; this.playbackEnds = 0;
     this.fadeFrames = Math.max(1, Math.round(sampleRate * .004));
     this.follow = 1 - Math.exp(-1 / (sampleRate * .006));
     this.port.onmessage = ({ data }) => this.command(data);
@@ -208,7 +208,15 @@ class VinylProcessor extends AudioWorkletProcessor {
         const minimum = this.position < 0 ? -this.runIn * this.fileRate : 0;
         const advance = (this.manualScrub ? this.motorActualRate * dt : step) * (1 + eccentricity) * this.fileRate;
         if (this.paused && !this.holding) this.tailPosition = Math.max(minimum, Math.min(this.length, this.tailPosition + advance));
-        else { this.position = Math.max(minimum, Math.min(this.length, this.position + advance)); this.tailPosition = this.position; }
+        else {
+          const previous = this.position;
+          this.position = Math.max(minimum, Math.min(this.length, this.position + advance));
+          this.tailPosition = this.position;
+          // A monotonic event serial survives intervening control revisions. Direct
+          // manipulation and commanded seeks never count as finishing a song.
+          if (!scrubbing && !this.holding && !this.paused && previous < this.length
+            && this.position >= this.length && this.length > 0 && advance > 0) this.playbackEnds++;
+        }
       }
       if (seeking) {
         this.tailPosition = this.position;
@@ -222,7 +230,7 @@ class VinylProcessor extends AudioWorkletProcessor {
     if (this.reportFrames >= sampleRate / 60) {
       this.reportFrames = 0;
       this.port.postMessage({
-        revision: this.revision, position: this.position / this.fileRate, seeking: this.seek !== null, directScrub: this.directScrub, manualScrub: this.manualScrub,
+        playbackEnds: this.playbackEnds, revision: this.revision, position: this.position / this.fileRate, seeking: this.seek !== null, directScrub: this.directScrub, manualScrub: this.manualScrub,
         travel: this.travel, rate: this.rate, active,
         time: currentTime + frames / sampleRate, ramping: this.rampRemaining > 0 || this.motor.ramping,
         motorTravel: this.motorTravel, motorActualRate: this.motorActualRate, motorRamping: this.motor.ramping,

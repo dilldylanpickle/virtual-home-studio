@@ -53,7 +53,7 @@ class Turntable extends EventTarget {
     super();
     this.state = {
       power: true, powerAngle: 0, powerDragging: false, powerSettling: false,
-      platterRunning: false, speed33Pressed: false, speed45Pressed: false, transportPaused: false, assistPhase: 'idle',
+      platterRunning: false, speed33Pressed: false, speed45Pressed: false, transportPaused: false, replayEnabled: false, assistPhase: 'idle',
       pitchRange: 8, pitch: 0, quartzLock: true,
       recordLoaded: false, recordPresent: false, recordPhase: 'empty', grooveRegion: 'music', runInRemaining: 0, filename: '', pendingFilename: '', duration: 0, position: 0,
       tonearmAngle: geometry.rest, stylusRaised: true, tonearmMotion: null,
@@ -72,6 +72,7 @@ class Turntable extends EventTarget {
     this.enginePromise = null;
     this.report = null;
     this.revision = 0;
+    this.handledPlaybackEnds = 0;
     this.armScrubSample = null;
     this.lifecycle = new RecordLifecycle(this, { park: () => this.parkForRecord(), motion: animateRecord, grooves: drawGrooves, notice: showNotice, rest: geometry.rest });
     this.powerAnimation = null;
@@ -103,10 +104,13 @@ class Turntable extends EventTarget {
       this.metrics.sourcesCreated++;
       this.engine.port.onmessage = ({ data }) => {
         if (data.revision !== this.revision) return;
+        const ended = data.playbackEnds > this.handledPlaybackEnds;
+        this.handledPlaybackEnds = data.playbackEnds;
         this.report = data;
         this.syncPosition();
         this.metrics.activeSources = this.audible ? 1 : 0;
         this.metrics.maxActiveSources = Math.max(this.metrics.maxActiveSources, this.metrics.activeSources);
+        if (ended) this.replayAfterEnd();
       };
       this.engine.onprocessorerror = () => showNotice('The audio processor stopped. Reload the page to restart it.', true);
       this.sendControl({ travel: this.state.recordRotation / 200, motorTravel: this.state.rotation / 200 });
@@ -239,6 +243,19 @@ class Turntable extends EventTarget {
     this.emit();
   }
   play() { this.endDirectScrub(); this.cancelSeek(); showNotice(''); return this.assist.play(); }
+  setReplayEnabled(enabled) {
+    this.state.replayEnabled = Boolean(enabled);
+    this.emit();
+  }
+  replayAfterEnd() {
+    const s = this.state;
+    // Only the audio clock's natural completion can request another listen.
+    // Manual seeking/scratching, pause, and lifecycle operations retain ownership.
+    if (!s.replayEnabled || this.lifecycle.busy || !s.recordLoaded || !s.power || !s.platterRunning
+      || s.rpm === null || s.transportPaused || !this.stylusContact || s.dragging || s.scratching
+      || s.position < s.duration || s.directScrubbing || s.seeking || s.tonearmMotion || s.assistPhase !== 'idle') return;
+    void this.play();
+  }
   seekProgress(fraction) {
     this.endDirectScrub();
     if (!Number.isFinite(fraction) || !this.state.recordLoaded || this.lifecycle.busy) return;
@@ -448,6 +465,7 @@ const controls = Object.freeze({
   getVolume: () => turntable.state.volume,
   setVolume: value => turntable.setVolume(value),
   play: () => turntable.play(), pause: () => turntable.pause(),
+  setReplayEnabled: enabled => turntable.setReplayEnabled(enabled),
   seek: fraction => turntable.seekProgress(fraction),
   beginDirectScrub: fraction => turntable.beginDirectScrub(fraction),
   updateDirectScrub: (fraction, velocity) => turntable.updateDirectScrub(fraction, velocity),
