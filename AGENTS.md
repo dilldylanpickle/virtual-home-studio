@@ -21,6 +21,7 @@ The public turntable is the fictional **Virtual Home Studio VHS-42069**.
 - Treat manual tonearm sound as the reference for the shared scrub reader.
 - Animate removable media independently of permanent hardware.
 - Keep audio decoding and playback local to the browser.
+- Preserve static hosting under a repository URL prefix: HTML uses document-relative asset/home links; worklet URLs resolve against `import.meta.url`. Verify loading and playback under a subdirectory as well as the local server when changing entry points or deployment packaging.
 - Reuse existing motion, lifecycle and audio primitives.
 - Keep changes focused; avoid unrelated visual redesigns.
 
@@ -31,6 +32,7 @@ Paths below are relative to the repository root; module names are under `static/
 | File | Responsibility |
 | --- | --- |
 | `app.py` | FastAPI static server; loopback port 42069 |
+| `.github/workflows/pages.yml` | Static GitHub Pages deployment from `master`; publishes the entry page and browser assets only |
 | `static/index.html` | Physical SVG, HUD, customization and help dialogs |
 | `static/app.js` | `Turntable` model, bootstrap, control bindings, rendering and worklet synchronization |
 | `static/simulation-state.js` | Pure selectors for speed, contact and transport; no stored model |

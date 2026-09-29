@@ -101,7 +101,7 @@ class Turntable extends EventTarget {
     if (this.enginePromise) return this.enginePromise;
     const ctx = this.audioContext();
     this.enginePromise = (async () => {
-      await ctx.audioWorklet.addModule('/static/vinyl-processor.js');
+      await ctx.audioWorklet.addModule(new URL('./vinyl-processor.js', import.meta.url));
       this.engine = new AudioWorkletNode(ctx, 'vinyl-processor', {
         numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
       });

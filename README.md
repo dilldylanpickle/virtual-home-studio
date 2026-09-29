@@ -21,6 +21,17 @@ uv run python app.py
 
 Open **http://127.0.0.1:42069**. Stop the server with Ctrl+C.
 
+## GitHub Pages
+
+The app also runs as a static HTTPS site; Python is only needed for the local server.
+
+1. In the repository's **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**.
+2. Merge the deployment changes into `master`. The included [Pages workflow](.github/workflows/pages.yml) publishes automatically on pushes to `master`.
+3. Watch **Actions → Deploy GitHub Pages**. If Pages was enabled after the merge, run the workflow manually on `master`.
+4. Open **https://dilldylanpickle.github.io/virtual-home-studio/** after deployment succeeds.
+
+The workflow publishes only the HTML and `static/` assets. Local music stays in each visitor's browser. Asset URLs work under the repository's URL prefix and on the local server. Keep a trailing slash on the site URL; ordinary static hosting should redirect directory URLs automatically.
+
 ## What it does
 
 - MP3/WAV playback with assisted Play or manual tonearm control.
