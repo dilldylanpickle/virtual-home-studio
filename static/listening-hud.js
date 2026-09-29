@@ -1,3 +1,4 @@
+import { PLAYBACK_PRESETS, selectedPreset } from './playback-presets.js';
 import { ProgressControl } from './progress-control.js';
 import { playbackEnded } from './simulation-state.js';
 /** A replaceable presentation layer: every action delegates to the turntable. */
@@ -6,6 +7,55 @@ export class ListeningHUD {
   constructor(controls, formatTime) {
     this.controls = controls;
     this.formatTime = formatTime;
+    const chooser = $('playback-presets'), toggle = $('preset-toggle'), options = $('preset-options');
+    const close = (restoreFocus = false) => {
+      options.hidden = true;
+      toggle.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) toggle.focus({ preventScroll: true });
+    };
+    this.closePresets = close;
+    const placeOptions = () => {
+      if (options.hidden) return;
+      const rect = toggle.getBoundingClientRect();
+      const above = rect.top - 16, below = innerHeight - rect.bottom - 16;
+      const openAbove = above >= Math.min(options.scrollHeight, 420) || above >= below;
+      options.style.bottom = openAbove ? 'calc(100% + 8px)' : 'auto';
+      options.style.top = openAbove ? 'auto' : 'calc(100% + 8px)';
+      options.style.maxHeight = `${Math.max(80, Math.min(420, openAbove ? above : below))}px`;
+    };
+    for (const preset of PLAYBACK_PRESETS) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.dataset.preset = preset.id;
+      button.setAttribute('aria-pressed', 'false');
+      const name = document.createElement('span'), settings = document.createElement('small');
+      name.textContent = preset.name;
+      settings.textContent = `${preset.rpm === 100 / 3 ? '33⅓' : preset.rpm} RPM · ${preset.pitch > 0 ? '+' : preset.pitch < 0 ? '−' : ''}${Math.abs(preset.pitch)}%`;
+      button.append(name, settings);
+      button.addEventListener('click', () => { controls.applyPreset(preset.id); close(true); });
+      options.append(button);
+    }
+    toggle.addEventListener('click', () => {
+      options.hidden = !options.hidden;
+      toggle.setAttribute('aria-expanded', String(!options.hidden));
+      placeOptions();
+    });
+    chooser.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !options.hidden) { event.preventDefault(); event.stopPropagation(); close(true); }
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault(); options.hidden = false; toggle.setAttribute('aria-expanded', 'true'); placeOptions();
+        const buttons = [...options.querySelectorAll('button')], index = buttons.indexOf(document.activeElement);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+          : index < 0 ? (event.key === 'ArrowUp' ? buttons.length - 1 : 0)
+          : (index + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) % buttons.length;
+        buttons[next].focus({ preventScroll: true });
+        buttons[next].scrollIntoView({ block: 'nearest' });
+      }
+    });
+    document.addEventListener('pointerdown', event => { if (!chooser.contains(event.target)) close(); });
+    chooser.addEventListener('focusout', event => { if (!chooser.contains(event.relatedTarget)) close(); });
+    window.addEventListener('blur', () => close());
+    window.addEventListener('resize', placeOptions);
+    window.addEventListener('scroll', placeOptions);
     this.unsubscribe = controls.subscribe(state => this.render(state));
     $('transport').addEventListener('click', () => {
       const s = controls.getState();
@@ -18,6 +68,15 @@ export class ListeningHUD {
   }
   render(s) {
     this.progress?.sync(s);
+    const preset = selectedPreset(s);
+    $('preset-name').textContent = s.presetMotion ? `Applying ${s.presetMotion.name}…` : preset?.name ?? (s.rpm === null ? 'Choose a preset' : 'Custom');
+    $('preset-toggle').disabled = s.busy;
+    if (s.busy) this.closePresets();
+    for (const button of $('preset-options').children) {
+      button.disabled = s.busy;
+      button.setAttribute('aria-pressed', String(button.dataset.preset === (s.presetMotion?.id ?? preset?.id)));
+    }
+
     const starting = s.assistPhase !== 'idle';
     const ended = playbackEnded(s);
     const playing = !ended && !s.transportPaused && s.platterRunning && s.stylusContact;

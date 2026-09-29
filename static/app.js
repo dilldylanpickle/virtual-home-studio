@@ -2,6 +2,7 @@ import { CONDITIONS, DEFAULT_CONDITION } from './condition-profiles.js';
 import { AssistedPlayback } from './assisted-playback.js';
 import { TonearmMotion } from './tonearm-motion.js';
 import { NOMINAL_RPM, deriveSpeed, derivePhysical } from './simulation-state.js';
+import { PLAYBACK_PRESETS, PresetMotion } from './playback-presets.js';
 import { ListeningHUD } from './listening-hud.js';
 import { CartridgeOutput } from './audio-chain.js';
 import { RecordLifecycle } from './record-lifecycle.js';
@@ -54,7 +55,7 @@ class Turntable extends EventTarget {
     this.state = {
       power: true, powerAngle: 0, powerDragging: false, powerSettling: false,
       platterRunning: false, speed33Pressed: false, speed45Pressed: false, transportPaused: false, replayEnabled: false, assistPhase: 'idle',
-      pitchRange: 8, pitch: 0, quartzLock: true,
+      pitchRange: 8, pitch: 0, quartzLock: true, presetMotion: null,
       recordLoaded: false, recordPresent: false, recordPhase: 'empty', grooveRegion: 'music', runInRemaining: 0, filename: '', pendingFilename: '', duration: 0, position: 0,
       tonearmAngle: geometry.rest, stylusRaised: true, tonearmMotion: null,
       actualRate: 0, motorActualRate: 0, motorRamping: false, rotation: 0, recordRotation: 0,
@@ -76,6 +77,7 @@ class Turntable extends EventTarget {
     this.armScrubSample = null;
     this.lifecycle = new RecordLifecycle(this, { park: () => this.parkForRecord(), motion: animateRecord, grooves: drawGrooves, notice: showNotice, rest: geometry.rest });
     this.powerAnimation = null;
+    this.presetMotion = new PresetMotion(this);
     this.armMotion = new TonearmMotion(this, { progressAtAngle });
     this.assist = new AssistedPlayback(this, { inGroove, progressAtAngle, outerAngle: OUTER_ANGLE });
     this.metrics = { sourcesCreated: 0, activeSources: 0, maxActiveSources: 0 };
@@ -193,6 +195,7 @@ class Turntable extends EventTarget {
     angle = clamp(angle, POWER_KNOB.minAngle, POWER_KNOB.maxAngle);
     const power = this.state.power ? angle > POWER_KNOB.offThreshold : angle >= POWER_KNOB.onThreshold;
     if (power !== this.state.power) {
+      this.presetMotion.cancel();
       if (this.state.tonearmMotion?.kind !== 'parking') this.armMotion.cancel();
       this.endDirectScrub();
       this.cancelSeek();
@@ -320,6 +323,7 @@ class Turntable extends EventTarget {
     this.emit();
   }
   toggleSpeed(button) {
+    this.presetMotion.cancel();
     this.assist.cancel();
     const key = button === 33 ? 'speed33Pressed' : 'speed45Pressed';
     this.change((s) => { s[key] = !s[key]; });
@@ -327,9 +331,16 @@ class Turntable extends EventTarget {
     if (s.rpm === null) showNotice('No speed selected. The motor is stopped; select a speed and press START.');
     else showNotice(`${s.rpm === NOMINAL_RPM ? '33⅓' : s.rpm} RPM selected.${s.power && !s.platterRunning ? ' Press START to turn the platter.' : ''}`);
   }
-  setPitch(pitch) { this.change((s) => { s.pitch = clamp(pitch, -s.pitchRange, s.pitchRange); }); }
-  toggleRange() { this.change((s) => { const fraction = s.pitch / s.pitchRange; s.pitchRange = s.pitchRange === 8 ? 16 : 8; s.pitch = fraction * s.pitchRange; }); }
-  toggleQuartz() { this.change((s) => { s.quartzLock = !s.quartzLock; }); }
+  applyPreset(id) {
+    const preset = PLAYBACK_PRESETS.find(preset => preset.id === id);
+    if (!preset || this.lifecycle.busy) return;
+    this.assist.cancel();
+    this.presetMotion.apply(preset);
+    showNotice('');
+  }
+  setPitch(pitch) { this.presetMotion.cancel(); this.change((s) => { s.pitch = clamp(pitch, -s.pitchRange, s.pitchRange); }); }
+  toggleRange() { this.presetMotion.cancel(); this.change((s) => { const fraction = s.pitch / s.pitchRange; s.pitchRange = s.pitchRange === 8 ? 16 : 8; s.pitch = fraction * s.pitchRange; }); }
+  toggleQuartz() { this.presetMotion.cancel(); this.change((s) => { s.quartzLock = !s.quartzLock; }); }
   toggleCue() {
     this.endDirectScrub();
     this.assist.cancel();
@@ -397,6 +408,7 @@ class Turntable extends EventTarget {
     if (completed) showNotice('Arm returned to its rest. The platter is controlled independently.');
   }
   async parkForRecord() {
+    this.presetMotion.cancel();
     this.assist.cancel();
     this.endDirectScrub();
     this.cancelSeek();
@@ -425,8 +437,8 @@ class Turntable extends EventTarget {
       check();
     });
   }
-  eject() { this.endDirectScrub(); this.assist.cancel(); this.cancelSeek(); return this.lifecycle.eject(); }
-  load(file) { if (!file) return; this.endDirectScrub(); this.assist.cancel(); return this.lifecycle.load(file); }
+  eject() { this.presetMotion.cancel(); this.endDirectScrub(); this.assist.cancel(); this.cancelSeek(); return this.lifecycle.eject(); }
+  load(file) { if (!file) return; this.presetMotion.cancel(); this.endDirectScrub(); this.assist.cancel(); return this.lifecycle.load(file); }
   sendSettings() {
     const { surface, contacts, condition, wow, centering } = this.state;
     this.engine?.port.postMessage({ type: 'settings', settings: { surface, contacts, condition, wow, centering } });
@@ -465,6 +477,7 @@ const controls = Object.freeze({
   getVolume: () => turntable.state.volume,
   setVolume: value => turntable.setVolume(value),
   play: () => turntable.play(), pause: () => turntable.pause(),
+  applyPreset: id => turntable.applyPreset(id),
   setReplayEnabled: enabled => turntable.setReplayEnabled(enabled),
   seek: fraction => turntable.seekProgress(fraction),
   beginDirectScrub: fraction => turntable.beginDirectScrub(fraction),
@@ -692,6 +705,7 @@ bindButton('target-light', () => { turntable.state.targetLight = !turntable.stat
 bindButton('cover-toggle', () => { turntable.state.coverClosed = !turntable.state.coverClosed; turntable.emit(); });
 bindButton('arm-rest', () => turntable.returnArm());
 bindButton('eject', () => turntable.eject());
+$('pitch').addEventListener('pointerdown', () => turntable.presetMotion.cancel());
 $('pitch').addEventListener('input', (e) => turntable.setPitch(Number(e.target.value)));
 $('pitch').addEventListener('dblclick', () => turntable.setPitch(0));
 
