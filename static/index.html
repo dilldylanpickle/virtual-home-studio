@@ -189,6 +189,10 @@
       <div class="hud-transport">
         <div class="transport-row"><button id="arm-rest" class="hud-icon" aria-label="Return arm" data-tooltip="Return arm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7H4V4M4 7a8 8 0 1 1-1 8"/></svg></button><button id="transport" class="transport-button" aria-label="Play record" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path class="play-symbol" d="m9 6 10 6-10 6Z"/><path class="pause-symbol" d="M8 6h3v12H8zM15 6h3v12h-3z"/></svg><span id="transport-label">Play</span></button><button id="replay-toggle" class="hud-icon" type="button" aria-label="Repeat track" aria-pressed="false" data-tooltip="Repeat off" title="Repeat off" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3"/></svg></button></div>
         <div class="groove-timeline"><span id="elapsed">00:00</span><div class="timeline-control"><input id="groove-progress" type="range" min="0" max="100" step=".01" value="0" aria-label="Groove position" disabled><div class="timeline-preview" aria-hidden="true"><span class="timeline-preview-marker"></span><span class="timeline-preview-time"></span></div></div><span id="duration">00:00</span></div>
+        <div class="playback-presets" id="playback-presets">
+          <button id="preset-toggle" class="preset-toggle" type="button" aria-expanded="false" aria-controls="preset-options"><span class="preset-caption">Presets</span><span id="preset-name">Choose a preset</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+          <div id="preset-options" class="preset-options" role="group" aria-label="Playback presets" hidden></div>
+        </div>
         <p id="transport-hint">Place a record to begin</p>
       </div>
       <div class="hud-listening">

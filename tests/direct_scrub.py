@@ -163,7 +163,12 @@ def run():
         sweep=[f for f in click_frames if f['seeking']]
         check(len(sweep)>=3 and all(b['p']>=a['p'] for a,b in zip(sweep,sweep[1:])),'A track-only click traverses several intermediate grooves instead of teleporting')
         check(sweep[-1]['at']-sweep[0]['at']<=470 and abs(state()['grooveProgress']-.8)<.002,'Large click traversal completes within approximately 450 ms',observedMs=sweep[-1]['at']-sweep[0]['at'])
-        page.evaluate('turntable.controls.seek(.1)');page.wait_for_timeout(65);grab();move(.65,40);release();page.wait_for_timeout(550)
+        # Start a real track drag while the old sweep is moving. Reading its thumb
+        # position and later clicking it races the worklet between browser calls.
+        page.evaluate('turntable.controls.seek(.1)');page.wait_for_timeout(65)
+        page.mouse.move(*point(.65));page.mouse.down();page.mouse.move(*point(.68))
+        page.wait_for_function('turntable.state.directScrubbing',timeout=1000)
+        move(.65,40);release();page.wait_for_timeout(550)
         check(not state()['seeking'] and .649<state()['grooveProgress']<.653,'Direct dragging interrupts a click sweep immediately and its old destination never returns')
 
         # Manual headshell is the latency reference, not a separate seek cursor.

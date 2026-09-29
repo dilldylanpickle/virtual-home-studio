@@ -41,6 +41,7 @@ Paths below are relative to the repository root; module names are under `static/
 | `static/condition-profiles.js` | Shared condition coefficients, default and descriptions |
 | `static/assisted-playback.js` | Cancellable Play preparation and auto-cue sequence |
 | `static/tonearm-motion.js` | Shared pivot sweep for auto-cue, Return Arm and lifecycle parking |
+| `static/playback-presets.js` | Physical speed/pitch presets, derived selection and cancellable fader motion |
 | `static/listening-hud.js` | Snapshot presentation; actions delegate to the model command API |
 | `static/progress-control.js` | Timeline pointer capture, latest-event drag, click and hover preview |
 | `static/record-lifecycle.js` | Validation/decode, serialized removal/insertion, stale-request rejection |
@@ -83,6 +84,7 @@ SVG + HUD       worklet control messages
 
 - Cue position belongs to the user during manual movement and seeking.
 - `replayEnabled` defaults off. The HUD repeat toggle persists within the page session; natural worklet completion reuses assisted Play to lift, sweep and cue the current record. Manual end-seeks, scratching, Pause and record handling never trigger replay. Turning repeat off prevents the next replay; an already-started cue sequence remains cancellable through the normal controls.
+- Playback presets switch RPM latches together, then animate the actual pitch fader through `PresetMotion` and the existing model/audio path. Range changes preserve `pitch / pitchRange` exactly like the manual range button; the fader then takes one uninterrupted path to its target, with no centering detour. Quartz unlocks without moving the fader; zero-pitch presets lock only after reaching zero. Manual fader/range/Quartz/speed input, power changes and media handling cancel pending motion; newer presets retarget from the current controls. `presetMotion` holds model-owned operation metadata, not a separate speed or selected preset. Settled selection derives from physical inputs. Presets preserve transport, cue and groove; media handling blocks commands.
 - HUD Play/Pause and physical START/STOP use the same motor ramp (280 ms from rest, 360 ms to stop). Pause retains its exact logical groove while the audible tail coasts; resume starts from that anchor.
 - Play can lower the stylus; it chooses 33⅓ only when no speed is selected and respects a chosen groove.
 - Direct gestures cancel older commanded/automated moves; canceled callbacks must not regain ownership.
@@ -170,7 +172,7 @@ Use the same Python prefix or `node` with the relevant paths below. There is no 
 | --- | --- |
 | Broad acceptance | `acceptance.py` |
 | Physical controls, RPM and geometry | `controls.py`, `hardware.py`, `motor.py` |
-| Assisted transport and arm motion | `assisted.py`, `return_arm.py`, `phase2.py`, `replay.py` |
+| Assisted transport and arm motion | `assisted.py`, `return_arm.py`, `phase2.py`, `replay.py`, `presets.py`, `preset_motion.py` |
 | Scratching, seeking and HUD input | `scratching.py`, `seeking.py`, `direct_scrub.py`, `timeline_hover.py` |
 | Media handling and appearance | `record_paths.py`, `customization.py`, `branding.py`, `occlusion.py` |
 | Effects and UI polish | `realism.py`, `condition_audio.py`, `polish.py` |
