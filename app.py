@@ -1,4 +1,4 @@
-"""Serve the simulator locally. Audio never leaves the browser."""
+"""Serve the simulator locally. Local files never leave the browser."""
 from pathlib import Path
 
 import uvicorn

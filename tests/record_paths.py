@@ -52,6 +52,7 @@ def run():
         def picker():
             with page.expect_file_chooser(timeout=1500) as chooser:
                 page.locator('#load').click()
+                page.locator('#source-local').click()
             return chooser.value
 
         def settled(path, duration):

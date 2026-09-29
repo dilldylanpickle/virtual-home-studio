@@ -5,6 +5,10 @@ import { NOMINAL_RPM, deriveSpeed, derivePhysical } from './simulation-state.js'
 import { PLAYBACK_PRESETS, PresetMotion } from './playback-presets.js';
 import { ListeningHUD } from './listening-hud.js';
 import { CartridgeOutput } from './audio-chain.js';
+import { MediaSourceUI } from './media-source-ui.js';
+import { DialogMotion } from './dialog-motion.js';
+import { setupDetailsMotion } from './details-motion.js';
+import { setAnimatedText } from './ui-motion.js';
 import { RecordLifecycle } from './record-lifecycle.js';
 import { setupCustomization, renderMaterial, VINYL, LABELS, FINISHES } from './record-customization.js';
 
@@ -488,6 +492,7 @@ const controls = Object.freeze({
   eject: () => turntable.eject(), load: file => turntable.load(file),
 });
 const hud = new ListeningHUD(controls, timeLabel);
+const mediaUI = new MediaSourceUI(controls);
 // A small read-only inspection surface for acceptance tests and browser debugging.
 window.turntable = Object.freeze({
   get state() { return turntable.snapshot; },
@@ -539,8 +544,11 @@ function drawGrooves(buffer) {
   fragment.append(circle({ cx: geometry.cx, cy: geometry.cy, r: 127, stroke: '#69716c', 'stroke-width': .6, opacity: .24 }));
   $('grooves').replaceChildren(fragment);
 }
-function showNotice(message, error = false) { $('notice').textContent = message; $('notice').classList.toggle('error', error); }
-function text(id, value) { if ($(id).textContent !== value) $(id).textContent = value; }
+function showNotice(message, error = false) { setAnimatedText($('notice'), message); $('notice').classList.toggle('error', error); }
+function text(id, value) {
+  if (id === 'track-name' || id === 'track-meta') setAnimatedText($(id), value);
+  else if ($(id).textContent !== value) $(id).textContent = value;
+}
 function attr(node, name, value) { if (node.getAttribute(name) !== String(value)) node.setAttribute(name, value); }
 
 function render() {
@@ -596,8 +604,12 @@ function render() {
   $('status-dot').classList.toggle('playing', audible);
   $('eject').disabled = s.recordPhase === 'ejecting' || (!s.recordPresent && !s.loading);
   $('load').disabled = ['inserting', 'ejecting'].includes(s.recordPhase);
-  $('load').querySelector('span').textContent = s.loading ? 'Choose another file' : s.recordLoaded ? 'Replace' : 'Choose record';
-  attr($('load'), 'aria-label', s.recordPresent ? 'Replace record' : 'Choose a record');
+  // Keep the current action label through decoding, removal and insertion.
+  // Only a settled empty/ready state changes Choose ↔ Replace.
+  if (!turntable.lifecycle.busy) {
+    setAnimatedText($('load').querySelector('span'), s.recordLoaded ? 'Replace' : 'Choose record');
+    attr($('load'), 'aria-label', s.recordLoaded ? 'Replace record' : 'Choose a record');
+  }
 }
 
 function bindButton(id, handler) {
@@ -710,11 +722,12 @@ $('pitch').addEventListener('input', (e) => turntable.setPitch(Number(e.target.v
 $('pitch').addEventListener('dblclick', () => turntable.setPitch(0));
 
 // Open synchronously in the gesture. Only an actual file selection starts replacement.
-$('load').addEventListener('click', () => $('file-input').click());
+// The source chooser owns the load button; local selection still uses this input.
 $('file-input').addEventListener('change', (e) => { void turntable.load(e.target.files[0]); e.target.value = ''; });
-$('help-open').addEventListener('click', () => $('help').showModal());
-$('help-close').addEventListener('click', () => $('help').close());
-$('help').addEventListener('click', (event) => { if (event.target === $('help') && (event.offsetX < 0 || event.offsetX > $('help').clientWidth || event.offsetY < 0 || event.offsetY > $('help').clientHeight)) $('help').close(); });
+const helpMotion = new DialogMotion($('help'), { returnFocus: $('help-open') });
+$('help-open').addEventListener('click', () => helpMotion.open());
+$('help-close').addEventListener('click', () => helpMotion.close());
+setupDetailsMotion();
 
 // SVG focus-visible can persist after a pointer click following keyboard input.
 // Track modality for the contextual arm hint without changing hardware appearance.
@@ -762,7 +775,7 @@ $('tonearm').addEventListener('keydown', (event) => {
   turntable.moveArm(angleAtProgress(fraction));
 });
 document.addEventListener('keydown', (event) => {
-  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || $('help').open || $('customize').open || /INPUT|BUTTON|TEXTAREA|SELECT|A/.test(event.target.tagName)) return;
+  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || $('help').open || $('customize').open || $('media-source').open || /INPUT|BUTTON|TEXTAREA|SELECT|A/.test(event.target.tagName)) return;
   if (event.key === ' ') { event.preventDefault(); turntable.togglePlatter(); }
   else if (event.key.toLowerCase() === 'c') { event.preventDefault(); turntable.toggleCue(); }
   else if (event.key.toLowerCase() === 'r') { event.preventDefault(); turntable.returnArm(); }

@@ -148,7 +148,8 @@ dialog h2{font-size:25px}
 .swatches{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px 8px}
 .swatch{width:100%;height:40px;border:0;background:none;padding:0;position:relative;border-radius:50%;--swatch-size:28px}
 .swatch:before{content:'';position:absolute;width:var(--swatch-size);height:var(--swatch-size);left:50%;top:50%;transform:translate(-50%,-50%);border:1px solid #30435430;border-radius:50%;background:var(--swatch);box-shadow:inset 0 1px 2px #ffffff38,0 1px 2px #26344510}
-.swatch[aria-pressed=true]:after{content:'';position:absolute;width:calc(var(--swatch-size) + 8px);height:calc(var(--swatch-size) + 8px);left:50%;top:50%;transform:translate(-50%,-50%);border:2px solid var(--accent);border-radius:50%}
+.swatch:after{content:'';position:absolute;width:calc(var(--swatch-size) + 8px);height:calc(var(--swatch-size) + 8px);left:50%;top:50%;transform:translate(-50%,-50%);border:2px solid var(--accent);border-radius:50%;opacity:0}
+.swatch[aria-pressed=true]:after{opacity:1}
 .swatch:hover:before{box-shadow:inset 0 1px 2px #ffffff38,0 0 0 3px var(--accent-soft)}
 .swatch:focus-visible{outline-offset:0;border-radius:50%}
 .clear-swatch:before{background:repeating-conic-gradient(#d8e2e0 0% 25%,#fafaf5 0% 50%) 50% / 10px 10px}
@@ -187,6 +188,7 @@ dialog h2{font-size:25px}
 }
 /* Virtual Home Studio: software tokens never style the physical deck. */
 :root{
+  --ui-motion-quick:140ms;--ui-motion-panel:220ms;--ui-ease:cubic-bezier(.22,1,.36,1);
   --accent-rgb:82 111 137;--accent:rgb(var(--accent-rgb));--accent-hover:#405d77;--accent-soft:#e0e8ef;--focus:#526f89;
   --page-background:#eeece5;--panel-rgb:249 248 243;--panel-opacity:.87;
   --panel-background:rgb(var(--panel-rgb) / var(--panel-opacity));--dialog-background:rgb(var(--panel-rgb) / .98);--panel-blur:14px;
@@ -213,9 +215,11 @@ dialog h2{font-size:25px}
 .transport-button:active:not(:disabled){transform:translateY(1px)}
 .transport-button:disabled{opacity:.4}
 .transport-button svg{height:18px;width:18px;fill:currentColor}
-.pause-symbol{display:none}
-.transport-button[data-action=pause] .play-symbol{display:none}
-.transport-button[data-action=pause] .pause-symbol{display:block}
+.transport-button .play-symbol,.transport-button .pause-symbol{transform-origin:50% 50%;transform-box:view-box;transition:opacity var(--ui-motion-quick) var(--ui-ease),transform var(--ui-motion-quick) var(--ui-ease)}
+.transport-button .play-symbol{opacity:1;transform:scale(1)}
+.transport-button .pause-symbol{opacity:0;transform:scale(.86)}
+.transport-button[data-action=pause] .play-symbol{opacity:0;transform:scale(.86)}
+.transport-button[data-action=pause] .pause-symbol{opacity:1;transform:scale(1)}
 .hud-icon{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:var(--hud-muted)}
 .hud-icon:hover{background:var(--hud-hover);color:var(--hud-accent)}
 #replay-toggle[aria-pressed=true]{background:var(--hud-control);color:var(--hud-accent);box-shadow:inset 0 0 0 1px var(--hud-accent)}
@@ -274,7 +278,7 @@ dialog h2{font-size:25px}
 .transport-button:hover:not(:disabled){background:var(--accent-hover);filter:none}
 .hud-record #track-meta{font-size:11px}
 .hud-record .eyebrow{color:var(--text-secondary)}
-#transport-hint{font-size:10px}
+#transport-hint{font-size:10px;min-height:14px}
 #turntable-details{grid-column:1/-1;border-top:1px solid var(--border);font-size:11px;color:var(--text-secondary)}
 #turntable-details summary{cursor:pointer;width:fit-content;padding:12px 0;min-height:40px}
 .hud-status{border:0;padding:3px 0 15px;flex-wrap:wrap}
@@ -329,7 +333,7 @@ dialog{background:var(--dialog-background);backdrop-filter:blur(var(--panel-blur
 .drop-message p{font-size:12px;line-height:1.5;margin:8px 0 0;color:var(--text-secondary)}
 
 /* Shared record actions: transport remains the primary action. */
-.hud-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:14px}
+.hud-actions{isolation:isolate;display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:14px}
 
 .record-action{
   display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;
@@ -438,5 +442,66 @@ dialog{background:var(--dialog-background);backdrop-filter:blur(var(--panel-blur
 .preset-options button{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;min-height:45px;padding:9px 28px 9px 10px;border:0;border-radius:7px;background:transparent;color:var(--hud-fg);font-size:11px;line-height:1.35;text-align:left}
 .preset-options button small{font:9px monospace;color:var(--hud-muted)}
 .preset-options button:hover,.preset-options button[aria-pressed=true]{background:var(--hud-control)}
-.preset-options button[aria-pressed=true]:after{content:'✓';position:absolute;right:10px;top:17px;color:var(--hud-accent)}
+.preset-options button:after{content:'✓';position:absolute;right:10px;top:17px;color:var(--hud-accent);opacity:0}
+.preset-options button[aria-pressed=true]:after{opacity:1}
 .preset-options button:focus-visible{outline-offset:-2px}
+
+/* A bright blue beacon draws attention to the empty deck’s record action. */
+/* The glow lights button surfaces; labels stay above the light layer. */
+.hud-actions>.record-action>span{position:relative;z-index:2}
+.hud-actions>.record-action-quiet:disabled{opacity:1;color:color-mix(in srgb,var(--text-secondary) 40%,transparent);border-color:color-mix(in srgb,var(--border) 40%,transparent)}
+#load{position:relative;flex:0 0 128px;width:128px}
+#load.needs-record{background:var(--accent);border-color:#5b9fff;color:#fff;font-weight:600}
+#load.needs-record:hover{background:var(--accent-hover)}
+#load::after{content:'';position:absolute;z-index:1;inset:-4px;pointer-events:none;border:2px solid #5b9fff;border-radius:13px;box-shadow:0 0 8px 3px #5b9fff,0 0 22px 10px #5b9fffcc,0 0 42px 18px #5b9fff80;opacity:0;transition:opacity 350ms ease}
+#load.needs-record::after{opacity:1;animation:record-invitation 3.2s ease-in-out infinite}
+@keyframes record-invitation{0%,100%{box-shadow:0 0 7px 3px #5b9fff,0 0 18px 8px #5b9fffb3,0 0 34px 13px #5b9fff66}50%{box-shadow:0 0 11px 5px #5b9fff,0 0 30px 14px #5b9fffe6,0 0 54px 24px #5b9fff99}}
+body.drag-over #load::after,body:has(#drop-zone.drag-over) #load::after{opacity:0;animation-play-state:paused}
+
+/* A compact source sheet, using the same paper and blue as the listening HUD. */
+#media-source{max-width:430px;max-height:calc(100dvh - 32px);padding:30px;border-radius:18px;overflow:auto;overscroll-behavior:contain}
+#media-source::backdrop{background:#1e2e3c66;backdrop-filter:blur(3px)}
+#media-source>.eyebrow{margin:0 36px 10px 0;font-size:8px;letter-spacing:1.8px}
+#media-source h2{font-size:29px;margin:0 28px 8px 0;letter-spacing:-.5px}
+#media-source .dialog-close{width:40px;height:40px;top:10px;right:10px;font-size:26px;border-radius:8px}
+#media-source .dialog-close:focus-visible{outline-offset:-3px}
+#media-source .source-intro{margin:0 0 22px;font-size:12px;line-height:1.6;color:var(--text-secondary)}
+.source-options{display:grid;gap:9px}
+.source-option{display:flex;align-items:center;gap:13px;width:100%;padding:15px 13px;border:1px solid var(--border);border-radius:11px;background:var(--panel-background);color:var(--text-primary);text-align:left}
+.source-option:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent)}
+.source-option>svg{width:28px;height:28px;flex:none;fill:none;stroke:var(--accent);stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
+.source-option>span:not(.source-arrow){flex:1;min-width:0}
+.source-option strong{display:block;font-size:12px;font-weight:600}
+.source-option small{display:block;margin-top:5px;font-size:10px;line-height:1.5;color:var(--text-muted)}
+.source-arrow{color:var(--accent);font-size:17px;flex:none}
+#media-source .source-drop-note{margin:19px 0 0;font-size:10px;line-height:1.6;color:var(--text-muted)}
+.source-option:disabled{opacity:.5;cursor:default;background:transparent;color:var(--text-muted)}
+.source-option:disabled>svg{stroke:var(--text-muted)}
+@media(max-width:600px){.hud-record{min-height:60px}#load{flex-basis:112px;width:112px}.hud-actions .record-action{padding-inline:7px}#media-source{padding:26px 22px}.source-option{padding:14px 11px;gap:11px}.source-option small{font-size:10px}}
+@media(prefers-reduced-motion:reduce){#load.needs-record::after{animation:none}#load::after{transition:none}}
+
+
+/* Software feedback shares one rhythm; the physical controls and timeline stay immediate. */
+.text-button,.record-action,.transport-button,.hud-icon,.preset-toggle,.preset-options button,.source-option,.dialog-close{
+  transition:background-color var(--ui-motion-quick) var(--ui-ease),border-color var(--ui-motion-quick) var(--ui-ease),color var(--ui-motion-quick) var(--ui-ease),box-shadow var(--ui-motion-quick) var(--ui-ease),opacity var(--ui-motion-quick) var(--ui-ease),transform var(--ui-motion-quick) var(--ui-ease);
+}
+.record-action:active:not(:disabled),.hud-icon:active:not(:disabled),.source-option:active:not(:disabled),.dialog-close:active:not(:disabled){transform:translateY(1px)}
+.hud-icon:hover:not(:disabled),.dialog-close:hover:not(:disabled){background:var(--hud-hover);color:var(--hud-accent)}
+.hud-icon:disabled:hover{background:transparent;color:var(--hud-muted)}
+.source-option:active:not(:disabled),.preset-toggle:active:not(:disabled),.preset-options button:active:not(:disabled),.dialog-close:active:not(:disabled){background:var(--hud-active)}
+.preset-toggle svg{transition:transform var(--ui-motion-panel) var(--ui-ease),stroke var(--ui-motion-quick) var(--ui-ease)}
+.preset-options button:after{transition:opacity var(--ui-motion-quick) var(--ui-ease)}
+.swatch:before{transition:box-shadow var(--ui-motion-quick) var(--ui-ease),transform var(--ui-motion-quick) var(--ui-ease)}
+.swatch:after{transition:opacity var(--ui-motion-quick) var(--ui-ease)}
+.swatch:hover:not(:disabled):before{transform:translate(-50%,-50%) scale(1.04)}
+.swatch:active:not(:disabled):before{transform:translate(-50%,-50%) scale(.96)}
+.condition-option span{transition:background-color var(--ui-motion-quick) var(--ui-ease),color var(--ui-motion-quick) var(--ui-ease),box-shadow var(--ui-motion-quick) var(--ui-ease)}
+.hud-icon[data-tooltip]::after{transition:opacity var(--ui-motion-quick) var(--ui-ease)}
+dialog::backdrop{transition:background-color var(--ui-motion-panel) var(--ui-ease),backdrop-filter var(--ui-motion-panel) var(--ui-ease)}
+dialog:is(#help,#customize,#media-source)[data-motion=closed]::backdrop{background:#1e2e3c00;backdrop-filter:blur(0)}
+@media(prefers-reduced-motion:reduce){
+  .text-button,.record-action,.transport-button,.hud-icon,.preset-toggle,.preset-options button,.source-option,.dialog-close,
+  .transport-button .play-symbol,.transport-button .pause-symbol,.preset-toggle svg,.preset-options button:after,.swatch:before,.swatch:after,.condition-option span,.hud-icon[data-tooltip]::after,dialog::backdrop{transition:none}
+  .record-action:active:not(:disabled),.transport-button:active:not(:disabled),.hud-icon:active:not(:disabled),.source-option:active:not(:disabled),.dialog-close:active:not(:disabled){transform:none}
+  .swatch:hover:not(:disabled):before,.swatch:active:not(:disabled):before{transform:translate(-50%,-50%)}
+}

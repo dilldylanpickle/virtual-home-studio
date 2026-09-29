@@ -18,7 +18,7 @@ A user-space mask cuts a center hole through the removable record and moves with
 
 ## File handling
 
-[AGENTS.md](../AGENTS.md#record-lifecycle) defines the shared lifecycle. The native file picker opens synchronously; only selection enters loading, and the input resets so the same file can be selected again.
+[AGENTS.md](../AGENTS.md#record-lifecycle) defines the shared lifecycle. Choose/Replace opens the source chooser. Selecting Local File opens the native picker synchronously; only selection enters loading, and the input resets so the same file can be selected again. Choosing Local File and dropping an MP3/WAV both call the same `load(file)` command.
 
 | Ownership | Rule |
 | --- | --- |

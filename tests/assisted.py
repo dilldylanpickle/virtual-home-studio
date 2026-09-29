@@ -118,7 +118,8 @@ def run():
         no_stale('Eject during cueing completes safely without delayed contact')
         check(not state()['recordPresent'] and state()['stylusRaised'], 'An ejected record cannot receive automatic stylus contact')
         load(RAW);begin_parked()
-        with page.expect_file_chooser() as chooser: click('load')
+        click('load')
+        with page.expect_file_chooser() as chooser: click('source-local')
         check(state()['recordPhase']=='ready' and state()['recordLoaded'] and state()['filename']==RAW.name,
               'Replace opens the picker before changing the record during assisted cueing')
         chooser.value.set_files(RAW)

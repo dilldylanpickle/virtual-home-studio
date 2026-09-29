@@ -70,7 +70,7 @@ def run():
         path=page.locator('#tonearm .arm-hit-area')
         check(path.evaluate("el=>getComputedStyle(el).strokeOpacity==='0'") and page.locator('#tonearm').evaluate("el=>getComputedStyle(el).outlineStyle==='none'"), 'Keyboard focus leaves the arm hit path invisible and has no bounding box')
         page.screenshot(path=str(artifacts/'polish-focus-desktop.png'),full_page=True)
-        page.locator('#customize-open').click();page.keyboard.press('Escape')
+        page.locator('#customize-open').click();page.keyboard.press('Escape');page.locator('#customize').wait_for(state='hidden')
         g=page.evaluate('turntable.geometry');s=page.evaluate('turntable.state')
         page.mouse.move(*arm_point(page,g,s['tonearmAngle']));page.mouse.down()
         check(page.evaluate('turntable.state.dragging'), 'The enlarged invisible arm target still captures pointer gestures')
