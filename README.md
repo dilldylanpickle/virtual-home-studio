@@ -26,6 +26,7 @@ Open **http://127.0.0.1:42069**. Stop the server with Ctrl+C.
 - MP3/WAV playback with assisted Play or manual tonearm control.
 - **Choose Record / Replace Record** opens a compact source chooser. Pick **Local File**, or drag and drop an MP3/WAV anywhere on the page.
 - A bright blue empty-state glow highlights where to begin, with a static highlight when reduced motion is enabled.
+- Presets, dialogs and expandable details open and close smoothly; reduced motion keeps them immediate.
 - 33⅓ / 45 / 78 RPM, pitch adjustment and Quartz lock.
 - Vinyl scratching, direct scrubbing and audible motor transitions.
 - Eight turntable finishes, vinyl/label colors, record condition, surface texture and cartridge character.

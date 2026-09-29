@@ -1,4 +1,6 @@
 import { CONDITIONS, CONDITION_DESCRIPTIONS } from './condition-profiles.js';
+import { DialogMotion } from './dialog-motion.js';
+import { setAnimatedText } from './ui-motion.js';
 
 const $ = id => document.getElementById(id);
 // Paint changes belong to the chassis; chrome, controls and media keep their materials.
@@ -62,13 +64,9 @@ export function setupCustomization(change) {
     label.append(input, text); $('condition').append(label);
   }
   for (const key of ['wow', 'centering']) $(key).addEventListener('input', e => change(key, Number(e.target.value)));
-  $('customize-open').addEventListener('click', () => $('customize').showModal());
-  $('customize-close').addEventListener('click', () => $('customize').close());
-  $('customize').addEventListener('click', event => {
-    if (event.target !== $('customize')) return;
-    const r = $('customize').getBoundingClientRect();
-    if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) $('customize').close();
-  });
+  const dialogMotion = new DialogMotion($('customize'), { returnFocus: $('customize-open') });
+  $('customize-open').addEventListener('click', () => dialogMotion.open());
+  $('customize-close').addEventListener('click', () => dialogMotion.close());
   // Small deterministic hairlines rotate with the record; no random regeneration on render.
   const marks = document.createDocumentFragment();
   for (let i = 0; i < 24; i++) {
@@ -99,7 +97,7 @@ export function renderMaterial(state) {
     $('quartz-mark').setAttribute('stroke', finish.quartz || finish.ink);
     $('deck').style.setProperty('--deck-ink', finish.ink);
     $('deck').setAttribute('aria-label', `${state.turntableColor} Virtual Home Studio VHS-42069 turntable`);
-    $('turntable-selection').textContent = state.turntableColor;
+    setAnimatedText($('turntable-selection'), state.turntableColor);
     $('turntable-swatches').querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', button.dataset.name === state.turntableColor));
   }
   for (const input of $('condition').querySelectorAll('input')) input.checked = input.value === state.condition;
@@ -119,12 +117,12 @@ export function renderMaterial(state) {
     }
     $('record-wear').setAttribute('opacity', CONDITIONS[state.condition].visualWear);
     const description = CONDITION_DESCRIPTIONS[state.condition];
-    if ($('condition-help').textContent !== description) $('condition-help').textContent = description;
+    setAnimatedText($('condition-help'), description);
     for (const [id, selected] of [['vinyl-swatches', state.vinylColor], ['label-swatches', state.labelColor]]) {
       $(id).querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', button.dataset.name === selected));
     }
-    $('vinyl-selection').textContent = state.vinylColor;
-    $('label-selection').textContent = state.labelColor;
+    setAnimatedText($('vinyl-selection'), state.vinylColor);
+    setAnimatedText($('label-selection'), state.labelColor);
   }
   const wow = wowDescription(state.wow), centering = centeringDescription(state.centering);
   $('wow-value').textContent = wow; $('wow').setAttribute('aria-valuetext', wow);

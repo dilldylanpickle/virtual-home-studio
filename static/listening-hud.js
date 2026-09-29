@@ -1,6 +1,7 @@
 import { PLAYBACK_PRESETS, selectedPreset } from './playback-presets.js';
 import { ProgressControl } from './progress-control.js';
 import { playbackEnded } from './simulation-state.js';
+import { PopupMotion, setAnimatedText } from './ui-motion.js';
 /** A replaceable presentation layer: every action delegates to the turntable. */
 const $ = id => document.getElementById(id);
 export class ListeningHUD {
@@ -9,7 +10,7 @@ export class ListeningHUD {
     this.formatTime = formatTime;
     const chooser = $('playback-presets'), toggle = $('preset-toggle'), options = $('preset-options');
     const close = (restoreFocus = false) => {
-      options.hidden = true;
+      popup.close();
       toggle.setAttribute('aria-expanded', 'false');
       if (restoreFocus) toggle.focus({ preventScroll: true });
     };
@@ -19,9 +20,15 @@ export class ListeningHUD {
       const rect = toggle.getBoundingClientRect();
       const above = rect.top - 16, below = innerHeight - rect.bottom - 16;
       const openAbove = above >= Math.min(options.scrollHeight, 420) || above >= below;
+      options.dataset.placement = openAbove ? 'above' : 'below';
       options.style.bottom = openAbove ? 'calc(100% + 8px)' : 'auto';
       options.style.top = openAbove ? 'auto' : 'calc(100% + 8px)';
       options.style.maxHeight = `${Math.max(80, Math.min(420, openAbove ? above : below))}px`;
+    };
+    const popup = new PopupMotion(options, placeOptions);
+    const open = () => {
+      toggle.setAttribute('aria-expanded', 'true');
+      popup.open();
     };
     for (const preset of PLAYBACK_PRESETS) {
       const button = document.createElement('button');
@@ -35,14 +42,12 @@ export class ListeningHUD {
       options.append(button);
     }
     toggle.addEventListener('click', () => {
-      options.hidden = !options.hidden;
-      toggle.setAttribute('aria-expanded', String(!options.hidden));
-      placeOptions();
+      if (popup.expanded) close(); else open();
     });
     chooser.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && !options.hidden) { event.preventDefault(); event.stopPropagation(); close(true); }
+      if (event.key === 'Escape' && popup.expanded) { event.preventDefault(); event.stopPropagation(); close(true); }
       if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-        event.preventDefault(); options.hidden = false; toggle.setAttribute('aria-expanded', 'true'); placeOptions();
+        event.preventDefault(); open();
         const buttons = [...options.querySelectorAll('button')], index = buttons.indexOf(document.activeElement);
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
           : index < 0 ? (event.key === 'ArrowUp' ? buttons.length - 1 : 0)
@@ -54,6 +59,9 @@ export class ListeningHUD {
     document.addEventListener('pointerdown', event => { if (!chooser.contains(event.target)) close(); });
     chooser.addEventListener('focusout', event => { if (!chooser.contains(event.relatedTarget)) close(); });
     window.addEventListener('blur', () => close());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { close(); popup.close({ immediate: true }); }
+    });
     window.addEventListener('resize', placeOptions);
     window.addEventListener('scroll', placeOptions);
     this.unsubscribe = controls.subscribe(state => this.render(state));
@@ -69,7 +77,7 @@ export class ListeningHUD {
   render(s) {
     this.progress?.sync(s);
     const preset = selectedPreset(s);
-    $('preset-name').textContent = s.presetMotion ? `Applying ${s.presetMotion.name}…` : preset?.name ?? (s.rpm === null ? 'Choose a preset' : 'Custom');
+    setAnimatedText($('preset-name'), s.presetMotion ? `Applying ${s.presetMotion.name}…` : preset?.name ?? (s.rpm === null ? 'Choose a preset' : 'Custom'));
     $('preset-toggle').disabled = s.busy;
     if (s.busy) this.closePresets();
     for (const button of $('preset-options').children) {
@@ -88,10 +96,10 @@ export class ListeningHUD {
     button.disabled = s.busy || !s.recordLoaded;
     button.setAttribute('aria-label', starting ? 'Cancel startup and pause' : playing ? 'Pause playback' : ended ? 'Play again' : s.transportPaused ? 'Resume playback' : 'Play record');
     button.dataset.action = starting || playing ? 'pause' : 'play';
-    $('transport-label').textContent = starting ? 'Starting…' : playing ? 'Pause' : ended ? 'Play again' : 'Play';
-    $('transport-hint').textContent = s.busy ? 'Handling record' : !s.recordLoaded ? ''
+    setAnimatedText($('transport-label'), starting ? 'Starting…' : playing ? 'Pause' : ended ? 'Play again' : 'Play');
+    setAnimatedText($('transport-hint'), s.busy ? 'Handling record' : !s.recordLoaded ? ''
       : starting ? 'Cueing your record · click to pause' : s.directScrubbing ? '' : s.seeking ? 'Traversing grooves' : ended ? 'Ready for another listen'
-      : s.transportPaused ? '' : s.grooveRegion === 'run-in' && s.stylusContact ? 'Finding the first groove' : '';
+      : s.transportPaused ? '' : s.grooveRegion === 'run-in' && s.stylusContact ? 'Finding the first groove' : '');
     const progress = $('groove-progress');
     progress.disabled = s.busy || !s.recordLoaded;
     // During drag this state is the pointer anchor; click seeks follow the audio cursor.
