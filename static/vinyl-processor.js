@@ -58,7 +58,8 @@ class VinylProcessor extends AudioWorkletProcessor {
         this.blendFrom = [...this.last]; this.blendRemaining = this.fadeFrames;
       }
       this.motorRate = data.motorRate; this.rpm = data.rpm;
-      this.motor.setTarget(this.motorRate, data.immediate === true, pauseChanged ? .16 : correction ? .035 : null);
+      // HUD transport and physical START/STOP share the same motor inertia.
+      this.motor.setTarget(this.motorRate, data.immediate === true, correction ? .035 : null);
       if (data.cancelSeek || data.holding || data.position !== undefined) {
         this.seek = null; this.tailPosition = this.position;
       }
