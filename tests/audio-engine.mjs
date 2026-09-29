@@ -87,10 +87,14 @@ assert.ok(samples.slice(500).every((v) => v === 0), 'raised stylus stays silent'
 control({ enabled: true, holding: false, motorRate: 1, position: 3.99 });
 render(.2);
 near(engine.position / 48000, 4, 1e-9, 'end boundary clamps correctly');
+assert.equal(messages.at(-1).playbackEnds, 1, 'ordinary playback reports exactly one natural completion');
+render(.05);
+assert.equal(messages.at(-1).playbackEnds, 1, 'run-out does not repeatedly report new completions');
 control({ holding: true });
 engine.command({ type: 'scratch', delta: -.2 });
 render(.2);
 near(engine.position / 48000, 3.8, 2e-6, 'backward scratching recovers from end-of-side');
+assert.equal(messages.at(-1).playbackEnds, 1, 'completion serial survives control revisions without inventing a replay');
 control({ position: .01 });
 engine.command({ type: 'scratch', delta: -.5 });
 render(.2);
@@ -102,6 +106,7 @@ engine.command({ type: 'clear' });
 samples = render(.1);
 assert.ok(samples.slice(500).every((v) => v === 0), 'eject clears audio');
 assert.equal(engine.channels.length, 0, 'eject releases PCM');
+assert.equal(messages.at(-1).playbackEnds, 1, 'manual boundary movement and eject never manufacture natural completion');
 assert.ok(messages.length > 0 && messages.at(-1).revision === revision, 'clock reports identify their control revision');
 console.log('PASS DSP: forward/reverse PCM order, stationary silence, exact scratch distance, release ramp, manual rotation, cue gating, boundaries, eject, variable block size.');
 

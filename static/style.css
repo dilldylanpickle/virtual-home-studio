@@ -218,6 +218,7 @@ dialog h2{font-size:25px}
 .transport-button[data-action=pause] .pause-symbol{display:block}
 .hud-icon{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:var(--hud-muted)}
 .hud-icon:hover{background:var(--hud-hover);color:var(--hud-accent)}
+#replay-toggle[aria-pressed=true]{background:var(--hud-control);color:var(--hud-accent);box-shadow:inset 0 0 0 1px var(--hud-accent)}
 .hud-icon svg,.hud-volume svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .actual-rpm{font:9px monospace;color:var(--hud-muted);min-width:54px}
 .groove-timeline{display:flex;align-items:center;gap:10px;margin-top:13px;font:9px monospace;color:var(--hud-muted)}

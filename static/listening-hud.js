@@ -12,6 +12,7 @@ export class ListeningHUD {
       if (s.assistPhase !== 'idle' || (!playbackEnded(s) && !s.transportPaused && s.platterRunning && s.stylusContact)) controls.pause();
       else controls.play();
     });
+    $('replay-toggle').addEventListener('click', () => controls.setReplayEnabled(!controls.getState().replayEnabled));
     this.progress = new ProgressControl($('groove-progress'), controls, formatTime);
     $('volume').addEventListener('input', e => controls.setVolume(Number(e.target.value)));
   }
@@ -20,6 +21,10 @@ export class ListeningHUD {
     const starting = s.assistPhase !== 'idle';
     const ended = playbackEnded(s);
     const playing = !ended && !s.transportPaused && s.platterRunning && s.stylusContact;
+    const replay = $('replay-toggle');
+    replay.disabled = s.busy || !s.recordLoaded;
+    replay.setAttribute('aria-pressed', String(s.replayEnabled));
+    replay.dataset.tooltip = replay.title = s.replayEnabled ? 'Repeat on' : 'Repeat off';
     const button = $('transport');
     button.disabled = s.busy || !s.recordLoaded;
     button.setAttribute('aria-label', starting ? 'Cancel startup and pause' : playing ? 'Pause playback' : ended ? 'Play again' : s.transportPaused ? 'Resume playback' : 'Play record');
