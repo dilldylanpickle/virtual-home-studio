@@ -83,6 +83,7 @@ SVG + HUD       worklet control messages
 
 - Cue position belongs to the user during manual movement and seeking.
 - `replayEnabled` defaults off. The HUD repeat toggle persists within the page session; natural worklet completion reuses assisted Play to lift, sweep and cue the current record. Manual end-seeks, scratching, Pause and record handling never trigger replay. Turning repeat off prevents the next replay; an already-started cue sequence remains cancellable through the normal controls.
+- HUD Play/Pause and physical START/STOP use the same motor ramp (280 ms from rest, 360 ms to stop). Pause retains its exact logical groove while the audible tail coasts; resume starts from that anchor.
 - Play can lower the stylus; it chooses 33⅓ only when no speed is selected and respects a chosen groove.
 - Direct gestures cancel older commanded/automated moves; canceled callbacks must not regain ownership.
 - Return Arm lifts, sweeps outward and settles; it does not reset platter settings.

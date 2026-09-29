@@ -85,7 +85,7 @@ def run():
         # Conditions, speed and Quartz can change while paused without losing the anchor.
         anchor=state()['position'];select_speed(page,78);page.locator('#pitch').fill('-16');click('quartz')
         check(state()['position']==anchor and state()['actualRPM']==0,'Changing RPM and pitch while paused preserves its silent anchor')
-        click('transport');page.wait_for_timeout(230)
+        click('transport');page.wait_for_function('!turntable.state.motorRamping && turntable.state.motorActualRate>0', timeout=1500)
         check(abs(state()['actualRPM']-78*.84)<.01 and state()['position']>anchor,'Resume uses the latest effective speed')
         click('transport');page.wait_for_function("turntable.state.transportState==='paused'")
         page.locator('#vinyl-hit-area').focus();start=state()['position'];page.keyboard.down('ArrowLeft');page.wait_for_timeout(120);page.keyboard.up('ArrowLeft');page.wait_for_timeout(150)

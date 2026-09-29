@@ -30,15 +30,32 @@ const anchor=e.position-100, angle=e.travel; // A UI snapshot can lag the render
 control({pause:true,motorRate:0,pausePosition:anchor/48000});let tail=render(e,.08);
 near(tail[0],nextSample,1e-7); // Pause starts with the very next PCM sample, not a seek discontinuity.
 near(e.position,anchor);assert.ok(e.rate>0&&e.rate<2.34);assert.ok(rms(tail)>.01);assert.ok(e.travel>angle);
-render(e,.12);near(e.position,anchor);near(e.rate,0);assert.equal(rms(render(e,.1)),0);
-control({pause:false,motorRate:2.34});render(e,.16);near(e.rate,2.34);near(e.position/48000-anchor/48000,.08*2.34,.00005);
+render(e,.30);near(e.position,anchor);near(e.rate,0);assert.equal(rms(render(e,.1)),0);
+control({pause:false,motorRate:2.34});render(e,.28);near(e.rate,2.34);near(e.position/48000-anchor/48000,.14*2.34,.00005);
 console.log('PASS soft pause: audible slowdown, frozen logical groove, stationary silence, exact-groove ramped resume.');
-control({pause:true,motorRate:0});render(e,.2);control({position:3});render(e,.05);near(e.position,3*48000);
+control({pause:true,motorRate:0});render(e,.4);control({position:3});render(e,.05);near(e.position,3*48000);
 control({holding:true});e.command({type:'scratch',delta:-.1});render(e,.16);near(e.position/48000,2.9,.00001);
 control({holding:false});render(e,.1);near(e.position/48000,2.9,.00001);near(e.rate,0);
-control({pause:false,motorRate:1});render(e,.16);near(e.position/48000,2.98,.00005);
-control({pause:true,motorRate:0});render(e,.03);control({pause:false,motorRate:1});render(e,.03);control({pause:true,motorRate:0});const interrupted=e.position;render(e,.25);near(e.position,interrupted);near(e.rate,0);
+control({pause:false,motorRate:1});render(e,.28);near(e.position/48000,3.04,.00005);
+control({pause:true,motorRate:0});render(e,.03);control({pause:false,motorRate:1});render(e,.03);control({pause:true,motorRate:0});const interrupted=e.position;render(e,.4);near(e.position,interrupted);near(e.rate,0);
 console.log('PASS paused controls: seek/scratch share the logical groove; interrupted pause/resume settles without stale playback.');
+// Compare the real readers: the HUD stop must sound exactly like physical STOP,
+// while preserving its logical anchor. Resume must follow the same motor curve.
+for (const target of [1, 1.35, 2.34]) {
+ const physical=engine(), hud=engine();
+ const base={type:'control',revision:1,enabled:true,contact:true,powered:true,holding:false,rpm:target*100/3};
+ for (const reader of [physical,hud]) { reader.command({...base,motorRate:target,immediate:true,position:1});render(reader,.1); }
+ const held=hud.position;
+ physical.command({...base,revision:2,motorRate:0,pause:false});
+ hud.command({...base,revision:2,motorRate:0,pause:true});
+ const stop=render(physical,.4), pause=render(hud,.4);
+ assert.deepEqual(pause,stop);near(hud.position,held);near(hud.rate,0);
+ assert.ok(rms(pause.slice(9600,12000))>.01,'HUD stop remains audible after the old 160 ms cutoff');
+ for (const reader of [physical,hud]) reader.command({...base,revision:3,motorRate:target,pause:false});
+ for (let step=0;step<7;step++) {render(physical,.04);render(hud,.04);near(hud.rate,physical.rate);}
+ near(hud.rate,target);
+}
+console.log('PASS HUD/physical parity: identical audible stop at 33/45/78 RPM and matching full startup curves.');
 const wear=engine(12000);wear.command({...c,enabled:true,holding:false,pause:false,motorRate:1,rpm:100/3,immediate:true,position:1});render(wear,.1);
 const clean=rms(render(wear,.1));const start=wear.position;
 wear.command({type:'settings',settings:{surface:true,condition:'Poor'}});near(wear.effects.profile.wearAmount,0);

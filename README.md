@@ -40,7 +40,7 @@ Open **http://127.0.0.1:42069**. Stop the server with Ctrl+C.
 
 | Control | Action |
 | --- | --- |
-| Play / Pause | Cue automatically / hold your place |
+| Play / Pause | Cue automatically / hold your place, with the same spin-up and slowdown as START/STOP |
 | Repeat icon | Replay the current record after it finishes; click again to turn off |
 | Tonearm / CUE | Drag to another groove / lift or lower the stylus |
 | Vinyl | Drag with the stylus down to scratch; hold still to silence |
