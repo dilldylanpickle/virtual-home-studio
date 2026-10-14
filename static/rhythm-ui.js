@@ -1,5 +1,5 @@
 import { TranceGate } from './trance-gate.js';
-import { GATE_PATTERNS, GATE_RATES, GATE_SHAPES, GATE_STEPS, confidenceLabel, patternName } from './tempo-grid.js';
+import { GATE_RATES, GATE_SHAPES, GATE_STEPS, GATE_STYLES, confidenceLabel, gateCycle, styleName } from './tempo-grid.js';
 
 const $ = id => document.getElementById(id);
 const percent = value => `${Math.round(value * 100)}%`;
@@ -17,12 +17,13 @@ export class RhythmPanel {
       button.addEventListener('click', () => controls.setGate({ toggleStep: i }));
       steps.append(button);
     }
-    const pattern = $('gate-pattern');
-    for (const name of [...Object.keys(GATE_PATTERNS), 'Custom']) {
+    // Styles set shape, rate, depth, length and steps together; edits make it Custom.
+    const style = $('gate-style');
+    for (const name of [...Object.keys(GATE_STYLES), 'Custom']) {
       const option = document.createElement('option'); option.value = name; option.textContent = name; option.disabled = name === 'Custom';
-      pattern.append(option);
+      style.append(option);
     }
-    pattern.addEventListener('change', () => controls.setGate({ pattern: pattern.value }));
+    style.addEventListener('change', () => controls.setGate({ style: style.value }));
     const segment = (container, name, values, label, apply) => {
       for (const value of values) {
         const option = document.createElement('label'), input = document.createElement('input'), text = document.createElement('span');
@@ -40,7 +41,14 @@ export class RhythmPanel {
     $('tempo-half').addEventListener('click', () => controls.scaleTempo(.5));
     $('tempo-double').addEventListener('click', () => controls.scaleTempo(2));
     $('tempo-auto').addEventListener('click', () => controls.useDetectedTempo());
-    $('tempo-tap').addEventListener('click', () => controls.tapTempo());
+    // Tap coaching: count the taps, then confirm the tempo they set.
+    const tapStatus = $('tempo-tap-status'), idleHint = tapStatus.textContent;
+    $('tempo-tap').addEventListener('click', () => {
+      const { taps, bpm } = controls.tapTempo();
+      const button = $('tempo-tap'); button.classList.remove('pulse'); void button.offsetWidth; button.classList.add('pulse');
+      tapStatus.textContent = bpm ? `Got it: ${bpm} BPM. Keep tapping to refine.` : taps === 1 ? 'Keep tapping with the beat… 2 more' : 'One more…';
+      clearTimeout(this.tapTimer); this.tapTimer = setTimeout(() => { tapStatus.textContent = idleHint; }, 3500);
+    });
     const manual = $('tempo-manual');
     manual.addEventListener('change', () => { const value = Number(manual.value); if (manual.value !== '' && Number.isFinite(value)) controls.setManualBpm(value); });
     manual.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); manual.dispatchEvent(new Event('change')); } });
@@ -54,17 +62,22 @@ export class RhythmPanel {
   render(s) {
     const tempo = s.tempo, gate = s.gate, record = tempo.status !== 'empty';
     const level = tempo.status === 'ready' ? confidenceLabel(tempo.confidence).toLowerCase() : 'none';
-    // Tempos always display as whole BPM.
-    const bpm = tempo.bpm ? String(Math.round(tempo.bpm)) : '—';
+    // Show the tempo as it plays: speed buttons, presets and the pitch fader change it (the
+    // gate follows song time, so it stays on the beat either way). Always whole BPM.
+    const rate = s.effectiveRate > 0 ? s.effectiveRate : 1, playing = tempo.bpm * rate;
+    const bpm = tempo.bpm ? String(Math.round(playing)) : '—';
     $('tempo-bpm').value = $('tempo-bpm').textContent = tempo.status === 'analyzing' && !tempo.bpm ? '…' : bpm;
     const confidence = $('tempo-confidence');
     confidence.dataset.level = tempo.source === 'auto' ? level : 'manual';
     confidence.textContent = !record ? 'Waiting for a record' : tempo.status === 'analyzing' ? 'Analyzing…'
       : tempo.source !== 'auto' ? 'Set by you' : tempo.status === 'unavailable' ? 'No steady beat · tap or type one'
       : `${confidenceLabel(tempo.confidence)} confidence`;
-    $('tempo-source').textContent = !record ? '' : tempo.source === 'tap' ? 'Tapped' : tempo.source === 'manual' ? 'Manual'
-      : tempo.status === 'unavailable' ? 'Default grid'
-      : `Detected${tempo.multiplier === 2 ? ' ×2' : tempo.multiplier === .5 ? ' ×½' : ''}${tempo.varies ? ' · tempo varies' : ''}`;
+    // Plain language: where the tempo came from, and whether the record plays faster/slower.
+    const origin = tempo.source === 'tap' ? 'From your taps' : tempo.source === 'manual' ? 'Set by you'
+      : tempo.status === 'unavailable' ? 'No clear beat found, so the gate uses 120 BPM. Tap along to set one.'
+      : `Detected from the song${tempo.multiplier === 2 ? ' (doubled)' : tempo.multiplier === .5 ? ' (halved)' : ''}${tempo.varies ? '; its tempo changes' : ''}`;
+    $('tempo-source').textContent = !record ? 'Load a record to detect its tempo.' : tempo.status === 'analyzing' ? 'Listening for the beat…'
+      : Math.abs(rate - 1) > .004 && tempo.bpm ? `Song is ${Math.round(tempo.bpm)} BPM, playing ${rate > 1 ? 'faster' : 'slower'} · ${origin}` : origin;
     const manual = $('tempo-manual');
     if (document.activeElement !== manual) manual.value = tempo.bpm ? String(Math.round(tempo.bpm)) : '';
     const offset = Math.round(tempo.offsetMs);
@@ -75,8 +88,14 @@ export class RhythmPanel {
     $('gate-enabled').checked = gate.enabled;
     $('gate-enabled').nextElementSibling.textContent = gate.enabled ? 'On' : 'Off';
     document.querySelector('.rhythm-panel').dataset.gate = gate.enabled ? 'on' : 'off';
-    for (const button of $('gate-steps').children) button.setAttribute('aria-pressed', String(gate.steps[Number(button.dataset.step)]));
-    $('gate-pattern').value = patternName(gate.steps);
+    const cycle = gateCycle(gate.rate);
+    for (const button of $('gate-steps').children) {
+      const step = Number(button.dataset.step);
+      button.setAttribute('aria-pressed', String(gate.steps[step]));
+      // Triplets repeat 12 steps per bar; the last four cells sit out.
+      button.disabled = step >= cycle; button.classList.toggle('unused', step >= cycle);
+    }
+    $('gate-style').value = styleName(gate);
     for (const input of document.querySelectorAll('input[name=gate-rate]')) input.checked = input.value === gate.rate;
     for (const input of document.querySelectorAll('input[name=gate-shape]')) input.checked = input.value === gate.shape;
     $('gate-length-label').textContent = gate.shape === 'pump' ? 'Swell' : 'Gate length';
@@ -87,8 +106,8 @@ export class RhythmPanel {
     const chip = $('tempo-chip');
     chip.hidden = !record;
     chip.dataset.level = confidence.dataset.level; chip.dataset.gate = gate.enabled ? 'on' : 'off';
-    chip.textContent = tempo.status === 'analyzing' && !tempo.bpm ? 'BPM…' : tempo.bpm ? `${Math.round(tempo.bpm)} BPM` : 'BPM';
-    chip.setAttribute('aria-label', `${tempo.bpm ? `Tempo ${Math.round(tempo.bpm)} BPM, ${confidence.textContent.toLowerCase()}` : 'Tempo'}${gate.enabled ? ', Trance Gate on' : ''}. Open tempo and Trance Gate`);
+    chip.textContent = tempo.status === 'analyzing' && !tempo.bpm ? 'BPM…' : tempo.bpm ? `${bpm} BPM` : 'BPM';
+    chip.setAttribute('aria-label', `${tempo.bpm ? `Tempo ${bpm} BPM, ${confidence.textContent.toLowerCase()}` : 'Tempo'}${gate.enabled ? ', Trance Gate on' : ''}. Open tempo and Trance Gate`);
     this.state = s;
     this.follow();
   }
@@ -108,7 +127,7 @@ export class RhythmPanel {
       if (grid.beats !== this.gridBeats) { this.gridBeats = grid.beats; this.clock.setGrid(grid.beats, grid.downbeat); }
       this.clock.downbeat = grid.downbeat;
       const beat = this.clock.beatAt(state.position), current = beat === null ? -1
-        : ((Math.floor((beat - grid.downbeat) * GATE_RATES[state.gate.rate]) % GATE_STEPS) + GATE_STEPS) % GATE_STEPS;
+        : ((Math.floor((beat - grid.downbeat) * GATE_RATES[state.gate.rate]) % gateCycle(state.gate.rate)) + gateCycle(state.gate.rate)) % gateCycle(state.gate.rate);
       for (const button of $('gate-steps').children) button.classList.toggle('now', Number(button.dataset.step) === current);
       if (!$('preset-options').hidden && state.gate.enabled) this.frame = requestAnimationFrame(tick);
       else for (const button of $('gate-steps').children) button.classList.remove('now');

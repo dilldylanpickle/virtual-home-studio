@@ -2,7 +2,9 @@
  * the UI and Node tests; the analysis itself lives in tempo-analysis.js. Grid times are
  * song (record) seconds, so playback speed and pitch never change beat positions. */
 
-export const GATE_RATES = Object.freeze({ '1/4': 1, '1/8': 2, '1/16': 4, '1/32': 8 });
+// Steps per beat. 1/8T is eighth-note triplets (three per beat); triplet patterns repeat
+// every bar (12 steps) so they stay bar-aligned.
+export const GATE_RATES = Object.freeze({ '1/2': .5, '1/4': 1, '1/8': 2, '1/8T': 3, '1/16': 4, '1/32': 8 });
 export const GATE_SHAPES = Object.freeze(['chop', 'pump']);
 export const GATE_STEPS = 16;
 export const GATE_PATTERNS = Object.freeze({
@@ -12,7 +14,42 @@ export const GATE_PATTERNS = Object.freeze({
   Stutter: 'xx.xxx.xxx.x.xx.',
 });
 // Full depth by default: a classic trance gate chops to silence, which reads clearly on dense mixes.
-export const DEFAULT_GATE = Object.freeze({ enabled: false, rate: '1/16', depth: 1, length: .55, shape: 'chop', steps: patternSteps('Trance') });
+/** Gate styles: complete settings voiced for full songs, the way a producer would use a
+ * gate on a whole mix. Less is more: no total drop-outs, softened edges (`soft`, 0–1),
+ * pumps that let the kick's attack through, and `highs` (0–1) = how much of the duck the
+ * highs take, so vocals and air stay present while the low end pumps. Any later change
+ * makes the gate "Custom". */
+const ALL = 'xxxxxxxxxxxxxxxx';
+export const GATE_STYLES = Object.freeze({
+  Push: { shape: 'pump', rate: '1/4', depth: .5, length: .65, soft: .3, highs: .55, pattern: ALL },      // sidechain "woah" on every beat
+  Bounce: { shape: 'pump', rate: '1/8', depth: .4, length: .6, soft: .3, highs: .5, pattern: ALL },       // lighter double-time pump
+  Breathe: { shape: 'pump', rate: '1/2', depth: .55, length: .9, soft: .5, highs: .6, pattern: ALL },     // slow half-note swell
+  Trance: { shape: 'chop', rate: '1/16', depth: .6, length: .7, soft: .6, highs: .8, pattern: 'xxxxx.xxxxx.xx.x' }, // 16th shimmer
+  Gallop: { shape: 'chop', rate: '1/8T', depth: .5, length: .65, soft: .7, highs: .8, pattern: 'xx.xx.xx.xx.xxxx' }, // gentle triplet lilt
+});
+export function styleSettings(name) {
+  const style = GATE_STYLES[name]; if (!style) return null;
+  return { shape: style.shape, rate: style.rate, depth: style.depth, length: style.length, soft: style.soft, highs: style.highs, steps: [...style.pattern].map(step => step === 'x') };
+}
+export function styleName(gate) {
+  return Object.keys(GATE_STYLES).find(name => {
+    const style = styleSettings(name);
+    return style.shape === gate.shape && style.rate === gate.rate && Math.abs(style.depth - gate.depth) < 1e-6 && Math.abs(style.soft - (gate.soft ?? 0)) < 1e-6 && Math.abs(style.highs - (gate.highs ?? 1)) < 1e-6
+      && Math.abs(style.length - gate.length) < 1e-6 && style.steps.every((on, i) => on === gate.steps[i]);
+  }) ?? 'Custom';
+}
+/** Steps in one pattern cycle: 16, or one bar (12) for triplets. */
+export const gateCycle = rate => GATE_RATES[rate] === 3 ? 12 : GATE_STEPS;
+export const DEFAULT_GATE = Object.freeze({ enabled: false, ...styleSettings('Push') });
+
+/** Small make-up gain (≤ +1.5 dB) for the loudness a gate removes, from its average gain;
+ * lows count fully, highs by their share of the duck. */
+export function gateMakeup(gate) {
+  const cycle = gateCycle(gate.rate), on = gate.steps.slice(0, cycle).filter(Boolean).length / cycle, d = gate.depth, l = gate.length;
+  const onMean = gate.shape === 'pump' ? l * (1 - d * 2 / 3) + (1 - l) : l + (1 - l) * (1 - d);
+  const mean = on * onMean + (1 - on) * (1 - d), effective = 1 - (1 - mean) * (.4 + .6 * (gate.highs ?? 1));
+  return Math.max(1, Math.min(1.19, 1 / Math.max(.1, effective)));
+}
 export const DEFAULT_TEMPO = Object.freeze({ source: 'auto', manualBpm: null, anchor: null, multiplier: 1, offsetMs: 0, barShift: 0 });
 export const BPM_RANGE = Object.freeze([40, 250]);
 // Without a usable detected beat (a sustained tone, ambient audio) the gate still needs a

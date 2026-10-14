@@ -210,30 +210,39 @@
           <button id="preset-toggle" class="preset-toggle" type="button" aria-expanded="false" aria-controls="preset-options"><span class="preset-caption">Presets</span><span class="preset-name-clip marquee-clip"><span id="preset-name">Choose a preset</span></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
           <div id="preset-options" class="preset-options" hidden>
             <div class="preset-list" role="group" aria-label="Playback presets"></div>
-            <section class="rhythm-panel" aria-label="Tempo and Trance Gate">
-              <div class="rhythm-head"><h3>Tempo</h3><span id="tempo-confidence" class="confidence" data-level="none">Waiting for a record</span></div>
-              <p class="tempo-readout"><output id="tempo-bpm" aria-live="polite">—</output> <span>BPM</span> <span id="tempo-source" class="tempo-source"></span></p>
-              <div class="rhythm-row">
-                <button id="tempo-half" class="rhythm-button" type="button" aria-label="Half time">½×</button>
-                <button id="tempo-double" class="rhythm-button" type="button" aria-label="Double time">2×</button>
-                <button id="tempo-tap" class="rhythm-button" type="button" aria-describedby="tempo-tap-hint">Tap</button>
-                <label class="tempo-manual"><span class="sr-only">Manual BPM</span><input id="tempo-manual" type="number" min="40" max="250" step="1" inputmode="numeric" placeholder="BPM"></label>
-                <button id="tempo-auto" class="rhythm-button" type="button">Auto</button>
+            <section class="rhythm-panel" aria-label="Tempo, Trance Gate and Reverb">
+              <div class="rhythm-section">
+                <div class="rhythm-head"><h3>Tempo</h3><span id="tempo-confidence" class="confidence" data-level="none">Waiting for a record</span></div>
+                <div class="tempo-main"><p class="tempo-readout"><output id="tempo-bpm" aria-live="polite">—</output> <span>BPM</span></p>
+                  <button id="tempo-tap" class="rhythm-button tap-button" type="button" aria-describedby="tempo-tap-status">Tap the beat</button></div>
+                <p id="tempo-source" class="tempo-source"></p>
+                <p id="tempo-tap-status" class="tap-status" aria-live="polite">Gate off the beat? Tap along with the music (or press T).</p>
+                <details id="tempo-adjust" class="tempo-adjust"><summary>Fix the beat</summary>
+                  <div class="adjust-grid">
+                    <span class="adjust-label">Pumping too fast or slow?</span>
+                    <span class="adjust-controls"><button id="tempo-half" class="rhythm-button" type="button" aria-label="Half speed: the gate moves half as often">Half</button><button id="tempo-double" class="rhythm-button" type="button" aria-label="Double speed: the gate moves twice as often">Double</button></span>
+                    <label class="adjust-label" for="tempo-manual">Exact BPM</label>
+                    <span class="adjust-controls"><input id="tempo-manual" type="number" min="40" max="250" step="1" inputmode="numeric" placeholder="BPM"></span>
+                    <span class="adjust-label">Gate early or late?</span>
+                    <span class="adjust-controls"><button id="grid-earlier" class="rhythm-button" type="button" aria-label="Move the gate 10 milliseconds earlier">Earlier</button><output id="grid-offset">0 ms</output><button id="grid-later" class="rhythm-button" type="button" aria-label="Move the gate 10 milliseconds later">Later</button></span>
+                    <span class="adjust-label">Pattern starts on the wrong beat?</span>
+                    <span class="adjust-controls"><button id="grid-bar" class="rhythm-button" type="button" aria-label="Move where the pattern starts by one beat">Move by a beat</button></span>
+                  </div>
+                  <button id="tempo-auto" class="text-button tempo-reset" type="button">Reset to the detected beat</button>
+                </details>
               </div>
-              <span id="tempo-tap-hint" class="sr-only">Tap along three times or more; while the record plays your last tap also sets the beat.</span>
-              <div class="rhythm-row grid-row"><span class="rhythm-label">Grid</span>
-                <button id="grid-earlier" class="rhythm-button" type="button" aria-label="Move beat grid 10 milliseconds earlier">−10 ms</button>
-                <output id="grid-offset">0 ms</output>
-                <button id="grid-later" class="rhythm-button" type="button" aria-label="Move beat grid 10 milliseconds later">+10 ms</button>
-                <button id="grid-bar" class="rhythm-button" type="button" aria-label="Move the bar start one beat">Bar ↻</button>
+              <div class="rhythm-section">
+                <div class="rhythm-head"><h3>Trance gate</h3><label class="gate-switch"><input id="gate-enabled" type="checkbox"><span>Off</span></label></div>
+                <div class="rhythm-row"><label class="rhythm-label" for="gate-style">Style</label><select id="gate-style"></select>
+                  <span class="gate-rates gate-shapes" role="radiogroup" aria-label="Gate shape"></span></div>
+                <div id="gate-steps" class="gate-steps" role="group" aria-label="Gate pattern steps"></div>
+                <div class="rhythm-row"><span class="rhythm-label">Rate</span><span class="gate-rates gate-rate-options" role="radiogroup" aria-label="Gate rate"></span></div>
+                <label class="rhythm-slider" for="gate-depth"><span>Depth <output id="gate-depth-value">50%</output></span><input id="gate-depth" type="range" min="0" max="1" step=".05" value=".5"></label>
+                <label class="rhythm-slider" for="gate-length"><span><span id="gate-length-label">Swell</span> <output id="gate-length-value">65%</output></span><input id="gate-length" type="range" min="0" max="1" step=".05" value=".65"></label>
               </div>
-              <div class="rhythm-head gate-head"><h3>Trance gate</h3><label class="gate-switch"><input id="gate-enabled" type="checkbox"><span>Off</span></label></div>
-              <div id="gate-steps" class="gate-steps" role="group" aria-label="Gate pattern, 16 steps"></div>
-              <div class="rhythm-row"><label class="rhythm-label" for="gate-pattern">Pattern</label><select id="gate-pattern"></select>
-                <span class="gate-rates gate-shapes" role="radiogroup" aria-label="Gate shape"></span></div>
-              <div class="rhythm-row"><span class="rhythm-label">Rate</span><span class="gate-rates gate-rate-options" role="radiogroup" aria-label="Gate rate"></span></div>
-              <label class="rhythm-slider" for="gate-depth"><span>Depth <output id="gate-depth-value">100%</output></span><input id="gate-depth" type="range" min="0" max="1" step=".05" value="1"></label>
-              <label class="rhythm-slider" for="gate-length"><span><span id="gate-length-label">Gate length</span> <output id="gate-length-value">55%</output></span><input id="gate-length" type="range" min=".1" max="1" step=".05" value=".55"></label>
+              <div class="rhythm-section reverb-section" aria-disabled="true">
+                <div class="rhythm-head"><h3>Reverb</h3><span class="coming-soon">Coming soon</span></div>
+              </div>
             </section>
           </div>
         </div>

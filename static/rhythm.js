@@ -1,5 +1,5 @@
 import { ANALYSIS_VERSION } from './tempo-analysis.js';
-import { BPM_RANGE, DEFAULT_GATE, DEFAULT_TEMPO, GATE_RATES, GATE_SHAPES, GATE_STEPS, MIN_CONFIDENCE, effectiveGrid, patternSteps, tapBpm } from './tempo-grid.js';
+import { BPM_RANGE, DEFAULT_GATE, DEFAULT_TEMPO, GATE_RATES, GATE_SHAPES, GATE_STEPS, MIN_CONFIDENCE, effectiveGrid, gateCycle, gateMakeup, patternSteps, styleSettings, tapBpm } from './tempo-grid.js';
 
 const CACHE_PREFIX = 'vhs-tempo:', CACHE_INDEX = 'vhs-tempo-index', CACHE_LIMIT = 40;
 const storage = {
@@ -85,7 +85,11 @@ export class Rhythm {
   }
   syncGate() {
     const gate = this.deck.state.gate;
-    this.post({ type: 'gate', settings: { enabled: gate.enabled, depth: gate.depth, stepsPerBeat: GATE_RATES[gate.rate], length: gate.length, shape: gate.shape, steps: gate.steps } });
+    this.post({ type: 'gate', settings: { enabled: gate.enabled, depth: gate.depth, stepsPerBeat: GATE_RATES[gate.rate], length: gate.length, shape: gate.shape, steps: gate.steps, cycle: gateCycle(gate.rate),
+      // Softer edges: longer attack/release ramps keep chops musical on a full mix.
+      attackMs: 1.5 + (gate.soft ?? 0) * 12, releaseMs: 9 + (gate.soft ?? 0) * 45,
+      // Pumps let the kick's first 25 ms through; highs take part of the duck; small make-up gain.
+      punchMs: gate.shape === 'pump' ? 25 : 0, highs: gate.highs ?? 1, makeup: gateMakeup(gate) } });
   }
   post(message) { this.deck.engine?.port.postMessage(message); }
 
@@ -93,10 +97,13 @@ export class Rhythm {
   setGate(patch) {
     const gate = { ...this.deck.state.gate };
     if ('enabled' in patch) gate.enabled = Boolean(patch.enabled);
+    // A style sets everything at once; later individual changes make the gate Custom.
+    if (typeof patch.style === 'string' && styleSettings(patch.style)) Object.assign(gate, styleSettings(patch.style));
     if (patch.rate in GATE_RATES) gate.rate = patch.rate;
     if (GATE_SHAPES.includes(patch.shape)) gate.shape = patch.shape;
     if (Number.isFinite(patch.depth)) gate.depth = Math.max(0, Math.min(1, patch.depth));
-    if (Number.isFinite(patch.length)) gate.length = Math.max(.1, Math.min(1, patch.length));
+    if (Number.isFinite(patch.length)) gate.length = Math.max(0, Math.min(1, patch.length));
+    if (Number.isFinite(patch.highs)) gate.highs = Math.max(0, Math.min(1, patch.highs));
     if (typeof patch.pattern === 'string') gate.steps = patternSteps(patch.pattern);
     if (Array.isArray(patch.steps) && patch.steps.length === GATE_STEPS) gate.steps = patch.steps.map(Boolean);
     if (Number.isInteger(patch.toggleStep) && patch.toggleStep >= 0 && patch.toggleStep < GATE_STEPS) gate.steps = gate.steps.map((on, i) => i === patch.toggleStep ? !on : on);

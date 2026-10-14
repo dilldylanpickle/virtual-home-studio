@@ -3,7 +3,7 @@ import { VinylImperfections } from './vinyl-effects.js';
 import { TranceGate } from './trance-gate.js';
 
 // Reported to the page so it can detect a stale cached engine; keep in step with app.js.
-const ENGINE_VERSION = 3;
+const ENGINE_VERSION = 5;
 
 /** One PCM reader and one audio clock own motor, scratching and virtual grooves. */
 class VinylProcessor extends AudioWorkletProcessor {
@@ -193,7 +193,7 @@ class VinylProcessor extends AudioWorkletProcessor {
       const noise = this.effects.sample(this.contact && this.length > 0, Math.abs(this.rate) > .0001 && !this.pausedScrubRelease, this.powered, this.region, this.rate);
       for (let c = 0; c < output.length; c++) {
         const pcm = this.channels[Math.min(c, this.channels.length - 1)];
-        let value = pcm && this.gain > 0 ? (pcm[index] + ((pcm[index + 1] ?? pcm[index]) - pcm[index]) * fraction) * this.gain * gated : 0;
+        let value = this.gate.apply(pcm && this.gain > 0 ? (pcm[index] + ((pcm[index + 1] ?? pcm[index]) - pcm[index]) * fraction) * this.gain : 0, c, gated);
         if (this.blendRemaining > 0) {
           const mix = 1 - this.blendRemaining / this.fadeFrames;
           value = (this.blendFrom[c] ?? 0) * (1 - mix) + value * mix;

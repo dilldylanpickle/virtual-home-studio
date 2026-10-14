@@ -109,11 +109,25 @@ def run():
         chip.click(); options.wait_for(state='visible')
         check(options.is_visible(), 'Clicking the BPM chip again closes the popup; once more reopens it')
         before = {k: state()[k] for k in ('rpm', 'pitch', 'pitchRange', 'quartzLock')}
+        check(page.locator('#tempo-half').is_hidden() and page.locator('.reverb-section .coming-soon').is_visible(),
+              'Tempo shows just the BPM and Tap; fixes sit in Adjust; Reverb is marked coming soon')
 
+        # Styles set the whole gate; editing one setting makes it Custom; triplets use 12 steps.
+        page.locator('#gate-style').select_option('Gallop')
+        gate = state()['gate']
+        check(gate['rate'] == '1/8T' and gate['shape'] == 'chop' and page.locator('.gate-step.unused').count() == 4,
+              'A gate style sets shape, rate, depth, length and steps together (Gallop: 1/8 triplets, 12 steps)')
+        page.locator('#gate-style').select_option('Push')
+        page.evaluate("turntable.controls.setGate({ depth: .4 })")
+        check(page.locator('#gate-style').input_value() == 'Custom', 'Changing a setting after a style makes it Custom')
+        page.locator('#gate-style').select_option('Push')
+
+        page.locator('#tempo-adjust summary').click()
         page.locator('#tempo-half').click()
         check(round(state()['tempo']['bpm']) == 64 and abs(page.evaluate('turntable.rhythm.beats[1] - turntable.rhythm.beats[0]') - 60 / 64) < 1e-6, 'Half time recalculates the grid at 64 BPM')
         page.locator('#tempo-double').click(); page.locator('#tempo-double').click()
         check(round(state()['tempo']['bpm']) == 256 and state()['tempo']['multiplier'] == 2, 'Double time from the detected grid gives 256 BPM')
+        page.locator('#tempo-half').click()
         page.locator('#tempo-manual').fill('100'); page.locator('#tempo-manual').press('Enter')
         check(state()['tempo']['source'] == 'manual' and state()['tempo']['bpm'] == 100
               and abs(page.evaluate('turntable.rhythm.beats[1] - turntable.rhythm.beats[0]') - .6) < 1e-6, 'Manual BPM entry recalculates the gate timing')
@@ -129,6 +143,7 @@ def run():
         check(page.evaluate('turntable.rhythm.downbeat') == (down + 1) % 4, 'Bar shift moves the downbeat by one beat')
         page.locator('#grid-earlier').click(); page.locator('#grid-earlier').click()
 
+
         # Tap tempo with the T key while stopped: wall-time taps at 120 BPM.
         page.keyboard.press('Escape'); page.locator('#track-name').click()
         for _ in range(4):
@@ -138,6 +153,15 @@ def run():
         page.evaluate('turntable.controls.useDetectedTempo()')
         check({k: state()[k] for k in before} == before, 'Tempo corrections never change playback speed or pitch')
 
+        # The shown tempo follows playback speed; the song's beat grid does not change.
+        grid_before = page.evaluate('turntable.rhythm.beats.slice(0, 4)')
+        page.evaluate("turntable.controls.applyPreset('sped-up-pitched-up')")
+        page.wait_for_function('!turntable.state.presetMotion', timeout=10000)
+        check(page.locator('#tempo-bpm').inner_text() == str(round(128 * 45 / (100 / 3))) and 'Song is 128 BPM' in page.locator('#tempo-source').inner_text()
+              and page.evaluate('turntable.rhythm.beats.slice(0, 4)') == grid_before,
+              'At 45 RPM the shown tempo rises with the record while the beat grid stays on the song', shown=page.locator('#tempo-bpm').inner_text())
+        page.evaluate("turntable.controls.applyPreset('original')"); page.wait_for_function('!turntable.state.presetMotion', timeout=10000)
+
         # Audible gating: the master output pulses with the gate on and is steady with it off.
         page.evaluate('turntable.controls.play()')
         page.wait_for_function('turntable.state.stylusContact && !turntable.state.stylusRaised && turntable.state.position > 1.5', timeout=20000)
@@ -146,7 +170,7 @@ def run():
         page.keyboard.press('g'); page.wait_for_timeout(150)
         check(state()['gate']['enabled'], 'G toggles the Trance Gate')
         defaults = spread(page.evaluate(LEVELS, 1500)); print('default gate levels', defaults, 'dry', dry, flush=True)
-        page.evaluate("turntable.controls.setGate({ pattern: 'Straight', depth: 1, length: .5, rate: '1/16' })")
+        page.evaluate("turntable.controls.setGate({ shape: 'chop', pattern: 'Straight', depth: 1, length: .5, rate: '1/16', highs: 1 })")
         gated = spread(page.evaluate(LEVELS, 1500))
         check(gated[0] < dry[0] * .35 and gated[1] > dry[1] * .5,
               'With the gate on the music pulses on and off; off it stays steady', dry=dry, gated=gated)
@@ -175,13 +199,14 @@ def run():
         page.evaluate('turntable.controls.play()')
         page.wait_for_function('turntable.state.stylusContact && !turntable.state.stylusRaised && turntable.state.position > 1.5', timeout=20000)
         cached_dry = spread(page.evaluate(LEVELS, 1200))
-        page.evaluate("turntable.controls.setGate({ enabled: true, shape: 'chop', pattern: 'Straight', depth: 1, length: .5, rate: '1/16' })")
+        page.evaluate("turntable.controls.setGate({ enabled: true, shape: 'chop', pattern: 'Straight', depth: 1, length: .5, rate: '1/16', highs: 1 })")
         cached_gated = spread(page.evaluate(LEVELS, 1200))
         check(cached_gated[0] < cached_dry[0] * .35, 'The gate is audible on a cached (repeat) load too', dry=cached_dry, gated=cached_gated)
         # 1/8 pump: the offbeat ducks fall on the sustained chord (the on-beat ones under the kick).
         page.evaluate("turntable.controls.setGate({ shape: 'pump', rate: '1/8', length: .8 })")
         pumped = spread(page.evaluate(LEVELS, 2000))
-        check(pumped[0] < cached_dry[0] * .35 and page.locator('#gate-length-label').inner_text() == 'Swell',
+        # Pumps keep the kick attack and add make-up gain, so they dip less deeply than a chop.
+        check(pumped[0] < cached_dry[0] * .6 and page.locator('#gate-length-label').inner_text() == 'Swell',
               'Pump shape ducks and swells on the beat', levels=pumped)
         check(not errors, 'No browser errors', errors=errors)
         browser.close()

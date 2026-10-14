@@ -153,3 +153,29 @@ console.log('PASS Trance Gate pump: ducks on each beat and swells back to full l
   assert.ok(energy > 1e-6, 'closed gate steps leave the vinyl surface noise audible');
 }
 console.log('PASS Trance Gate gates music only; vinyl surface noise passes through');
+
+// Not muffled: lows take the full duck, highs only `highs` of it; a pump lets the kick's
+// attack (first 25 ms after the beat) through; make-up gain is bounded.
+{
+  const { TranceGate } = await import('../static/trance-gate.js');
+  const level = (frequency, highs) => {
+    const gate = new TranceGate(rate); gate.setGrid(beats, 0);
+    gate.configure({ enabled: true, depth: 1, stepsPerBeat: 4, length: .5, shape: 'chop', steps: Array(16).fill(true), highs, makeup: 1 });
+    let open = 0, closed = 0;
+    for (let i = 0; i < rate * 2; i++) {
+      const t = 1 + i / rate, g = gate.step(t), y = Math.abs(gate.apply(Math.sin(2 * Math.PI * frequency * i / rate), 0, g));
+      const phase = (((t - .2) / (period / 4)) % 1 + 1) % 1;
+      if (phase > .2 && phase < .4) open = Math.max(open, y); else if (phase > .7 && phase < .9) closed = Math.max(closed, y);
+    }
+    return closed / open;
+  };
+  assert.ok(level(60, .5) < .2, `bass is ducked fully (${level(60, .5).toFixed(2)})`);
+  near(level(4000, .5), .5, .12, 'highs take half of the duck with highs .5');
+  const gate = new TranceGate(rate); gate.setGrid(beats, 0);
+  gate.configure({ enabled: true, depth: .8, stepsPerBeat: 1, length: .6, shape: 'pump', steps: Array(16).fill(true), punchMs: 25 });
+  const beat = beats[10];
+  near(gate.target(beat + .01), 1, 1e-9, 'pump leaves the kick attack open'); assert.ok(gate.target(beat + .04) < .3, 'pump ducks right after the attack');
+  const { gateMakeup, styleSettings } = await import('../static/tempo-grid.js');
+  for (const name of ['Push', 'Bounce', 'Breathe', 'Trance', 'Gallop']) { const m = gateMakeup(styleSettings(name)); assert.ok(m >= 1 && m <= 1.19, `${name} make-up gain within +1.5 dB`); }
+}
+console.log('PASS Trance Gate stays bright: full duck for lows, partial for highs, kick attack kept, bounded make-up gain');
