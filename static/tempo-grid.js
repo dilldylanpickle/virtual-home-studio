@@ -118,15 +118,22 @@ export function confidenceLabel(confidence) {
 }
 
 /** Hardstyle mode: a synthesized kick on the beat grid tuned to the song's root note. */
-/** Hardstyle kit presets: one bar of 16ths per lane (kick, clap on 2 and 4, open hats on the
- * offbeats). "Build" is the do-do-do… do-do do hardstyle build. */
-const BACKBEAT = '....x.......x...', OFFBEATS = '..x...x...x...x.';
+/** Hardstyle kit presets: 8-bar phrases of 16ths per lane (kick, clap on 2 and 4, open hats
+ * on the offbeats), like a long pattern in a DAW: the main bar repeats, bar 4 adds a small
+ * fill and bar 8 a bigger one into the next phrase, so the loop never feels like one bar on
+ * repeat. "Build" is the do-do-do… do-do do hardstyle build; "Anthem" drops the kick out
+ * before each phrase. */
+export const KIT_BARS = 8, KIT_STEPS = KIT_BARS * 16;
+const BACKBEAT = '....x.......x...', OFFBEATS = '..x...x...x...x.', EMPTY = '................';
+// One lane: the main bar, with replacements for some bars (1-based).
+const phrase = (main, fills = {}) => Array.from({ length: KIT_BARS }, (_, bar) => fills[bar + 1] ?? main).join('');
 export const KIT_PATTERNS = Object.freeze({
-  Classic: { kick: 'x...x...x...x...', clap: BACKBEAT, hat: OFFBEATS },
-  Build: { kick: 'x.x.x.x.x.x.x.xx', clap: BACKBEAT, hat: OFFBEATS },
-  Gallop: { kick: 'x..x..x.x..x..x.', clap: BACKBEAT, hat: OFFBEATS },
-  Roll: { kick: 'xxxxxxxxxxxxxxxx', clap: '................', hat: '................' },
-  'Half time': { kick: 'x.......x.......', clap: '........x.......', hat: OFFBEATS },
+  Classic: { kick: phrase('x...x...x...x...', { 4: 'x...x...x...x.x.', 8: 'x...x...x.x.xxxx' }), clap: phrase(BACKBEAT, { 8: '....x.......x.xx' }), hat: phrase(OFFBEATS, { 8: '..x...x...x.....' }) },
+  Anthem: { kick: phrase('x...x...x...x...', { 4: 'x...x...x.......', 8: 'x...x...........' }), clap: phrase(BACKBEAT, { 8: '....x...x.x.xxxx' }), hat: phrase(OFFBEATS, { 4: '..x...x...x.....', 8: '..x...x.........' }) },
+  Build: { kick: phrase('x.x.x.x.x.x.x.xx', { 8: 'x.x.x.x.xxxxxxxx' }), clap: phrase(BACKBEAT), hat: phrase(OFFBEATS) },
+  Gallop: { kick: phrase('x..x..x.x..x..x.', { 4: 'x..x..x.x..x.xx.', 8: 'x..x..x.x.x.xxxx' }), clap: phrase(BACKBEAT), hat: phrase(OFFBEATS) },
+  Roll: { kick: phrase('xxxxxxxxxxxxxxxx', { 8: 'xxxxxxxxxxxx....' }), clap: phrase(EMPTY), hat: phrase(EMPTY) },
+  'Half time': { kick: phrase('x.......x.......', { 4: 'x.......x.....x.', 8: 'x.......x...x.x.' }), clap: phrase('........x.......', { 8: '........x.....x.' }), hat: phrase(OFFBEATS) },
 });
 export const KIT_LANES = Object.freeze(['kick', 'clap', 'hat']);
 const toSteps = text => [...text].map(step => step === 'x');
@@ -137,6 +144,16 @@ export const kitName = kick => Object.keys(KIT_PATTERNS).find(name => {
 /** Kick sounds by hard dance school; the synthesis lives in hardstyle.js (KICK_SOUNDS). */
 export const KIT_SOUNDS = Object.freeze({ euphoric: 'Euphoric', raw: 'Rawstyle', techno: 'Techno drive', gabber: 'Gabber' });
 export const DEFAULT_KICK = Object.freeze({ enabled: false, ...kitLanes('Classic'), sound: 'euphoric', crashEvery: 8, drops: false, horn: false, volume: .7, drive: .6, tail: .5, tune: 'auto' });
+/** Pixel Cat melodies: two bars of sixteenths. Lead digits are chord-tone steps (0 root,
+ * 1 third, 2 fifth, 3 octave…), bass digits 0 root, 1 octave, 2 fifth; '-' holds, '.' rests. */
+export const CAT_PATTERNS = Object.freeze({
+  Bounce: { lead: '3-5-4.3.2-3-4.5.6-5-4.3.2-1-2-..', bass: '0.1.0.1.0.1.0.1.' },
+  Sparkle: { lead: '34565432345654322345654323456543', bass: '0.1.0.1.0.1.0.1.' },
+  Hop: { lead: '3.3.5.4.3.2.1.2.3.5.6.5.4-3-2...', bass: '0-..1-..0-..2-..' },
+});
+const toNotes = text => [...text].map(step => step === '-' ? null : step === '.' ? -1 : Number(step));
+export const catLanes = name => { const pattern = CAT_PATTERNS[name] ?? CAT_PATTERNS.Bounce; return { lead: toNotes(pattern.lead), bass: toNotes(pattern.bass) }; };
+export const DEFAULT_CAT = Object.freeze({ enabled: false, pattern: 'Bounce', meow: true, volume: .6, crunch: .5 });
 export const KEY_NAMES = Object.freeze(['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B']);
 export const keyLabel = key => key ? `${KEY_NAMES[key.tonic]} ${key.mode}` : '';
 /** Kick tail frequency (Hz): the chosen or detected root, in the 41–78 Hz hardstyle range

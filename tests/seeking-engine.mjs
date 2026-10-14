@@ -8,7 +8,7 @@ const scope = { sampleRate: 48000, currentTime: 0,
   AudioWorkletProcessor: class { constructor() { this.port = { postMessage: m => reports.push(m) }; } },
   registerProcessor: (_, type) => { Processor = type; },
 };
-vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'vinyl-processor.js']
+vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'pixel-cat.js', 'vinyl-processor.js']
   .map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n'), scope);
 const d = new Processor();
 const rate = 48000, duration = 60;

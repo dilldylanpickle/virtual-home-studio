@@ -1,4 +1,5 @@
-/** Hardstyle mode: a small synthesized hardstyle kit on 16-step lanes (kick, clap, hat),
+/** Hardstyle mode: a small synthesized hardstyle kit on step lanes (kick, clap, hat; up to
+ * 8-bar phrases of sixteenths),
  * crashes and drops, clocked by the beat grid at the read head's song time and tuned to the
  * song's key. Built the way producers build it: a kick with a click and a fast pitch drop into
  * a saturated, pitched tail; a layered noise clap; an open hat; a long crash. A drop is a
@@ -41,7 +42,8 @@ export class HardstyleKick {
     this.enabled = enabled; this.volume = Math.max(0, Math.min(1, volume)); this.sound = KICK_SOUNDS[sound] ?? KICK_SOUNDS.euphoric;
     this.drive = (2 + Math.max(0, Math.min(1, drive)) * 18) * this.sound.drive;
     this.decay = (.08 + Math.max(0, Math.min(1, tail)) * .4) * this.sound.decay; this.tune = tune; this.duckAmount = Math.max(0, Math.min(.9, duck));
-    // Lanes: one bar of sixteenths each; a hit fires when the read head enters a filled step.
+    // Lanes: a phrase of sixteenths each (one to eight bars, counted from the grid's first
+    // downbeat); a hit fires when the read head enters a filled step.
     this.steps = steps.map(Boolean); this.clapSteps = clap.map(Boolean); this.hatSteps = hat.map(Boolean);
     this.crashEvery = Math.max(0, crashEvery); this.autoDrops = Boolean(drops); this.useHorn = Boolean(horn);
     if (this.seed !== seed) { this.seed = seed; this.rng = new Rng(seed * 7919 + 1); }
@@ -50,7 +52,7 @@ export class HardstyleKick {
   /** Ask for a drop: the build starts at the next bar line. */
   requestDrop() { if (this.enabled) this.pendingDrop = true; }
   white() { return this.noise.next() * 2 - 1; }
-  lane(steps, inBar) { return steps.length ? steps[inBar % steps.length] : false; }
+  lane(steps, step) { return steps.length ? steps[((step % steps.length) + steps.length) % steps.length] : false; }
 
   /** Called on each sixteenth the read head enters while playing forward. */
   onStep(step) {
@@ -64,9 +66,9 @@ export class HardstyleKick {
     }
     const building = this.drop && bar === this.drop.build, landing = this.drop && bar === this.drop.bar && inBar === 0;
     if (building && inBar >= 12) return; // the one-beat pause right before the drop
-    if (building || this.lane(this.steps, inBar)) this.trigger('kick', building ? inBar / 12 : 0);
-    if (building ? inBar >= 8 && inBar % 2 === 0 : this.lane(this.clapSteps, inBar)) this.trigger('clap');
-    if (!building && this.lane(this.hatSteps, inBar)) this.trigger('hat');
+    if (building || this.lane(this.steps, step)) this.trigger('kick', building ? inBar / 12 : 0);
+    if (building ? inBar >= 8 && inBar % 2 === 0 : this.lane(this.clapSteps, step)) this.trigger('clap');
+    if (!building && this.lane(this.hatSteps, step)) this.trigger('hat');
     if (landing || (!building && inBar === 0 && this.crashEvery && bar % this.crashEvery === 0)) this.trigger('crash');
     if (landing && this.useHorn) this.trigger('horn');
   }

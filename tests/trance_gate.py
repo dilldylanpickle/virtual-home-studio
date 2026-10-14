@@ -199,10 +199,11 @@ def run():
         page.locator('#kick-enabled').check(); page.wait_for_timeout(2000)
         kicks = page.evaluate('turntable.audioDiagnostics.kick.fired') - fired
         check(state()['kick']['enabled'] and 3 <= kicks <= 5, 'Hardstyle mode slams a kick on every beat (128 BPM ≈ 4 in 2 s)', kicks=kicks)
-        # Kick bar: presets fill the 16 steps; clicking a step edits it (Custom).
-        page.locator('#kick-pattern').select_option('Roll'); fired = page.evaluate('turntable.audioDiagnostics.kick.fired'); page.wait_for_timeout(1000)
+        # Kick lanes: presets fill the shown bar; clicking a step edits it (Custom).
+        # Two seconds: Roll's bar 8 leaves a four-sixteenth gap before the phrase restarts.
+        page.locator('#kick-pattern').select_option('Roll'); fired = page.evaluate('turntable.audioDiagnostics.kick.fired'); page.wait_for_timeout(2000)
         rolled = page.evaluate('turntable.audioDiagnostics.kick.fired') - fired
-        check(page.locator('#kick-steps .kick-step[aria-pressed=true]').count() == 16 and rolled >= 6,
+        check(page.locator('#kick-steps .kick-step[aria-pressed=true]').count() == 16 and rolled >= 11,
               'The Roll preset fills the kick bar and fires sixteenths (≈8 per second at 128 BPM)', kicks=rolled)
         page.locator('#kick-pattern').select_option('Build'); page.locator('#kick-steps .kick-step').nth(1).click()
         check(state()['kick']['steps'][1] and page.locator('#kick-pattern').input_value() == 'Custom', 'Clicking a kick-bar step adds a kick and makes the pattern Custom')
@@ -220,7 +221,35 @@ def run():
         dropped = page.evaluate('turntable.audioDiagnostics.kick')
         check(dropped['drops'] - after['drops'] == 1 and dropped['crashes'] > after['crashes'] and dropped['horns'] > after['horns'],
               'Drop it! builds, pauses and lands with a crash and the air horn', kick=dropped)
-        page.locator('#kick-enabled').uncheck(); page.keyboard.press('Escape')
+        # 8-bar phrases: the bar buttons show one bar at a time; Classic's bar 8 is a fill.
+        bars = page.locator('#kit-bars .kit-bar')
+        bars.nth(7).click()
+        fill = page.locator('#kick-steps .kick-step[aria-pressed=true]').count()
+        check(bars.count() == 8 and fill == 8 and bars.nth(7).get_attribute('aria-pressed') == 'true' and 'fill' in bars.nth(7).get_attribute('class'),
+              'Hardstyle patterns span 8 bars: bar 8 of Classic shows its kick fill', kicks=fill)
+        page.locator('#kick-steps .kick-step').nth(2).click()
+        kick = state()['kick']
+        check(len(kick['steps']) == 128 and kick['steps'][7 * 16 + 2] and not kick['steps'][2], 'Editing a step in bar 8 changes only bar 8')
+        page.locator('#kit-copy').click(); kick = state()['kick']
+        check(all(kick['steps'][i] == kick['steps'][7 * 16 + i % 16] for i in range(128)) and not any('fill' in bars.nth(i).get_attribute('class') for i in range(8)),
+              'Copy to all repeats the shown bar across the phrase')
+        bars.nth(0).click(); page.locator('#kick-pattern').select_option('Classic')
+        page.locator('#kick-enabled').uncheck()
+
+        # Pixel Cat: the song's chords (C–F–G–C) reach the engine; the band plays on the beat.
+        diag = page.evaluate('turntable.audioDiagnostics.cat')
+        check(diag and diag['chords'] >= 3, "The song's chords reach the engine for Pixel Cat (C–F–G–C)", cat=diag)
+        page.locator('#cat-enabled').check(); before = page.evaluate('turntable.audioDiagnostics.cat'); page.wait_for_timeout(1500)
+        after = page.evaluate('turntable.audioDiagnostics.cat')
+        check(state()['cat']['enabled'] and after['notes'] - before['notes'] >= 6 and after['bassNotes'] > before['bassNotes'] and after['meows'] > before['meows'],
+              'Pixel Cat plays a chiptune melody, bass and nya vocals on the beat', before=before, after=after)
+        page.locator('#cat-pattern').select_option('Sparkle'); page.locator('#cat-meow').uncheck()
+        page.evaluate("turntable.controls.setCat({ crunch: 1, volume: .4 })")
+        cat = state()['cat']
+        check(cat['pattern'] == 'Sparkle' and not cat['meow'] and cat['crunch'] == 1 and page.locator('#cat-crunch-value').inner_text() == '100%',
+              'Melody, nya vocals, band level and 8-bit crunch reach the model and the panel', cat=cat)
+        page.screenshot(path=str(OUT / 'pixel-cat.png'))
+        page.locator('#cat-enabled').uncheck(); page.keyboard.press('Escape')
 
         # Cache: the same file loads without a second analysis, keeping your corrections.
         page.evaluate('turntable.controls.setManualBpm(126)')

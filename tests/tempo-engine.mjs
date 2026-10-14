@@ -88,7 +88,7 @@ let Processor; const scope = {
   AudioWorkletProcessor: class { constructor() { this.port = { postMessage: () => {} }; } },
   registerProcessor: (_name, implementation) => { Processor = implementation; },
 };
-vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'vinyl-processor.js']
+vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'pixel-cat.js', 'vinyl-processor.js']
   .map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n'), scope);
 const engine = new Processor(), rate = 48000;
 engine.command({ type: 'settings', settings: { surface: false, contacts: false } });
@@ -194,6 +194,14 @@ console.log('PASS Trance Gate stays bright: full duck for lows, partial for high
     assert.ok(key.tonic === tonic && key.mode === mode, `key detection: expected ${tonic} ${mode}, got ${key.tonic} ${key.mode}`);
   }
   console.log('PASS key detection: C major, A minor, E minor and F♯ major progressions');
+  // Chords along the beat grid: C–F–G–Am, two seconds each, on a 120 BPM grid.
+  const { analyzeChords } = await import('../static/tempo-analysis.js');
+  const chordPcm = progression([[60, 64, 67], [65, 69, 72], [67, 71, 74], [57, 60, 64]]), chordGrid = Array.from({ length: 48 }, (_, i) => i * .5);
+  const changes = analyzeChords(chordPcm, sr, chordGrid, analyzeKey(chordPcm, sr)), truth = [[0, 0], [5, 0], [7, 0], [9, 1]];
+  const chordAt = time => changes.reduce((found, change) => change[0] <= time + 1e-9 ? change : found, changes[0]);
+  const right = chordGrid.filter(time => { const [, root, minor] = chordAt(time + .25), [r, m] = truth[Math.floor(time / 2) % 4]; return root === r && minor === m; }).length;
+  assert.ok(right / chordGrid.length >= .9 && changes.length <= 14, `chords follow C–F–G–Am (${right}/${chordGrid.length} beats, ${changes.length} changes)`);
+  console.log('PASS chord analysis: C–F–G–Am on the beat grid, without flicker');
 
   // Hardstyle: a kick on each beat while playing forward, tuned to the root, song ducked.
   const { kickTune, kitLanes: lanesOf } = await import('../static/tempo-grid.js');
@@ -281,4 +289,62 @@ console.log('PASS Trance Gate stays bright: full duck for lows, partial for high
   const band900 = out => power(out.slice(0, Math.round(rate * .4)), 900);
   assert.ok(band900(rendered.raw) > band900(rendered.euphoric) * 1.5, 'Rawstyle adds its nasal ~900 Hz screech');
   console.log('PASS kick sounds: Euphoric, Rawstyle (screech), Techno drive (rumble) and Gabber render clean and distinct');
+
+  // 8-bar phrases: presets carry fills in bars 4 and 8, and the engine plays the whole phrase.
+  const { KIT_STEPS, catLanes } = await import('../static/tempo-grid.js');
+  const classic = kitLanes('Classic');
+  assert.ok(['steps', 'clap', 'hat'].every(key => classic[key].length === KIT_STEPS), 'kit presets are 8-bar phrases');
+  const phrase = kickEngine(1, kitSettings({ crashEvery: 0 }), 0, 24); capture(phrase, 17);
+  // The read head starts at 1 s and enters sixteenths 7…142 (grid from 0.2 s, 8 per second).
+  let expected = 0, oneBar = 0; for (let s = 7; s <= 142; s++) { expected += classic.steps[s % KIT_STEPS]; oneBar += classic.steps[s % 16]; }
+  assert.ok(Math.abs(phrase.kick.fired - expected) <= 1 && expected - oneBar >= 4, `the kick plays the 8-bar phrase with its fills (${phrase.kick.fired} kicks, phrase ${expected}, one bar ${oneBar})`);
+  console.log('PASS hardstyle phrases: 8-bar presets with fills in bars 4 and 8 play through the engine');
+
+  // Pixel Cat: a chiptune band on the sixteenths in the song's chords, over the crunched record.
+  const catEngine = (motorRate, settings, chords, music = .3, seconds = 12) => {
+    const e = new Processor();
+    e.command({ type: 'settings', settings: { surface: false, contacts: false } });
+    e.command({ type: 'load', channels: [Float32Array.from({ length: rate * seconds }, (_, i) => music * Math.sin(2 * Math.PI * 220 * i / rate))], sampleRate: rate });
+    e.command({ type: 'beats', beats: Float64Array.from({ length: Math.ceil(seconds * 2) + 2 }, (_, i) => .2 + i * period), downbeat: 0 });
+    if (chords) e.command({ type: 'chords', ...chords });
+    if (settings) e.command({ type: 'cat', settings });
+    e.command({ type: 'control', revision: 1, enabled: true, contact: true, motorRate, holding: false, immediate: true, position: 1 / seconds });
+    return e;
+  };
+  const catSettings = (extra = {}) => ({ enabled: true, volume: .6, crunch: .5, meow: false, ...catLanes('Sparkle'), tonic: 0, minor: false, ...extra });
+  const pitchClass = frequency => ((Math.round(12 * Math.log2(frequency / 440)) + 9) % 12 + 12) % 12;
+  // C major until 3 s, then A minor (song seconds; the read head starts at 1 s).
+  const band = catEngine(1, catSettings(), { times: [0, 3], roots: [0, 9], minors: [0, 1] });
+  const heard = { c: new Set(), am: new Set(), bass: new Set() }; let peak = 0;
+  for (let block = 0; block < Math.round(rate * 3.5 / 128); block++) {
+    const o = [new Float32Array(128), new Float32Array(128)]; band.process([], [o]);
+    for (const v of o[0]) peak = Math.max(peak, Math.abs(v));
+    const time = band.position / rate;
+    if (band.cat.lead.on && time > 1.1 && time < 2.9) heard.c.add(pitchClass(band.cat.lead.frequency));
+    if (band.cat.lead.on && time > 3.15) heard.am.add(pitchClass(band.cat.lead.frequency));
+    if (band.cat.bass.on && time > 1.1 && time < 2.9) heard.bass.add(pitchClass(band.cat.bass.frequency));
+  }
+  assert.deepEqual([...heard.c].sort((a, b) => a - b), [0, 4, 7], 'the lead plays C major chord tones over C');
+  assert.deepEqual([...heard.am].sort((a, b) => a - b), [0, 4, 9], 'the lead follows the change to A minor');
+  assert.deepEqual([...heard.bass], [0], 'the bass bounces on the root');
+  assert.ok(band.cat.notes >= 26 && band.cat.notes <= 30 && band.cat.bassNotes >= 12, `Sparkle plays sixteenths (${band.cat.notes} notes in 3.5 s at 120 BPM)`);
+  assert.ok(peak < 1.2, `the band stays bounded (${peak.toFixed(2)})`);
+  const stoppedCat = catEngine(0, catSettings()); capture(stoppedCat, 2); assert.equal(stoppedCat.cat.notes, 0, 'no notes while the record is stopped');
+  const seekingCat = catEngine(1, catSettings());
+  seekingCat.command({ type: 'control', revision: 2, enabled: true, contact: true, motorRate: 1, holding: false, immediate: true, seekTarget: .9, seekDuration: 1.2 });
+  capture(seekingCat, 1); assert.equal(seekingCat.cat.notes, 0, 'seeking plays no notes');
+  // Without chords the band plays the song's key chord.
+  const keyed = catEngine(1, catSettings({ tonic: 7, minor: false })); capture(keyed, .6);
+  assert.ok(keyed.cat.lead.on && [7, 11, 2].includes(pitchClass(keyed.cat.lead.frequency)), 'without detected chords the band plays the key chord (G)');
+  const nya = catEngine(1, catSettings({ meow: true })); const nyaOut = capture(nya, 2).out;
+  assert.ok(nya.cat.meows > 10 && nyaOut.every(Number.isFinite) && Math.max(...nyaOut.map(Math.abs)) < 1.2, 'nya vocals render clean and bounded');
+  // Crunch alone (band silent): 4-bit/4 kHz audibly changes the record; 0 leaves it untouched.
+  const plainCat = catEngine(1, null), clean = catEngine(1, catSettings({ volume: 0, crunch: 0 })), crushed = catEngine(1, catSettings({ volume: 0, crunch: 1 }));
+  const reference = capture(plainCat, 1).out, cleanOut = capture(clean, 1).out, crushedOut = capture(crushed, 1).out;
+  assert.equal(Math.max(...cleanOut.map((v, i) => Math.abs(v - reference[i]))), 0, 'crunch 0 with the band silent leaves the record unchanged');
+  const error = crushedOut.reduce((sum, v, i) => sum + (v - reference[i]) ** 2, 0) / reference.reduce((sum, v) => sum + v * v, 0);
+  assert.ok(error > .003 && error < .5, `full crunch degrades the record audibly but keeps it (${(10 * Math.log10(error)).toFixed(1)} dB error)`);
+  const offCat = catEngine(1, { ...catSettings(), enabled: false }), offOut = capture(offCat, 1).out, plainOut = capture(catEngine(1, null), 1).out;
+  assert.equal(Math.max(...offOut.map((v, i) => Math.abs(v - plainOut[i]))), 0, 'with Pixel Cat off the output is unchanged');
+  console.log('PASS Pixel Cat: chiptune lead and bass in the detected chords on the sixteenths, nya vocals, crunch, silent when stopped, seeking or off');
 }
