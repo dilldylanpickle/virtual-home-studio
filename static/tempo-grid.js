@@ -22,6 +22,7 @@ export const GATE_PATTERNS = Object.freeze({
 const ALL = 'xxxxxxxxxxxxxxxx';
 export const GATE_STYLES = Object.freeze({
   Push: { shape: 'pump', rate: '1/4', depth: .5, length: .65, soft: .3, highs: .55, pattern: ALL },      // sidechain "woah" on every beat
+  Pulse: { shape: 'chop', rate: '1/4', depth: .5, length: .65, soft: .45, highs: .55, pattern: ALL },    // Push's settings, chopped: a steady on-off throb
   Bounce: { shape: 'pump', rate: '1/8', depth: .4, length: .6, soft: .3, highs: .5, pattern: ALL },       // lighter double-time pump
   Breathe: { shape: 'pump', rate: '1/2', depth: .55, length: .9, soft: .5, highs: .6, pattern: ALL },     // slow half-note swell
   Trance: { shape: 'chop', rate: '1/16', depth: .6, length: .7, soft: .6, highs: .8, pattern: 'xxxxx.xxxxx.xx.x' }, // 16th shimmer

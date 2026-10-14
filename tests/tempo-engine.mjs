@@ -176,6 +176,6 @@ console.log('PASS Trance Gate gates music only; vinyl surface noise passes throu
   const beat = beats[10];
   near(gate.target(beat + .01), 1, 1e-9, 'pump leaves the kick attack open'); assert.ok(gate.target(beat + .04) < .3, 'pump ducks right after the attack');
   const { gateMakeup, styleSettings } = await import('../static/tempo-grid.js');
-  for (const name of ['Push', 'Bounce', 'Breathe', 'Trance', 'Gallop']) { const m = gateMakeup(styleSettings(name)); assert.ok(m >= 1 && m <= 1.19, `${name} make-up gain within +1.5 dB`); }
+  for (const name of ['Push', 'Pulse', 'Bounce', 'Breathe', 'Trance', 'Gallop']) { const m = gateMakeup(styleSettings(name)); assert.ok(m >= 1 && m <= 1.19, `${name} make-up gain within +1.5 dB`); }
 }
 console.log('PASS Trance Gate stays bright: full duck for lows, partial for highs, kick attack kept, bounded make-up gain');
