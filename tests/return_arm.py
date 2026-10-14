@@ -3,6 +3,7 @@ import json
 import math
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, PROBE, arm_point, groove_angle, select_speed
+from studio_helpers import enter_turntable, launch_browser
 from audio_fixtures import generated_long_record
 from audio_assertions import wait_for_silence
 
@@ -38,11 +39,12 @@ TRACE = '''async () => {
 def run():
     (ROOT / 'artifacts').mkdir(exist_ok=True)
     with generated_long_record() as fixture, sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440,'height':1500})
         page.add_init_script(PROBE)
         errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
         page.goto('http://127.0.0.1:42069');page.wait_for_function('window.turntable')
+        enter_turntable(page)
         page.locator('#file-input').set_input_files(fixture)
         page.wait_for_function("turntable.state.recordPhase==='ready'")
         state=lambda:page.evaluate('turntable.state')
@@ -113,7 +115,9 @@ def run():
         # A new Play intentionally supersedes return, with no stale park completion.
         position(.75)
         page.evaluate('void turntable.controls.returnArm()');page.wait_for_timeout(240)
-        angle=state()['tonearmAngle'];page.evaluate('void turntable.controls.play()')
+        # Sample the moving arm and take ownership in the same task; a separate round trip
+        # lets the return sweep advance a frame between the reading and the command.
+        angle=page.evaluate('(() => {const angle=turntable.state.tonearmAngle; void turntable.controls.play(); return angle;})()')
         page.wait_for_function("turntable.state.assistPhase==='idle' && turntable.state.stylusContact")
         page.wait_for_timeout(750)
         check(state()['tonearmMotion'] is None and state()['tonearmAngle']>=angle and state()['stylusContact'],'Play during return takes ownership without a delayed stale park')

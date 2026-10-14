@@ -202,7 +202,6 @@ dialog h2{font-size:25px}
 .listening-hud{position:relative;z-index:4;margin:26px 8px 0;padding:24px 24px 0;display:grid;grid-template-columns:minmax(0,.9fr) minmax(240px,1fr) minmax(315px,1.1fr);gap:18px var(--hud-gap);background:var(--hud-panel);border:1px solid var(--hud-border);border-radius:var(--hud-radius);box-shadow:var(--hud-shadow);backdrop-filter:blur(var(--hud-blur));color:var(--hud-fg)}
 .hud-record{display:flex;align-items:center;gap:14px;min-width:0}
 .hud-record-copy{min-width:0}
-.hud-record .eyebrow{font-size:8px;letter-spacing:1.5px;margin:0 0 8px}
 .hud-record h2{font-size:13px;line-height:1.4}
 .hud-record #track-meta{font-size:10px;line-height:1.4;color:var(--hud-muted)}
 .hud-record .mini-record{width:54px;height:54px;flex-shrink:0;box-shadow:1px 3px 5px #26312624}
@@ -259,7 +258,6 @@ dialog h2{font-size:25px}
 .hud-record .mini-record{width:45px;height:45px}
 .hud-record .mini-record:after{inset:15px;border-width:5px}
 .hud-record h2{font-size:13px}
-.hud-record .eyebrow{font-size:7px}
 .hud-transport{width:100%;max-width:450px;justify-self:center}
 .hud-listening{flex-wrap:wrap;gap:16px;justify-content:center}
 .hud-volume{justify-content:center}
@@ -277,7 +275,6 @@ dialog h2{font-size:25px}
 .transport-button{height:44px;min-width:128px;font-size:13px}
 .transport-button:hover:not(:disabled){background:var(--accent-hover);filter:none}
 .hud-record #track-meta{font-size:11px}
-.hud-record .eyebrow{color:var(--text-secondary)}
 #transport-hint{font-size:10px;min-height:14px}
 #turntable-details{grid-column:1/-1;border-top:1px solid var(--border);font-size:11px;color:var(--text-secondary)}
 #turntable-details summary{cursor:pointer;width:fit-content;padding:12px 0;min-height:40px}
@@ -350,7 +347,6 @@ dialog{background:var(--dialog-background);backdrop-filter:blur(var(--panel-blur
 .record-action:active:not(:disabled){background:var(--hud-active)}
 
 .record-action:disabled{opacity:.4}
-.hud-record .eyebrow:empty{display:none}
 
 @media(max-width:1050px){.hud-actions{margin:0}
 }

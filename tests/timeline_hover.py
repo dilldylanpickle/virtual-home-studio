@@ -1,6 +1,7 @@
 """Real-pointer checks for the independent timeline preview and gesture semantics."""
 import json
 from playwright.sync_api import sync_playwright
+from studio_helpers import launch_browser
 from acceptance import ROOT
 from audio_fixtures import generated_long_record
 
@@ -16,7 +17,7 @@ def check(ok, message, **details):
 def run():
     (ROOT / 'artifacts').mkdir(exist_ok=True)
     with generated_long_record() as record, sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width': 1440, 'height': 1450})
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))

@@ -2,6 +2,7 @@
 import json
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, RAW, PROBE, set_power
+from studio_helpers import enter_turntable, launch_browser
 from audio_fixtures import generated_long_record
 
 checks=[]
@@ -32,9 +33,10 @@ TRACE='''async id => {
 def run():
     out=ROOT/'artifacts/preset-motion';out.mkdir(parents=True,exist_ok=True)
     with generated_long_record() as record,sync_playwright() as p:
-        browser=p.chromium.launch();page=browser.new_page(viewport={'width':1440,'height':1400});page.add_init_script(PROBE)
+        browser=launch_browser(p);page=browser.new_page(viewport={'width':1440,'height':1400});page.add_init_script(PROBE)
         errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
         page.goto('http://127.0.0.1:42069');page.locator('#file-input').set_input_files(record)
+        enter_turntable(page)
         page.wait_for_function("turntable.state.recordPhase==='ready'")
         state=lambda:page.evaluate('turntable.state')
         def apply(id):

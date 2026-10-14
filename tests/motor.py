@@ -8,6 +8,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 from acceptance import PROBE, select_speed
+from studio_helpers import enter_turntable, launch_browser
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,12 +22,13 @@ def run():
             wav.setsampwidth(2)
             wav.setframerate(48000)
             wav.writeframes(b''.join(struct.pack('<h', int(12000 * math.sin(i * 2 * math.pi * 440 / 48000))) for i in range(48000 * 12)))
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={"width": 1280, "height": 1100})
         page.add_init_script(PROBE)
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto('http://127.0.0.1:42069')
+        enter_turntable(page)
         page.locator('#file-input').set_input_files(fixture)
         page.wait_for_function('turntable.state.recordLoaded')
         select_speed(page, 100 / 3)

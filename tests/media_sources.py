@@ -4,6 +4,7 @@ import json
 from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright
+from studio_helpers import launch_browser
 from acceptance import ROOT, RAW, PROBE
 
 checks = []
@@ -19,7 +20,7 @@ def run():
     out = ROOT / 'artifacts/media-sources'
     out.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width': 1440, 'height': 1300})
         page.add_init_script(PROBE)
         errors, requests = [], []

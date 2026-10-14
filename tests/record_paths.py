@@ -9,6 +9,7 @@ import wave
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+from studio_helpers import launch_browser
 from acceptance import ROOT, PROBE
 
 checks = []
@@ -33,7 +34,7 @@ def run():
             files.append(path)
         mp3 = Path(directory) / 'record-c.mp3'
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(files[1]), str(mp3)], check=True)
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width': 1440, 'height': 1250})
         page.add_init_script(PROBE)
         errors = []

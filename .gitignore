@@ -29,3 +29,6 @@ Thumbs.db
 
 # Private development photography is not public artwork
 /docs/reference/
+
+# Unpublished studio plate masters; only the WebP derivatives in static/assets/ ship
+/docs/source/

@@ -14,6 +14,7 @@ import wave
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+from studio_helpers import launch_browser
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / 'artifacts'
@@ -219,7 +220,7 @@ def run():
     with tempfile.TemporaryDirectory(prefix='vinyl-condition-') as tmp, sync_playwright() as playwright:
         source = Path(tmp) / 'original-condition-demo.wav'
         make_source(source)
-        browser = playwright.chromium.launch(headless=True)
+        browser = launch_browser(playwright)
         page = browser.new_page(viewport={'width': 1440, 'height': 1150})
         page.set_default_timeout(90000)
         page.add_init_script(PROBE)

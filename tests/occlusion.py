@@ -1,15 +1,14 @@
-"""Rendered record/spindle occlusion at controlled production-animation frames.
+"""Native mesh depth/center-hole checks at controlled production lifecycle frames.
 
-The counterfactual screenshot temporarily hides only the test page's spindle.
-Pixels that change reveal exactly where permanent hardware was visible; this
-catches wrong SVG paint order even when normal silver and paper colors are close.
-Production never hides or fades that hardware.
+Counterfactuals use gated offscreen renderer passes. They hide only the measured
+mesh, share shadows/reflections, and disable AO equally; production never hides
+permanent hardware. Browser canvas decoding requires no image-library package.
 """
 import base64
 import json
-import math
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, RAW
+from studio_helpers import enter_turntable, launch_browser
 
 checks = []
 
@@ -20,31 +19,74 @@ def check(value, description, **details):
     print(f'PASS {description}', flush=True)
 
 
-SETUP = '''() => {
-  const hardware = ['chassis-brand', 'tonearm-base', 'rpm-78', 'start-stop', 'rpm-33',
-    'rpm-45', 'power', 'pitch-range', 'target-light', 'strobe-dots', 'spindle', 'mat-brand'];
-  window.occlusionHardware = hardware.map(id => {
-    const node = document.getElementById(id), box = node.getBoundingClientRect();
-    return {id, node, box: {x:box.x,y:box.y,width:box.width,height:box.height}};
-  });
-  window.occlusionHardwareCheck = () => occlusionHardware.every(({id,node,box}) => {
-    if(document.getElementById(id)!==node || document.getElementById('record-lift').contains(node)) return false;
-    const now = node.getBoundingClientRect();
-    if(Object.keys(box).some(key => Math.abs(now[key]-box[key]) > .01)) return false;
-    for(let ancestor=node; ancestor; ancestor=ancestor.parentElement) {
-      const style=getComputedStyle(ancestor);
-      if(style.display==='none' || style.visibility!=='visible' || Number(style.opacity)<.999) return false;
-    }
-    return !node.getAnimations().length;
-  });
-  window.occlusionPixels = async encoded => {
-    const bitmap = await createImageBitmap(await(await fetch('data:image/png;base64,'+encoded)).blob());
+NATIVE_SETUP = '''() => {
+  const names = ['vhs-chassis','vhs-top','vhs-platter','tonearm-base',
+    'vhs-power','vhs-range','vhs-targetLight','vhs-strobeDots',
+    'vhs-spindle','vhs-spindleTip','vhs-lettering','vhs-frontPrint','vhs-slipmatPrint'];
+  const initial = studioView.snapshot({bounds:false});
+  window.nativeHardware = names.map(name => ({name, initial:initial.objects[name]}));
+  window.nativeHardwareCheck = () => {
+    const snapshot = studioView.snapshot({bounds:false});
+    return nativeHardware.every(({name,initial}) => {
+      const now = snapshot.objects[name];
+      return initial && now && now.id === initial.id && now.effectiveVisible
+        && !now.removableMedia && now.material?.opacity !== 0
+        && JSON.stringify(now.localPosition) === JSON.stringify(initial.localPosition)
+        && JSON.stringify(now.scale) === JSON.stringify(initial.scale)
+        && JSON.stringify(now.material) === JSON.stringify(initial.material);
+    });
+  };
+  window.nativePixels = async url => {
+    const bitmap = await createImageBitmap(await(await fetch(url)).blob());
     const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
     const context=canvas.getContext('2d');context.drawImage(bitmap,0,0);bitmap.close();
-    return {width:canvas.width,data:context.getImageData(0,0,canvas.width,canvas.height).data};
+    return {width:canvas.width,height:canvas.height,data:context.getImageData(0,0,canvas.width,canvas.height).data};
   };
-  // Pause only the two record animations at creation, avoiding any race with
-  // decoding, a slow screenshot, or the intentionally short production timing.
+  window.nativeAuditPixels = async (mode, color='Black') => {
+    // Apply the paused lifecycle's current presentation before freezing a pair.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const snapshot=studioView.snapshot({bounds:false});
+    const pair=studioView.capturePass(['media-visibility', mode]);
+    const a=await nativePixels(pair['media-visibility']),b=await nativePixels(pair[mode]);
+    const sx=a.width/snapshot.size.width,sy=a.height/snapshot.size.height;
+    const project=(name,p)=>{const v=studioView.projectPoint(name,p);return {x:v.x*sx,y:v.y*sy};};
+    const center=project('vhs-record',[0,.0017,0]);
+    const outer=project('vhs-record',[.335,.0017,0]);
+    const scale=Math.hypot(outer.x-center.x,outer.y-center.y)/.335;
+    const hole=snapshot.visual.mediaGeometry.labelHole*scale;
+    const opaque=(['Clear','Smoke'].includes(color)?.110:.333)*scale;
+    let roi=null;
+    if(mode==='without-slipmat-print') {
+      const points=[[-.170,-.025,0],[-.170,.025,0],[.170,-.025,0],[.170,.025,0]].map(p=>project('vhs-slipmatPrint',p));
+      roi={left:Math.min(...points.map(p=>p.x))-2,right:Math.max(...points.map(p=>p.x))+2,
+        top:Math.min(...points.map(p=>p.y))-2,bottom:Math.max(...points.map(p=>p.y))+2};
+    } else if(mode==='without-chassis-print') {
+      const points=[[773,939],[1005,939],[773,978],[1005,978]].map(([x,z])=>project('vhs-turntable',[(x-602)/1000,.07518,(z-594)/1000]));
+      roi={left:Math.min(...points.map(p=>p.x))-2,right:Math.max(...points.map(p=>p.x))+2,
+        top:Math.min(...points.map(p=>p.y))-2,bottom:Math.max(...points.map(p=>p.y))+2};
+    }
+    let visiblePixels=0,forbiddenPixels=0,holePixels=0,maxForbiddenDifference=0,minChannel=255,maxChannel=0;
+    for(let i=0;i<a.data.length;i+=4) {
+      const x=(i/4)%a.width+.5,y=Math.floor((i/4)/a.width)+.5;
+      minChannel=Math.min(minChannel,a.data[i],a.data[i+1],a.data[i+2]);
+      maxChannel=Math.max(maxChannel,a.data[i],a.data[i+1],a.data[i+2]);
+      if(roi&&(x<roi.left||x>roi.right||y<roi.top||y>roi.bottom)) continue;
+      const difference=Math.max(...[0,1,2].map(c=>Math.abs(a.data[i+c]-b.data[i+c])));
+      if(difference<=3) continue;
+      visiblePixels++;
+      if(mode==='without-spindle') {
+        const distance=Math.hypot(x-center.x,y-center.y);
+        if(distance<hole+2) holePixels++;
+        if(snapshot.visual.recordPresent&&snapshot.visual.recordOpacity>.999&&distance>hole+2&&distance<opaque-2) {
+          forbiddenPixels++;maxForbiddenDifference=Math.max(maxForbiddenDifference,difference);
+        }
+      }
+    }
+    return {visiblePixels,forbiddenPixels,holePixels,maxForbiddenDifference,
+      dynamicRange:maxChannel-minChannel,hardware:nativeHardwareCheck(),visual:snapshot.visual,
+      image:pair['media-visibility'],center,scale,roi};
+  };
+  // Keep original production timing; pause only shared removable-media effects.
   const animate=Element.prototype.animate;
   Element.prototype.animate=function(...args) {
     const animation=animate.apply(this,args);
@@ -54,127 +96,100 @@ SETUP = '''() => {
 }'''
 
 
+def open_native(page):
+    page.goto('http://127.0.0.1:42069/?studioDiagnostics=1')
+    page.wait_for_function('window.turntable && window.studioView?.snapshot().ready')
+    assert page.evaluate("studioView.snapshot({bounds:false}).renderer==='Three.js WebGL'"), 'Native renderer required for mesh occlusion'
+    enter_turntable(page)
+    page.evaluate(NATIVE_SETUP)
+
+
+def phase(page, value):
+    page.wait_for_function('value=>turntable.state.recordPhase===value', arg=value)
+
+
+def set_motion_frame(page, progress):
+    page.evaluate('''progress => {
+      for(const id of ['record-lift','record-shadow'])
+        for(const animation of document.getElementById(id).getAnimations()) {
+          animation.pause();animation.currentTime=progress*animation.effect.getTiming().duration;
+        }
+    }''', progress)
+
+
+def resume_motion(page):
+    page.evaluate("for(const id of ['record-lift','record-shadow']) document.getElementById(id).getAnimations().forEach(a=>a.play())")
+
+
+def native_sample(page, mode, color, path=None):
+    sample = page.evaluate('([mode,color])=>nativeAuditPixels(mode,color)', [mode, color])
+    image = sample.pop('image')
+    if path:
+        path.write_bytes(base64.b64decode(image.split(',', 1)[1]))
+    return sample
+
+
 def run():
-    artifacts = ROOT / 'artifacts'
-    artifacts.mkdir(exist_ok=True)
+    artifacts = ROOT / 'artifacts'; artifacts.mkdir(exist_ok=True)
     samples = []
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width': 1440, 'height': 1500}, device_scale_factor=1)
-        errors = []
-        page.on('pageerror', lambda error: errors.append(str(error)))
-        page.goto('http://127.0.0.1:42069')
-        page.wait_for_function('window.turntable')
-        page.evaluate(SETUP)
-        bounds = page.locator('#deck').bounding_box()
-        clip = {'x': math.floor(bounds['x']), 'y': math.floor(bounds['y']),
-                'width': math.ceil(bounds['width']), 'height': math.ceil(bounds['height'])}
-        check(page.evaluate('''() => {
-          const spindle=document.getElementById('spindle'), record=document.getElementById('record');
-          return !!(spindle.compareDocumentPosition(record)&Node.DOCUMENT_POSITION_FOLLOWING)
-            && getComputedStyle(record).maskImage !== 'none';
-        }'''), 'Permanent spindle paints beneath a record with a real center-hole mask')
-
-        def phase(value):
-            page.wait_for_function('value => turntable.state.recordPhase===value', arg=value)
+        errors = []; page.on('pageerror', lambda error: errors.append(str(error)))
+        open_native(page)
+        geometry = page.evaluate('studioView.snapshot({bounds:false}).visual.mediaGeometry')
+        check(geometry == {'vinylHole': .006, 'labelHole': .006, 'labelRadius': .11},
+              'Visible native vinyl and opaque label have real aligned annular center holes')
+        empty = native_sample(page, 'without-spindle', 'Black')
+        check(empty['dynamicRange'] > 40 and empty['visiblePixels'] > 4,
+              'Native RGBA8 readback contains a visible spindle before media loads', pixels=empty['visiblePixels'])
 
         def motion(kind, color):
-            phase('inserting' if kind == 'insert' else 'ejecting')
+            phase(page, 'inserting' if kind == 'insert' else 'ejecting')
             page.wait_for_function("document.getElementById('record-lift').getAnimations().length>0")
             duration = page.evaluate("document.getElementById('record-lift').getAnimations()[0].effect.getTiming().duration")
-            check(100 < duration < 2000, f'{color} {kind}: production timing remains enabled', duration=duration)
+            check(100 < duration < 2000, f'{color} {kind}: shared production timing remains enabled', duration=duration)
             for progress in [0, .25, .5, .75, 1]:
                 name = f'{color.lower()}-{kind}-{round(progress*100)}'
-                page.evaluate('''progress => {
-                  for(const id of ['record-lift','record-shadow'])
-                    for(const animation of document.getElementById(id).getAnimations()) {
-                      animation.pause();animation.currentTime=progress*animation.effect.getTiming().duration;
-                    }
-                }''', progress)
-                state = page.evaluate('''() => {
-                  const record=document.getElementById('record'),lift=document.getElementById('record-lift');
-                  const matrix=record.getScreenCTM(),center=new DOMPoint(498,598).matrixTransform(matrix);
-                  const spindle=new DOMPoint(498,598).matrixTransform(document.getElementById('spindle').getScreenCTM());
-                  return {opacity:Number(getComputedStyle(lift).opacity),center:[center.x,center.y],
-                    scale:Math.hypot(matrix.a,matrix.b),separation:Math.hypot(center.x-spindle.x,center.y-spindle.y),
-                    paperOpacity:Number(getComputedStyle(document.querySelector('.label-paper')).fillOpacity),
-                    hardware:occlusionHardwareCheck(),hidden:getComputedStyle(record).display==='none'};
-                }''')
-                normal = page.screenshot(clip=clip, path=str(artifacts / f'occlusion-{name}.png'))
-                # This is a diagnostic counterfactual in a disposable browser,
-                # never the lifecycle's production approach to spindle visibility.
-                page.locator('#spindle').evaluate("node=>node.style.visibility='hidden'")
-                without = page.screenshot(clip=clip)
-                page.locator('#spindle').evaluate("node=>node.style.removeProperty('visibility')")
-                result = page.evaluate('''async ([normal,without,state,clip,color]) => {
-                  const a=await occlusionPixels(normal),b=await occlusionPixels(without);
-                  let visiblePixels=0,forbiddenPixels=0,holePixels=0,maxForbiddenDifference=0;
-                  const opaqueRadius=(['Clear','Smoke'].includes(color)?110:333)*state.scale;
-                  const holeRadius=6*state.scale;
-                  for(let i=0;i<a.data.length;i+=4) {
-                    const difference=Math.max(...[0,1,2].map(c=>Math.abs(a.data[i+c]-b.data[i+c])));
-                    if(difference<=3) continue;
-                    visiblePixels++;
-                    const x=clip.x+(i/4)%a.width+.5,y=clip.y+Math.floor((i/4)/a.width)+.5;
-                    const distance=Math.hypot(x-state.center[0],y-state.center[1]);
-                    if(distance<holeRadius+1.5) holePixels++;
-                    // Exclude the narrow antialiased edges of both real circles.
-                    if(state.opacity>.999 && !state.hidden && distance>holeRadius+1.5 && distance<opaqueRadius-1.5) {
-                      forbiddenPixels++;maxForbiddenDifference=Math.max(maxForbiddenDifference,difference);
-                    }
-                  }
-                  return {visiblePixels,forbiddenPixels,holePixels,maxForbiddenDifference};
-                }''', [base64.b64encode(normal).decode(), base64.b64encode(without).decode(), state, clip, color])
-                sample = {'name': name, 'progress': progress, **state, **result}
-                samples.append(sample)
-                check(state['hardware'] and state['paperOpacity'] == 1,
-                      f'{name}: permanent hardware and opaque label retain their styles and geometry')
-                check(result['forbiddenPixels'] == 0,
-                      f'{name}: spindle never paints through solid vinyl or paper', **result)
+                set_motion_frame(page, progress)
+                sample = native_sample(page, 'without-spindle', color, artifacts / f'occlusion-{name}.png')
+                samples.append({'name': name, 'progress': progress, **sample})
+                visual = sample['visual']
+                check(sample['dynamicRange'] > 40 and sample['hardware'],
+                      f'{name}: permanent native hardware retains identity, material, transform and visibility')
+                check(sample['forbiddenPixels'] == 0,
+                      f'{name}: native depth prevents spindle pixels crossing solid vinyl or opaque paper',
+                      forbidden_pixels=sample['forbiddenPixels'], max_difference=sample['maxForbiddenDifference'])
                 if (kind == 'insert' and progress == 0) or (kind == 'eject' and progress == 1):
-                    check(state['opacity'] == 0,
-                          f'{name}: media enters or leaves invisibly at the elevated endpoint')
-                if state['opacity'] < .999 and not state['hidden']:
-                    check(state['separation'] > 110 * state['scale'],
-                          f'{name}: any lifecycle fade occurs with the label physically separated from the spindle',
-                          separation=state['separation'], opacity=state['opacity'])
+                    check(visual['recordOpacity'] == 0 and visual['recordLift'] > .12,
+                          f'{name}: only elevated media fades at the lifecycle endpoint')
                 if (kind == 'insert' and progress == 1) or (kind == 'eject' and progress == 0):
-                    check(state['opacity'] == 1 and state['separation'] < .1
-                          and result['holePixels'] > 8 and result['holePixels'] == result['visiblePixels'],
-                          f'{name}: only the spindle visible through the aligned real hole remains exposed', **result)
-            page.evaluate("for(const id of ['record-lift','record-shadow']) document.getElementById(id).getAnimations().forEach(a=>a.play())")
-            phase('ready' if kind == 'insert' else 'empty')
+                    check(visual['recordOpacity'] == 1 and abs(visual['recordLift']) < .00001
+                          and sample['holePixels'] > 4 and sample['holePixels'] == sample['visiblePixels'],
+                          f'{name}: seated spindle is exposed only through the real center hole',
+                          hole_pixels=sample['holePixels'], visible_pixels=sample['visiblePixels'])
+            resume_motion(page)
+            phase(page, 'ready' if kind == 'insert' else 'empty')
 
         for color in ['Black', 'White', 'Blue', 'Red', 'Clear', 'Smoke']:
             page.evaluate("color=>turntable.controls.customize('vinylColor',color)", color)
-            # Use the real chooser entry point, then the same record lifecycle.
             with page.expect_file_chooser() as picker:
-                page.locator('#load').click()
-                page.locator('#source-local').click()
+                page.locator('#load').click(); page.locator('#source-local').click()
             picker.value.set_files(RAW)
             motion('insert', color)
-            seated = page.screenshot(clip=clip)
-            page.locator('#mat-brand').evaluate("node=>node.style.visibility='hidden'")
-            plain = page.screenshot(clip=clip)
-            page.locator('#mat-brand').evaluate("node=>node.style.removeProperty('visibility')")
-            platter_pixels = page.evaluate('''async ([a,b]) => {
-              const actual=await occlusionPixels(a),plain=await occlusionPixels(b);let visible=0;
-              for(let i=0;i<actual.data.length;i+=4)
-                if([0,1,2].some(c=>Math.abs(actual.data[i+c]-plain.data[i+c])>3)) visible++;
-              return visible;
-            }''', [base64.b64encode(seated).decode(), base64.b64encode(plain).decode()])
+            print_sample = native_sample(page, 'without-slipmat-print', color)
             transparent = color in ['Clear', 'Smoke']
-            check(platter_pixels > 50 if transparent else platter_pixels == 0,
-                  f'{color}: playable body {"intentionally reveals" if transparent else "fully occludes"} the slipmat print',
-                  visible_pixels=platter_pixels)
-            page.locator('#eject').click()
-            motion('eject', color)
-        check(page.evaluate('occlusionHardwareCheck()'), 'All permanent hardware survives six complete record lifecycles')
-        check(not errors, 'No browser exceptions during color and occlusion frame checks', errors=errors)
-        (artifacts / 'occlusion.json').write_text(json.dumps({'result': 'passed', 'total': len(checks),
-                                                            'checks': checks, 'samples': samples}, indent=2) + '\n')
+            check(print_sample['visiblePixels'] > 25 if transparent else print_sample['visiblePixels'] == 0,
+                  f'{color}: native media {"reveals" if transparent else "occludes"} the actual slipmat print',
+                  visible_pixels=print_sample['visiblePixels'])
+            check(print_sample['visual']['recordOpacity'] == 1,
+                  f'{color}: paper label stays fully opaque regardless of vinyl transparency')
+            page.locator('#eject').click(); motion('eject', color)
+        check(page.evaluate('nativeHardwareCheck()'), 'All permanent meshes survive six complete record lifecycles')
+        check(not errors, 'No browser exceptions during native depth and color lifecycle checks', errors=errors)
+        (artifacts / 'occlusion.json').write_text(json.dumps({'result': 'passed', 'total': len(checks), 'checks': checks, 'samples': samples}, indent=2) + '\n')
         browser.close()
-    print(f'All {len(checks)} occlusion checks passed.')
+    print(f'All {len(checks)} native occlusion checks passed.')
 
 
 if __name__ == '__main__':

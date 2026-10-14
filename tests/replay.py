@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, RAW, PROBE, select_speed
+from studio_helpers import enter_turntable, launch_browser
 
 checks = []
 def check(ok, message):
@@ -13,7 +14,7 @@ def check(ok, message):
 def run():
     out = ROOT / 'artifacts/replay'; out.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440,'height':1300})
         page.add_init_script(PROBE)
         page.add_init_script('''window.__loads=0; const post=MessagePort.prototype.postMessage;
@@ -22,6 +23,7 @@ def run():
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
         page.goto('http://127.0.0.1:42069'); page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state = lambda: page.evaluate('turntable.state')
         repeat = page.locator('#replay-toggle')
         play = page.locator('#transport')

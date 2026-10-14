@@ -8,6 +8,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from audio_assertions import wait_for_silence
 from acceptance import PROBE, ROOT, select_speed, arm_point, groove_angle
+from studio_helpers import enter_turntable, launch_browser
 
 checks = []
 def check(condition, message):
@@ -26,13 +27,14 @@ def run():
                 f.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
                 f.writeframes(b''.join(struct.pack('<h', int(8000 * math.sin(i * 2 * math.pi * 440 / 24000))) for i in range(24000 * 5)))
             paths.append(path)
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440, 'height':1250})
         page.add_init_script(PROBE)
         errors=[]
         page.on('pageerror', lambda e:errors.append(str(e)))
         page.goto('http://127.0.0.1:42069')
         page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state=lambda:page.evaluate('turntable.state')
         click=lambda id:page.locator('#'+id).click()
         phase=lambda value:page.wait_for_function('value=>turntable.state.recordPhase===value',arg=value)
@@ -92,6 +94,8 @@ def run():
         page.evaluate('turntable.controls.customize("surface",false);turntable.controls.customize("contacts",false);turntable.controls.customize("cartridge",true)')
         check(not state()['surface'] and not state()['contacts'] and state()['cartridge'], 'Advanced feature flags remain independently controllable through the shared API')
         page.keyboard.press('Escape')
+        # Native modality intentionally remains until the 220 ms closing motion ends.
+        page.locator('#customize').wait_for(state='hidden')
         check(not page.locator('#customize').evaluate('el=>el.open'), 'Customization closes with Escape and restores the page')
         click('start-stop');page.wait_for_timeout(350)
         check(rms()>.01, 'Cartridge stage preserves source playback')

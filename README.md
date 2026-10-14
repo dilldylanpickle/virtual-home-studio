@@ -15,7 +15,7 @@ Choose an MP3 or WAV, or drop one onto the deck and play it like a record.
 
 ![Virtual Home Studio](docs/images/virtual-home-studio.png)
 
-Meet the VHS-42069, a fictional direct-drive turntable living in your browser. Audio stays local.
+Meet the VHS-42069, a fictional direct-drive turntable in a daylight Manhattan home studio. Select the deck or **Close-up** to move closer (the dust cover lifts as you approach); choose **Back to studio** or press **Escape** to pull back and it closes again. Your record keeps playing throughout. Audio stays local.
 
 ## Quick start
 
@@ -41,6 +41,7 @@ The workflow publishes only the HTML and `static/` assets. Local music stays in 
 
 ## What it does
 
+- A full-screen daylight Manhattan studio: a photoreal background plate of the room, monitors, glass table and skyline, with the live 3D turntable rendered into it. The software controls float over the scene, and the camera travels continuously into the turntable. Audio still never leaves your browser.
 - MP3/WAV playback with assisted Play or manual tonearm control.
 - **Choose Record / Replace Record** opens a compact source chooser. Pick **Local File**, or drag and drop an MP3/WAV anywhere on the page.
 - A bright blue empty-state glow highlights where to begin, with a static highlight when reduced motion is enabled.
@@ -61,6 +62,9 @@ The workflow publishes only the HTML and `static/` assets. Local music stays in 
 
 | Control | Action |
 | --- | --- |
+| Close-up / Back to studio | Header toggle between the room and close inspection; clicking the deck also moves closer. In close-up it becomes **← Back to studio** (Escape also works outside dialogs and drop previews) |
+| Hide / Show controls | In close-up, slide the slim listening bar away for a full view of the turntable, or bring it back |
+| Graphics | In **Turntable details**. Balanced by default; Performance reduces rendering cost, Cinematic increases shadow/reflection detail. Resolution steps down automatically if frames run late, but never below one device pixel per CSS pixel |
 | Play / Pause | Cue automatically / hold your place, with the same spin-up and slowdown as START/STOP |
 | Presets | Pick one of seven speed/pitch combinations, or Original to reset; the physical fader glides into place and the sound follows |
 | Repeat icon | Replay the current record after it finishes; click again to turn off |
@@ -78,13 +82,15 @@ Open **How to Play** for the visual cheat sheet and keyboard shortcuts.
 
 ## Development
 
-FastAPI serves plain HTML, CSS and JavaScript; there is no frontend build step. Chromium is the tested browser.
+FastAPI serves plain HTML, CSS and JavaScript; there is no frontend build step. The studio uses locally bundled Three.js 0.180.0 under its [MIT license](static/vendor/THREE-LICENSE.txt), with WebGL 2 rendering. If WebGL is unavailable, the accessible SVG turntable remains usable. Chromium is the tested browser.
 
 ```sh
 uv sync --group dev
 uv run --group dev playwright install chromium
 uv run --group dev python tests/acceptance.py
 ```
+
+The 3D turntable benefits from hardware acceleration. Quality settings bound pixel ratio, shadows, reflections and multisampling. The studio background plates are generated from an unpublished master with `uv run tools/make-plates.py`. Headless software rendering can be substantially slower than an accelerated browser.
 
 Keep the server running in another terminal. Acceptance checks also require `ffmpeg`; DSP tests require Node.js. See [AGENTS.md](AGENTS.md#tests) for the test catalog and development rules.
 

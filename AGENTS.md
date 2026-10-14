@@ -8,7 +8,8 @@ Virtual Home Studio is a local browser simulation of the fictional VHS-42069 dir
 
 The public turntable is the fictional **Virtual Home Studio VHS-42069**.
 
-- Keep public branding original; do not add third-party manufacturer logos, commercial model names or product photography.
+- Keep public branding original; do not add third-party manufacturer logos, commercial model names or third-party product photography.
+- The owner-approved studio background plate (master `docs/source/studio-plate-master.png`) may be shown in the wide Studio view. Ship only the generated WebP derivatives in `static/assets/`; never ship the master. The plate must not show third-party logos or commercial model names.
 - The vinyl-disc logo in `static/assets/virtual-home-studio-logo.svg` is original project-owned artwork; reuse it for hardware, header and favicon.
 - Preserve subtle monochrome equipment lettering and the restrained model designation.
 - Public screenshots belong in `docs/images/`, use generated audio with neutral metadata, and must match the current branding.
@@ -34,6 +35,12 @@ Paths below are relative to the repository root; module names are under `static/
 | `app.py` | FastAPI static server; loopback port 42069 |
 | `.github/workflows/pages.yml` | Static GitHub Pages deployment from `master`; publishes the entry page and browser assets only |
 | `static/index.html` | Physical SVG, HUD, customization and help dialogs |
+| `static/studio-view.js` / `static/studio-view.css` | Full-bleed page layout, Close-up toggle, open-area measurement for framing, canonical SVG input projection, focus and WebGL fallback |
+| `static/studio-renderer.js` | Transparent Three.js renderer for the turntable over the plate: calibrated plate camera, close-up travel, plate-derived environment, sun, shadow/contact/reflection catchers, grade, quality budgets and dynamic resolution; visual frame subscriber |
+| `static/studio-plate.js` | Studio plate camera calibration (`PLATE`) and the shared plate placement used by the DOM plate and the 3D camera |
+| `static/studio-turntable-3d.js` | Native turntable meshes and materials updated from the existing model and lifecycle presentation |
+| `tools/make-plates.py` | Derives the shipped plate WebPs from the unpublished master in `docs/source/` (`uv run tools/make-plates.py`) |
+| `static/vendor/` | Locally bundled Three.js 0.180.0 and required addons, with MIT license and source provenance |
 | `static/app.js` | `Turntable` model, bootstrap, control bindings, rendering and worklet synchronization |
 | `static/simulation-state.js` | Pure selectors for speed, contact and transport; no stored model |
 | `static/mechanics.js` | Audio-clock motor acceleration/coast integration |
@@ -65,7 +72,7 @@ Turntable.state in app.js
         ↓ pure selectors in simulation-state.js
    derived physical state
       ↙              ↘
-SVG + HUD       worklet control messages
+3D + SVG + HUD  worklet control messages
                       ↓
              PCM + motor audio clock
                       ↓ revision-tagged reports
@@ -79,6 +86,21 @@ SVG + HUD       worklet control messages
 - Reject obsolete worklet revisions and canceled operation generations.
 - Do not independently seek audio, rotate the arm or set the HUD thumb from unrelated handlers.
 - `window.turntable` is a frozen command/diagnostic facade that returns model snapshots; use commands rather than mutating returned objects.
+
+## Native Studio rendering
+
+- Keep one `Turntable` model, one audio worklet and the same mounted `#deck`. WebGL draws the visible turntable throughout studio view, travel and inspection. The transparent original SVG retains canonical controls, accessibility and pointer handling; never add a second interaction or playback model.
+- The plate (`#studio-plate`) and a transparent canvas are fixed full-viewport; header, hero and the frosted listening panel float above them. `StudioView` measures `#scene-frame` (wide) and header-to-panel (inspection), computes the plate rectangle with `placePlate()` (a close, speaker-framed default: the deck fills `PLATE.wideDeckShare` of the width, plus zoom to keep the table spot above the panel), positions the image and passes everything to `StudioRenderer.setFraming()`. The wide camera is the calibrated plate camera mapped through that same rectangle, so the deck stays on the table at every aspect ratio; change calibration only in `PLATE`, from measured plate lines. During travel the plate pushes in, blurs and dims (presentation only); it never moves with independent timing. Measurements ignore scroll. The header **Close-up** button (`#studio-focus`) is the only navigation toggle; in inspection it becomes a prominent **← Back to studio** pill. Screens ≥1440 px dock the listening panel into one slim row (`--hud-docked`) in both views, so travel never resizes it (narrower screens keep the full panel in both); **Hide controls** / **Show controls** (`#hud-hide`, `#hud-show`) slide it away (inert) for a full view of the deck or bring it back, that preference lasts for the page session, and the studio view always shows the panel. `#notice` remains the live status region, but routine narration is screen-reader only; only alerts (errors and blocked actions, `showNotice(message, error, alert)`) are visible: above the panel, in the header row during wide inspection, or above **Show controls** when the panel is hidden, never over the deck. The close-up frame follows the preference, not the travel target, so returning never resizes it mid-travel. Travel also commands the model's dust cover (`setCover`): the studio view shows it closed, inspection lifts it, and returning closes it; the native lid swings on its rear hinge toward `coverClosed` (presentation only, retargetable, immediate under reduced motion), and the SVG fallback keeps it open. The hero (`--intro-away`) and a hidden panel (`--hud-away`) follow camera progress, not the click: they leave early on the way in and return only as the studio settles. Measurements use layout offsets so the slide transform and docking never move the plate. Text over the plate relies on the top scrim plus strong text shadows; keep header, hero and Turntable details text at readable sizes and contrast. 3D print and control labels use the SVG's own positions, font sizes and baselines (one weight heavier), darken dark inks on light finishes, and sample half a mip level sharp on a matte decal so close-up lettering keeps the SVG's legibility; inspection fades the off-deck sun shadow and adds a soft overhead key.
+- `StudioView` owns navigation and input projection. Ordinary travel follows one reversible 1.65-second path: dolly first, then overhead inspection. Interrupted movement retargets from the current position. Real scene depth produces parallax; do not animate scenery independently of the camera.
+- The Three.js world uses metres: X across, Y up, +Z toward the listener. The glass desktop is Y = 0. The original input plane projects through the rendering camera at chassis height; inspection finishes with an affine orthographic projection for accurate existing SVG pointer coordinates.
+- `app.js` drives `studio.renderFrame()` after `turntable.syncPosition()` in its existing frame loop. Native meshes consume that state; renderer caches, camera progress and quality settings are visual only. Rendering must not seek, advance playback or create audio nodes.
+- During insertion/ejection only, read the existing record-lift animation's presentation transform and opacity for the native record. Keep removable media, permanent hardware, center hole and opaque label separate. Do not start another lifecycle animation or hide the spindle to approximate occlusion.
+- Hardware remains inert in wide view and during travel. The deck entrance is keyboard accessible; HUD, file handling and camera navigation remain available. Transparent controls need the visible projected focus indicator in inspection.
+- Before travel, release direct gestures and pointer captures through existing cancellation primitives. Do not stop playback, reset transport or cancel assisted/lifecycle motion. Escape dismisses dialogs, presets and file-drop previews first; reduced motion settles immediately, and page hiding finishes travel without moving focus.
+- The wide Studio view is a 2.5D composite: the photoreal background plate supplies the room, speakers, window, table and skyline, and WebGL renders only the native turntable (plus its shadow/reflection catchers) over it. Room, speakers, window and skyline need not be procedural meshes. The turntable itself stays native geometry: never substitute a screenshot or photograph of the turntable, CSS depth bands or projected SVG relief.
+- `StudioRenderer` owns the sun shadow catcher, contact shadow, fading glass reflection, plate-derived environment and grade. Keep catchers out of the reflection pass, cache unchanged shadows (VSM also draws shadow receivers into the map, so moving glass such as the dust cover neither casts nor receives), and avoid unnecessary frames while settled, offscreen or hidden. Balanced is the default; Performance and Cinematic change bounded render budgets in `QUALITY`, never model timing or audio. The Graphics selector sits in Turntable details. Rendering uses the device pixel ratio (cap 2); dynamic resolution reacts only to sustained late frames and never drops below one device pixel per CSS pixel, so print stays sharp. Print textures (deck sheets, fascia, control labels, record label, slipmat) stay at ≥4× their former density, mipmapped, with the GPU's maximum anisotropy; do not reintroduce FXAA or full-deck print atlases.
+- The monitors are part of the plate; nothing animates them. If WebGL initialization or a render operation fails, dispose the native resources and reveal the original SVG controls. Context restoration regenerates the environment map; graphics interruption must leave model/audio ownership and the shared app frame loop intact.
+- Three.js 0.180.0 and required addons are local MIT-licensed assets under `static/vendor/`. Preserve its license/provenance and relative imports. Plate images use document-relative URLs so static hosting under a repository prefix keeps working.
 
 ## Tonearm and timeline interactions
 
@@ -183,6 +205,7 @@ Use the same Python prefix or `node` with the relevant paths below. There is no 
 | Area | Browser files under `tests/` |
 | --- | --- |
 | Broad acceptance | `acceptance.py` |
+| Native Studio camera, model/audio continuity, plate composite and responsive input | `studio_view.py`, `studio_plate.py`, `studio_recovery.py` |
 | Physical controls, RPM and geometry | `controls.py`, `hardware.py`, `motor.py` |
 | Assisted transport and arm motion | `assisted.py`, `return_arm.py`, `phase2.py`, `replay.py`, `presets.py`, `preset_motion.py` |
 | Scratching, seeking and HUD input | `scratching.py`, `seeking.py`, `direct_scrub.py`, `timeline_hover.py` |
@@ -195,11 +218,14 @@ Use the same Python prefix or `node` with the relevant paths below. There is no 
 | Effects and conditions | `realism-engine.mjs`, `condition-engine.mjs` |
 | Scrub/seek quality and ownership | `seeking-engine.mjs`, `direct_scrub-engine.mjs`, `scrub-audio-comparison.mjs` |
 
+- Physical-control and top-down geometry suites use `studio_helpers.enter_turntable(page)` after navigation; HUD/media suites can exercise the default wide view. `studio_view.py` checks native camera continuity, aligned controls, focus and persistent model/worklet output; `studio_plate.py` checks plate placement and derivative selection, the calibrated vanishing point, deck spot/scale/visibility across aspect ratios, grounding pixels and print-texture sharpness settings. These checks do not establish a guaranteed frame rate or photographic fidelity.
+- Headless SwiftShader renders the full-viewport studio at only a few frames per second, below what `studio_view.py`'s camera-continuity sampling needs; run the studio suites with the GPU path where available.
+- Browser suites using `studio_helpers.launch_browser()` accept `VHS_TEST_GPU=1`, for example `VHS_TEST_GPU=1 uv run --group dev python tests/studio_view.py` (or `tests/studio_plate.py`). This opts into the local Chromium / ANGLE OpenGL / WSL Mesa D3D12 NVIDIA path without changing app quality. Headless modes cannot reach the GPU under WSL, so it uses real windows, minimized via CDP (WSLg parks them off-screen) with background throttling disabled; set `VHS_TEST_SHOW=1` to watch them; omit the variable for the normal headless launch. See `studio_helpers.launch_browser()` before using it on another graphics stack.
 - Use the bundled [short WAV](tests/fixtures/audio/short-record.wav); its [provenance/generator](tests/fixtures/audio/README.md) is included.
 - Long audio is generated temporarily by `audio_fixtures.py`; tests must not depend on personal media.
 - `artifacts/` contains disposable screenshots, reports and A/B WAVs and is ignored by Git.
 - Audio changes need output measurements and listening review; numerical assertions alone do not establish comfort.
-- Product photographs are not public assets or runtime/test dependencies. Use the original SVG and generated screenshots.
+- Third-party product photographs are not public assets or runtime/test dependencies. Use the original SVG, the approved studio plate and generated screenshots.
 
 ## Regression traps
 

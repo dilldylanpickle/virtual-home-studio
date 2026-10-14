@@ -8,6 +8,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from audio_assertions import wait_for_silence
 from acceptance import PROBE, ROOT, select_speed, set_power
+from studio_helpers import enter_turntable, launch_browser
 checks=[]
 def check(ok,message):
     assert ok,message
@@ -21,8 +22,9 @@ def run():
             f.setparams((1,2,24000,0,'NONE','not compressed'))
             one=b''.join(struct.pack('<h',int(9000*math.sin(i*2*math.pi*440/24000))) for i in range(24000))
             f.writeframes(one*24)
-        browser=p.chromium.launch();page=browser.new_page(viewport={'width':1440,'height':1250});page.add_init_script(PROBE)
+        browser=launch_browser(p);page=browser.new_page(viewport={'width':1440,'height':1250});page.add_init_script(PROBE)
         errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto('http://127.0.0.1:42069');page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state=lambda:page.evaluate('turntable.state');click=lambda id:page.locator('#'+id).click()
         rms=lambda:page.evaluate('''()=>{const a=__probe.analyser;if(!a)return 0;const d=new Float32Array(a.fftSize);a.getFloatTimeDomainData(d);return Math.sqrt(d.reduce((s,x)=>s+x*x,0)/d.length)}''')
         page.locator('#file-input').set_input_files(path);page.wait_for_function("turntable.state.recordPhase==='ready'")

@@ -7,6 +7,7 @@ import tempfile
 import wave
 
 from playwright.sync_api import sync_playwright
+from studio_helpers import launch_browser
 from acceptance import ROOT
 
 checks = []
@@ -54,7 +55,7 @@ def run():
             wav.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
             second = b''.join(struct.pack('<h', round(6000 * math.sin(i * 2 * math.pi * 440 / 24000))) for i in range(24000))
             wav.writeframes(second * 60)
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440, 'height':1250})
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
@@ -108,6 +109,7 @@ def run():
         check(state()['condition'] == 'Near Mint' and page.get_by_role('radio', name='Near Mint', exact=True).evaluate('el=>document.activeElement===el'), 'Arrow keys select and focus the next condition using native radio behavior')
         page.keyboard.press('ArrowLeft')
         check(state()['condition'] == 'Mint', 'Arrow keys can return to Mint without leaving the selector')
+        page.wait_for_function("getComputedStyle(document.querySelector('#condition input:checked + span')).backgroundColor === getComputedStyle(document.querySelector('#transport')).backgroundColor")
         check(page.locator('#condition input:checked + span').evaluate("el=>getComputedStyle(el).backgroundColor") == page.locator('#transport').evaluate("el=>getComputedStyle(el).backgroundColor"), 'Selected condition uses the shared blue software accent')
         for key, names in [('vinylColor', VINYL), ('labelColor', LABELS)]:
             prefix = 'Vinyl' if key == 'vinylColor' else 'Label'
@@ -138,6 +140,7 @@ def run():
             page.locator('#customize').evaluate('el=>el.scrollTop=0')
             page.screenshot(path=str(artifacts / f'condition-customize-{name}.png'), full_page=True)
         page.keyboard.press('Escape')
+        page.locator('#customize').wait_for(state='hidden')
         check(not page.locator('#customize').evaluate('el=>el.open'), 'Escape closes customization normally')
         page.set_viewport_size({'width':1440, 'height':1250})
         page.evaluate("turntable.controls.customize('condition', 'Fair')")

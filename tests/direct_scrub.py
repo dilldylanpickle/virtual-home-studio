@@ -3,6 +3,7 @@ import json
 import re
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, PROBE, arm_point, groove_angle, select_speed
+from studio_helpers import enter_turntable, launch_browser
 from audio_fixtures import generated_long_record
 from audio_assertions import wait_for_silence
 
@@ -51,11 +52,12 @@ FRAME_PROBE = """() => {
 def run():
     (ROOT / 'artifacts').mkdir(exist_ok=True)
     with generated_long_record() as record, sync_playwright() as p:
-        browser=p.chromium.launch()
+        browser=launch_browser(p)
         context=browser.new_context(viewport={'width':1440,'height':1500},has_touch=True)
         page=context.new_page();page.add_init_script(PROBE);page.add_init_script(PERFORMANCE_PROBE)
         errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
         page.goto('http://127.0.0.1:42069');page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state=lambda:page.evaluate('turntable.state')
         page.locator('#file-input').set_input_files(record)
         page.wait_for_function("turntable.state.recordPhase==='ready'",timeout=90000)

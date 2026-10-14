@@ -10,6 +10,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 from audio_fixtures import generated_long_record
+from studio_helpers import enter_turntable, launch_browser
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "artifacts"
@@ -101,7 +102,7 @@ PROBE = """(() => {
 def run():
     ARTIFACTS.mkdir(exist_ok=True)
     with generated_long_record() as long_record, sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = launch_browser(p)
         page = browser.new_page(viewport={"width": 1440, "height": 1150}, device_scale_factor=1)
         page.add_init_script(PROBE)
         errors, failures, requests = [], [], []
@@ -111,6 +112,7 @@ def run():
         page.on("request", lambda request: requests.append((request.method, request.url)))
         response = page.goto("http://127.0.0.1:42069")
         page.wait_for_function("window.turntable !== undefined")
+        enter_turntable(page)
         check(response.status == 200, "Local page and static resources load")
         state = lambda: page.evaluate("window.turntable.state")
         probe = lambda: page.evaluate("({active: turntable.metrics.activeSources, max: __probe.worklets, starts: __probe.starts})")
@@ -266,8 +268,9 @@ def run():
         click("target-light")
         check(page.locator("#light-beam").is_visible(), "Target light responds")
         page.locator("#turntable-details").evaluate("el => el.open = true")
+        cover_before = state()["coverClosed"]
         click("cover-toggle")
-        check(page.locator("#dust-cover").is_visible(), "Dust cover responds")
+        check(state()["coverClosed"] != cover_before and page.locator("#dust-cover").is_visible() == state()["coverClosed"], "Dust cover responds")
         page.locator("#turntable-details").evaluate("el => el.open = true")
         click("cover-toggle")
         click("arm-rest")
@@ -308,10 +311,18 @@ def run():
         click("help-open")
         check(page.locator("#help").is_visible(), "Help dialog opens")
         page.keyboard.press("Escape")
+        page.locator("#help").wait_for(state="hidden")
         check(not page.locator("#help").is_visible(), "Help dialog closes with Escape")
         page.set_viewport_size({"width": 390, "height": 844})
         page.screenshot(path=ARTIFACTS / "mobile.png", full_page=True)
         check(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Mobile layout has no horizontal overflow")
+        # A full-page capture briefly resizes the viewport; let the studio reframe first.
+        page.evaluate("""() => new Promise(resolve => {
+          let last = '', steady = 0;
+          const tick = () => { const m = document.getElementById('deck').getScreenCTM(), key = [m.a, m.d, m.e, m.f].map(v => v.toFixed(2)).join();
+            steady = key === last ? steady + 1 : 0; last = key; if (steady >= 5) resolve(); else requestAnimationFrame(tick); };
+          requestAnimationFrame(tick);
+        })""")
         seek(.4)
         check(state()["stylusRaised"], "Tonearm pointer geometry works at mobile scale")
         check(not errors and not failures, "No browser errors or failed resource requests", errors=errors, failures=failures)
