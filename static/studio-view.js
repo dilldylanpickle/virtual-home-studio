@@ -31,13 +31,20 @@ export class StudioView {
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape' || event.defaultPrevented || event.repeat || document.querySelector('dialog[open]')) return;
       if ($('preset-toggle').getAttribute('aria-expanded') === 'true') return;
+      if (this.skylineTarget) { event.preventDefault(); this.setSkyline(false); return; }
       if (this.target !== 'studio' && this.graphics) { event.preventDefault(); this.goTo('studio'); }
+    });
+    // Skyline: the UI fades and the view tilts up to the city; music keeps playing.
+    this.sky = 0; this.skylineTarget = false;
+    $('skyline-toggle').addEventListener('click', () => this.setSkyline(!this.skylineTarget));
+    document.addEventListener('click', event => {
+      if (this.skylineTarget && !event.target.closest('.masthead')) this.setSkyline(false);
     });
     // The panel and hero bound the open scene area, so their sizes also reframe the camera.
     this.resizeObserver = new ResizeObserver(() => { this.graphics?.guard(() => this.graphics.resize()); this.measure(); this.paint(); this.graphics?.guard(() => this.graphics.redraw()); });
     for (const node of [this.viewport, $('scene-frame'), $('listening-hud'), document.querySelector('.masthead')]) this.resizeObserver.observe(node);
-    this.reduced.addEventListener('change', () => { if (this.reduced.matches && this.motion) this.finish(); });
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.motion) this.finish(false); });
+    this.reduced.addEventListener('change', () => { if (this.reduced.matches) { if (this.motion) this.finish(); if (this.skyMotion) this.setSkyline(this.skylineTarget); } });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { if (this.motion) this.finish(false); if (this.skyMotion) this.setSkyline(this.skylineTarget, true); } });
     document.addEventListener('focusin', () => this.updateFocus());
     document.addEventListener('focusout', () => requestAnimationFrame(() => this.updateFocus()));
     const diagnostics = new URLSearchParams(location.search).has('studioDiagnostics') ? { capturePass: modes => this.graphics?.capturePass(modes) } : {};
@@ -50,6 +57,7 @@ export class StudioView {
 
   goTo(target) {
     if (!this.graphics || !['studio', 'turntable'].includes(target) || this.target === target) return;
+    if (this.skylineTarget) this.setSkyline(false, true);
     this.beforeMove(); const previous = this.target; this.target = target; this.onTarget(target);
     cancelAnimationFrame(this.frame);
     const active = document.activeElement, moveFocus = this.deck.contains(active) || active === $('studio-enter');
@@ -62,7 +70,7 @@ export class StudioView {
     const tick = now => {
       if (!this.motion) return;
       const { from, to, start, duration } = this.motion, progress = Math.min(1, Math.max(0, (now - start) / duration));
-      this.inspection = mix(from, to, ease(progress)); this.paint();
+      this.inspection = mix(from, to, ease(progress)); this.paint(); this.present();
       if (progress === 1) this.finish(); else this.frame = requestAnimationFrame(tick);
     };
     this.frame = requestAnimationFrame(tick);
@@ -90,13 +98,42 @@ export class StudioView {
     const wide = rect(scene.top, Math.max(scene.top + 1, panel));
     // The photographic plate and the plate camera share this one placement.
     const plate = placePlate(width, height, wide);
-    Object.assign($('studio-plate').style, { left: `${plate.x}px`, top: `${plate.y}px`, width: `${plate.width}px`, height: `${plate.height}px` });
     // Let the browser pick the derivative for the plate's real rendered width.
     $('studio-plate').sizes = `${Math.ceil(plate.width)}px`;
     // Narrower close-ups keep status messages in a row above the panel, not over the deck.
     const closeTop = header.bottom + 14, noticeRow = this.target === 'turntable' && !hidden && width < 1180 && width >= 600 ? 44 : 0;
-    this.framing = { width, height, wide, plate, close: rect(closeTop, Math.max(closeTop + 1, closeBottom - noticeRow), width < 600 ? 2 : gutter) };
+    this.framing = { width, height, wide, plate, settledPlate: plate, close: rect(closeTop, Math.max(closeTop + 1, closeBottom - noticeRow), width < 600 ? 2 : gutter) };
+    this.placeShot();
+  }
+
+  /** Skyline view tilts the camera straight up to the city: the plate slides down to
+   * top-aligned at the same scale (a pure vertical pan, no zoom or sideways drift). The
+   * plate camera maps through the same rectangle, so the deck sinks exactly with the photo. */
+  placeShot() {
+    const settled = this.framing.settledPlate, t = ease(this.sky ?? 0);
+    const plate = t === 0 ? settled : { ...settled, y: mix(settled.y, 0, t) };
+    this.framing.plate = plate;
+    Object.assign($('studio-plate').style, { left: `${plate.x}px`, top: `${plate.y}px`, width: `${plate.width}px`, height: `${plate.height}px` });
     this.graphics?.guard(() => this.graphics.setFraming(this.framing));
+  }
+
+  /** Reversible, retargetable 1.4-second tilt; immediate under reduced motion or `now`. */
+  setSkyline(on, now = false) {
+    if (on && (!this.graphics || this.target !== 'studio')) return;
+    const room = document.querySelector('.room'), hud = $('listening-hud'), toggle = $('skyline-toggle');
+    this.skylineTarget = on; cancelAnimationFrame(this.skyMotion); this.skyMotion = null;
+    if (on) { this.beforeMove(); if (hud.contains(document.activeElement)) toggle.focus({ preventScroll: true }); }
+    room.toggleAttribute('data-skyline', on); hud.inert = on || (this.hidesControls() && this.target === 'turntable');
+    $('studio-enter').disabled = on || this.view !== 'studio';
+    toggle.innerHTML = on ? '<span aria-hidden="true">←</span> Back to studio <kbd aria-hidden="true">Esc</kbd>' : 'Skyline';
+    toggle.setAttribute('aria-label', on ? 'Return to the studio view' : 'Fade the controls and look out at the skyline');
+    const from = this.sky, to = on ? 1 : 0, started = performance.now(), duration = 1400 * Math.abs(to - from);
+    const step = time => {
+      const progress = now || this.reduced.matches || !duration ? 1 : Math.min(1, (time - started) / duration);
+      this.sky = mix(from, to, progress); this.placeShot(); this.paint(); this.present();
+      this.skyMotion = progress < 1 ? requestAnimationFrame(step) : null;
+    };
+    step(started);
   }
 
   paint() {
@@ -106,8 +143,12 @@ export class StudioView {
     // Hero copy and a hidden panel follow the camera, not the target: they leave early on
     // the way in and return only as the studio view settles.
     const room = document.querySelector('.room').style;
-    room.setProperty('--intro-away', smooth(0, .3, t).toFixed(3));
+    // Skyline view fades the hero and panel as the view tilts up.
+    const sky = this.sky ?? 0;
+    room.setProperty('--intro-away', Math.max(smooth(0, .3, t), smooth(0, .5, sky)).toFixed(3));
     room.setProperty('--hud-away', (this.hidesControls() ? smooth(.1, .55, t) : 0).toFixed(3));
+    // Skyline only fades the panel in place; it never slides.
+    room.setProperty('--hud-fade', smooth(0, .6, sky).toFixed(3));
     plateStyle.transformOrigin = `${PLATE.anchor[0] * plate.width}px ${PLATE.anchor[1] * plate.height}px`;
     plateStyle.transform = t ? `scale(${mix(1, 1.45, ease(Math.min(1, t * 1.15)))})` : '';
     plateStyle.filter = t ? `blur(${(18 * Math.min(1, t / .45)).toFixed(2)}px) brightness(${mix(1, .62, t).toFixed(3)}) saturate(${mix(1, .8, t).toFixed(3)})` : '';
@@ -192,12 +233,18 @@ export class StudioView {
   useFallback(error) {
     console.warn('Studio graphics unavailable; using the original turntable controls.', error);
     this.beforeMove(); cancelAnimationFrame(this.frame); this.frame = null; this.motion = null;
+    if (this.skylineTarget) this.setSkyline(false, true);
     this.graphics?.dispose(); this.graphics = null;
     this.stage.dataset.renderer = 'fallback'; delete this.stage.dataset.graphics;
     this.view = this.target = 'turntable'; this.inspection = 1; this.onTarget(this.target);
-    $('studio-focus').hidden = true; $('studio-quality').closest('.quality-setting').hidden = true;
+    $('studio-focus').hidden = $('skyline-toggle').hidden = true; $('studio-quality').closest('.quality-setting').hidden = true;
     this.measure(); this.paint(); this.settle();
   }
+
+  /** Draw now, in the same frame as the DOM plate update. The app's frame loop runs before
+   * these motion callbacks, so waiting for it would show the deck one frame behind the
+   * photograph and make it jiggle against the table while the view moves. */
+  present() { this.graphics?.guard(() => this.graphics.redraw()); }
 
   renderFrame(state, now, audible) {
     this.graphics?.guard(() => this.graphics.update(state, now, audible));

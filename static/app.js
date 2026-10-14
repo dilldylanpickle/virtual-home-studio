@@ -8,10 +8,15 @@ import { CartridgeOutput } from './audio-chain.js';
 import { MediaSourceUI } from './media-source-ui.js';
 import { DialogMotion } from './dialog-motion.js';
 import { setupDetailsMotion } from './details-motion.js';
-import { setAnimatedText } from './ui-motion.js';
+import { setAnimatedText, marquee } from './ui-motion.js';
 import { StudioView } from './studio-view.js';
 import { COVER_SWING_MS } from './studio-turntable-3d.js';
+
+const CUE_DESCENT_MS = 1100;
+// Must match vinyl-processor.js; bump both when the engine's messages change.
+const ENGINE_VERSION = 3;
 import { RecordLifecycle } from './record-lifecycle.js';
+import { Rhythm } from './rhythm.js';
 import { setupCustomization, renderMaterial, VINYL, LABELS, FINISHES } from './record-customization.js';
 
 const $ = (id) => document.getElementById(id);
@@ -63,7 +68,7 @@ class Turntable extends EventTarget {
       platterRunning: false, speed33Pressed: false, speed45Pressed: false, transportPaused: false, replayEnabled: false, assistPhase: 'idle',
       pitchRange: 8, pitch: 0, quartzLock: true, presetMotion: null,
       recordLoaded: false, recordPresent: false, recordPhase: 'empty', grooveRegion: 'music', runInRemaining: 0, filename: '', pendingFilename: '', duration: 0, position: 0,
-      tonearmAngle: geometry.rest, stylusRaised: true, tonearmMotion: null,
+      tonearmAngle: geometry.rest, stylusRaised: true, cueDescent: null, tonearmMotion: null,
       actualRate: 0, motorActualRate: 0, motorRamping: false, rotation: 0, recordRotation: 0,
       targetLight: false, coverClosed: false,
       turntableColor: 'Silver', vinylColor: 'Black', labelColor: 'Blue', condition: DEFAULT_CONDITION, surface: true, contacts: true, wow: 0, centering: 0, cartridge: true,
@@ -83,9 +88,11 @@ class Turntable extends EventTarget {
     this.armScrubSample = null;
     // Record handling lifts a closed dust cover first; the record moves only once the lid is clear.
     this.lifecycle = new RecordLifecycle(this, { park: () => { this.liftCoverForMedia(); return this.parkForRecord(); },
-      motion: async kind => { await this.coverLift; return animateRecord(kind); }, grooves: drawGrooves, notice: showNotice, rest: geometry.rest });
-    this.powerAnimation = null;
+      clearance: () => this.coverLift, analyze: (file, decoded) => this.rhythm.analyze(file, decoded), cleared: () => this.rhythm.clear(), motion: async kind => { await this.coverLift; return animateRecord(kind); }, grooves: drawGrooves, notice: showNotice, rest: geometry.rest });
+    this.powerAnimation = null; this.cueGeneration = 0; this.cueLowering = null;
     this.presetMotion = new PresetMotion(this);
+    // Tempo analysis, beat grid and Trance Gate: state.tempo / state.gate, worklet-applied.
+    this.rhythm = new Rhythm(this);
     this.armMotion = new TonearmMotion(this, { progressAtAngle });
     this.assist = new AssistedPlayback(this, { inGroove, progressAtAngle, outerAngle: OUTER_ANGLE });
     this.metrics = { sourcesCreated: 0, activeSources: 0, maxActiveSources: 0 };
@@ -105,14 +112,19 @@ class Turntable extends EventTarget {
     if (this.enginePromise) return this.enginePromise;
     const ctx = this.audioContext();
     this.enginePromise = (async () => {
-      await ctx.audioWorklet.addModule(new URL('./vinyl-processor.js', import.meta.url));
+      // The version query keeps a browser from reusing a stale cached engine after updates.
+      await ctx.audioWorklet.addModule(new URL(`./vinyl-processor.js?v=${ENGINE_VERSION}`, import.meta.url));
       this.engine = new AudioWorkletNode(ctx, 'vinyl-processor', {
         numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
       });
       this.engine.connect(this.chain.input);
-      this.sendSettings();
+      this.sendSettings(); this.rhythm.sync();
       this.metrics.sourcesCreated++;
       this.engine.port.onmessage = ({ data }) => {
+        if (data.engine !== ENGINE_VERSION && !this.staleEngine) {
+          // An outdated cached engine ignores newer messages (such as the Trance Gate); say so.
+          this.staleEngine = true; showNotice('The audio engine is out of date. Reload the page (Ctrl+Shift+R) to use the Trance Gate.', true);
+        }
         if (data.revision !== this.revision) return;
         const ended = data.playbackEnds > this.handledPlaybackEnds;
         this.handledPlaybackEnds = data.playbackEnds;
@@ -367,13 +379,41 @@ class Turntable extends EventTarget {
     this.coverHeldOpen = true; this.setCover(false);
     this.coverLift = reducedMotion() ? null : new Promise(resolve => setTimeout(resolve, COVER_SWING_MS));
   }
+  // Damped cue: lowering is a ~1.1 s descent and contact (sound) begins at touchdown;
+  // lifting breaks contact at once. cueDescent is model-owned timing the 3D arm follows.
+  lowerStylus({ seek = false } = {}) {
+    if (!this.state.stylusRaised) return Promise.resolve(true);
+    if (this.cueLowering) return this.cueLowering;
+    const generation = ++this.cueGeneration, duration = reducedMotion() ? 0 : CUE_DESCENT_MS;
+    this.change(s => { s.cueDescent = { started: performance.now(), duration }; });
+    this.cueLowering = new Promise(resolve => {
+      const land = () => {
+        if (generation !== this.cueGeneration) { resolve(false); return; }
+        this.cueLowering = null;
+        this.change(s => { s.cueDescent = null; s.stylusRaised = false; }, seek);
+        resolve(true);
+      };
+      if (duration) setTimeout(land, duration); else land();
+    });
+    return this.cueLowering;
+  }
+  cancelCueDescent() {
+    this.cueGeneration++; this.cueLowering = null;
+    if (this.state.cueDescent) this.state.cueDescent = null;
+  }
   toggleCue() {
     this.endDirectScrub();
     this.assist.cancel();
     this.cancelSeek();
     if (this.lifecycle.busy) return;
     void this.unlockAudio();
-    this.change((s) => { s.stylusRaised = !s.stylusRaised; });
+    // A descending stylus counts as down: pressing again lifts it straight back up.
+    if (this.state.stylusRaised && !this.state.cueDescent) { void this.lowerStylus().then(landed => { if (landed) this.cueNotice(); }); return; }
+    this.cancelCueDescent();
+    this.change((s) => { s.stylusRaised = true; });
+    this.cueNotice();
+  }
+  cueNotice() {
     const s = this.state;
     if (s.stylusRaised) showNotice('Stylus raised. Position the arm silently; lower CUE when you’re ready.');
     else if (!inGroove(s.tonearmAngle)) showNotice('The stylus is outside the grooves. Move the headshell inward to reach the record.');
@@ -429,7 +469,7 @@ class Turntable extends EventTarget {
     const distance = Math.abs(this.state.tonearmAngle - geometry.rest) / (INNER_ANGLE - geometry.rest);
     showNotice('Lifting the stylus and returning the arm…');
     const completed = await this.armMotion.moveTo(geometry.rest, {
-      kind: 'returning', duration: 400 + 250 * Math.min(1, distance), settleDelay: 50,
+      kind: 'returning', duration: 900 + 500 * Math.min(1, distance), settleDelay: 120,
     });
     if (completed) showNotice('Arm returned to its rest. The platter is controlled independently.');
   }
@@ -512,6 +552,10 @@ const controls = Object.freeze({
   customize: (key, value) => turntable.customize(key, value),
   returnArm: () => turntable.returnArm(),
   eject: () => turntable.eject(), load: file => turntable.load(file),
+  setGate: patch => turntable.rhythm.setGate(patch), setManualBpm: bpm => turntable.rhythm.setManualBpm(bpm),
+  useDetectedTempo: () => turntable.rhythm.useDetected(), scaleTempo: factor => turntable.rhythm.scaleTempo(factor),
+  nudgeGrid: ms => turntable.rhythm.nudge(ms), shiftBar: () => turntable.rhythm.shiftBar(), tapTempo: () => turntable.rhythm.tap(),
+  beatGrid: () => turntable.rhythm.grid,
 });
 const hud = new ListeningHUD(controls, timeLabel);
 const mediaUI = new MediaSourceUI(controls);
@@ -524,7 +568,9 @@ window.turntable = Object.freeze({
   get outputLevel() {
     return turntable.output?.gain.value ?? 0;
   },
-  get audioDiagnostics() { return { contactCount: turntable.report?.contactCount ?? 0, popCount: turntable.report?.popCount ?? 0, crackleCount: turntable.report?.crackleCount ?? 0 }; },
+  get audioDiagnostics() { return { contactCount: turntable.report?.contactCount ?? 0, popCount: turntable.report?.popCount ?? 0, crackleCount: turntable.report?.crackleCount ?? 0, engine: turntable.report?.engine ?? null, gate: turntable.report?.gate ?? null }; },
+  // Effective beat grid (song seconds) and how many analyses ran, for tests and debugging.
+  get rhythm() { const { beats, downbeat, bpm } = turntable.rhythm.grid; return { beats: Array.from(beats), downbeat, bpm, analyses: turntable.rhythm.analyses }; },
   powerKnob: POWER_KNOB,
   geometry: Object.freeze({ ...geometry, outerAngle: OUTER_ANGLE, innerAngle: INNER_ANGLE }),
 });
@@ -808,6 +854,9 @@ document.addEventListener('keydown', (event) => {
   if (event.key === ' ') { event.preventDefault(); turntable.togglePlatter(); }
   else if (event.key.toLowerCase() === 'c') { event.preventDefault(); turntable.toggleCue(); }
   else if (event.key.toLowerCase() === 'r') { event.preventDefault(); turntable.returnArm(); }
+  // G toggles the Trance Gate; T taps tempo (and, while playing, the beat phase).
+  else if (event.key.toLowerCase() === 'g') { event.preventDefault(); turntable.rhythm.setGate({ enabled: !turntable.state.gate.enabled }); }
+  else if (event.key.toLowerCase() === 't') { event.preventDefault(); turntable.rhythm.tap(); }
 });
 
 let recordPointer = null;
@@ -926,6 +975,7 @@ const studio = new StudioView({
 });
 
 drawDetails();
+marquee($('track-name'));
 setupCustomization((key, value) => turntable.customize(key, value));
 turntable.addEventListener('change', render);
 render();

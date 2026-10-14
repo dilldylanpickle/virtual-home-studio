@@ -15,12 +15,13 @@
     <header class="masthead">
       <a class="brand" href="./" aria-label="Virtual Home Studio home"><svg class="brand-mark" viewBox="-12 -12 24 24" aria-hidden="true"><use href="./static/assets/virtual-home-studio-logo.svg#disc"/></svg> VIRTUAL HOME STUDIO</a>
       <nav class="masthead-links" aria-label="Studio">
+        <button id="skyline-toggle" class="text-button" type="button" aria-controls="studio" aria-label="Fade the controls and look out at the skyline">Skyline</button>
         <button id="studio-focus" class="text-button" type="button" aria-controls="studio">Close-up</button>
         <button id="help-open" class="text-button">How to play <span>↗</span></button>
       </nav>
     </header>
     <section class="intro">
-      <h1>Why spend $449 on a turntable when you can vibe code one for $10?</h1>
+      <h1>Why spend $449 on a turntable when you can vibe code one for <s class="price-old">$10</s><span class="price-new">&nbsp;$449 in tokens</span>?</h1>
       <p class="intro-note">Drop in a song or paste a link and play it like a record.</p>
     </section>
     <!-- Open area between the hero and the panel; the camera frames the deck here. -->
@@ -198,17 +199,43 @@
     <p id="notice" class="notice" role="status"></p>
     <button id="hud-show" class="hud-show" type="button" aria-controls="listening-hud" hidden><span aria-hidden="true">▴</span> Show controls</button>
     <section id="listening-hud" class="listening-hud" aria-label="Listening controls">
-      <button id="hud-hide" class="hud-hide" type="button" aria-controls="listening-hud">Hide controls <span aria-hidden="true">▾</span></button>
       <div class="hud-record">
         <span class="mini-record" id="mini-record" aria-hidden="true"></span>
-        <div class="hud-record-copy"><h2 id="track-name">Choose a record</h2><p id="track-meta">MP3 or WAV</p></div>
+        <div class="hud-record-copy"><div class="track-title marquee-clip"><h2 id="track-name">Choose a record</h2></div><div class="track-line"><p id="track-meta">MP3 or WAV</p><button id="tempo-chip" class="tempo-chip" type="button" aria-haspopup="true" aria-controls="preset-options" hidden></button></div></div>
       </div>
       <div class="hud-transport">
         <div class="transport-row"><button id="arm-rest" class="hud-icon" aria-label="Return arm" data-tooltip="Return arm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7H4V4M4 7a8 8 0 1 1-1 8"/></svg></button><button id="transport" class="transport-button" aria-label="Play record" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path class="play-symbol" d="m9 6 10 6-10 6Z"/><path class="pause-symbol" d="M8 6h3v12H8zM15 6h3v12h-3z"/></svg><span id="transport-label">Play</span></button><button id="replay-toggle" class="hud-icon" type="button" aria-label="Repeat track" aria-pressed="false" data-tooltip="Repeat off" title="Repeat off" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3"/></svg></button></div>
         <div class="groove-timeline"><span id="elapsed">00:00</span><div class="timeline-control"><input id="groove-progress" type="range" min="0" max="100" step=".01" value="0" aria-label="Groove position" disabled><div class="timeline-preview" aria-hidden="true"><span class="timeline-preview-marker"></span><span class="timeline-preview-time"></span></div></div><span id="duration">00:00</span></div>
         <div class="playback-presets" id="playback-presets">
-          <button id="preset-toggle" class="preset-toggle" type="button" aria-expanded="false" aria-controls="preset-options"><span class="preset-caption">Presets</span><span id="preset-name">Choose a preset</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
-          <div id="preset-options" class="preset-options" role="group" aria-label="Playback presets" hidden></div>
+          <button id="preset-toggle" class="preset-toggle" type="button" aria-expanded="false" aria-controls="preset-options"><span class="preset-caption">Presets</span><span class="preset-name-clip marquee-clip"><span id="preset-name">Choose a preset</span></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+          <div id="preset-options" class="preset-options" hidden>
+            <div class="preset-list" role="group" aria-label="Playback presets"></div>
+            <section class="rhythm-panel" aria-label="Tempo and Trance Gate">
+              <div class="rhythm-head"><h3>Tempo</h3><span id="tempo-confidence" class="confidence" data-level="none">Waiting for a record</span></div>
+              <p class="tempo-readout"><output id="tempo-bpm" aria-live="polite">—</output> <span>BPM</span> <span id="tempo-source" class="tempo-source"></span></p>
+              <div class="rhythm-row">
+                <button id="tempo-half" class="rhythm-button" type="button" aria-label="Half time">½×</button>
+                <button id="tempo-double" class="rhythm-button" type="button" aria-label="Double time">2×</button>
+                <button id="tempo-tap" class="rhythm-button" type="button" aria-describedby="tempo-tap-hint">Tap</button>
+                <label class="tempo-manual"><span class="sr-only">Manual BPM</span><input id="tempo-manual" type="number" min="40" max="250" step="1" inputmode="numeric" placeholder="BPM"></label>
+                <button id="tempo-auto" class="rhythm-button" type="button">Auto</button>
+              </div>
+              <span id="tempo-tap-hint" class="sr-only">Tap along three times or more; while the record plays your last tap also sets the beat.</span>
+              <div class="rhythm-row grid-row"><span class="rhythm-label">Grid</span>
+                <button id="grid-earlier" class="rhythm-button" type="button" aria-label="Move beat grid 10 milliseconds earlier">−10 ms</button>
+                <output id="grid-offset">0 ms</output>
+                <button id="grid-later" class="rhythm-button" type="button" aria-label="Move beat grid 10 milliseconds later">+10 ms</button>
+                <button id="grid-bar" class="rhythm-button" type="button" aria-label="Move the bar start one beat">Bar ↻</button>
+              </div>
+              <div class="rhythm-head gate-head"><h3>Trance gate</h3><label class="gate-switch"><input id="gate-enabled" type="checkbox"><span>Off</span></label></div>
+              <div id="gate-steps" class="gate-steps" role="group" aria-label="Gate pattern, 16 steps"></div>
+              <div class="rhythm-row"><label class="rhythm-label" for="gate-pattern">Pattern</label><select id="gate-pattern"></select>
+                <span class="gate-rates gate-shapes" role="radiogroup" aria-label="Gate shape"></span></div>
+              <div class="rhythm-row"><span class="rhythm-label">Rate</span><span class="gate-rates gate-rate-options" role="radiogroup" aria-label="Gate rate"></span></div>
+              <label class="rhythm-slider" for="gate-depth"><span>Depth <output id="gate-depth-value">100%</output></span><input id="gate-depth" type="range" min="0" max="1" step=".05" value="1"></label>
+              <label class="rhythm-slider" for="gate-length"><span><span id="gate-length-label">Gate length</span> <output id="gate-length-value">55%</output></span><input id="gate-length" type="range" min=".1" max="1" step=".05" value=".55"></label>
+            </section>
+          </div>
         </div>
         <p id="transport-hint">Place a record to begin</p>
       </div>
@@ -217,7 +244,7 @@
         <div class="hud-actions" role="group" aria-label="Record actions"><button id="customize-open" class="record-action" aria-haspopup="dialog" aria-label="Customize turntable and record"><span>Customize</span></button><button id="load" class="record-action needs-record" aria-label="Choose a record" aria-haspopup="dialog" aria-controls="media-source"><span>Choose a record</span></button><button id="eject" class="record-action record-action-quiet" aria-label="Eject record" disabled><span>Eject</span></button></div>
         <input id="file-input" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" hidden>
       </div>
-      <details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button><label class="quality-setting" for="studio-quality">Graphics <select id="studio-quality"><option value="performance">Performance</option><option value="balanced" selected>Balanced</option><option value="cinematic">Cinematic</option></select></label></span></div></details>
+      <div class="hud-footer"><details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button><label class="quality-setting" for="studio-quality">Graphics <select id="studio-quality"><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="cinematic" selected>Cinematic</option></select></label></span></div></details><button id="hud-hide" class="hud-hide" type="button" aria-controls="listening-hud">Hide controls <span aria-hidden="true">▾</span></button></div>
     </section>
   </main>
   <dialog id="media-source" aria-labelledby="media-source-title" aria-describedby="media-source-description">
@@ -299,6 +326,8 @@
         <div><dt><kbd>Space</kbd></dt><dd>Start / stop platter</dd></div>
         <div><dt><kbd>C</kbd></dt><dd>Raise / lower stylus</dd></div>
         <div><dt><kbd>R</kbd></dt><dd>Lift &amp; park arm</dd></div>
+        <div><dt><kbd>G</kbd></dt><dd>Trance Gate on / off</dd></div>
+        <div><dt><kbd>T</kbd></dt><dd>Tap tempo</dd></div>
       </dl>
       <details class="help-focus-keys">
         <summary>More keys for focused controls</summary>

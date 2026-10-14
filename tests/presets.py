@@ -45,7 +45,7 @@ def run():
         check(state()['rpm'] is None and page.locator('#preset-name').inner_text()=='Choose a preset', 'Empty default does not falsely claim Original or select a speed')
         toggle.focus();page.keyboard.press('Space')
         check(options.is_visible() and not state()['platterRunning'], 'Space opens presets without triggering the deck motor shortcut')
-        check(page.locator('#preset-options button > span').all_text_contents()==[x[1] for x in PRESETS], 'All seven requested names and Original appear exactly as specified')
+        check(page.locator('#preset-options .preset-list button > span').all_text_contents()==[x[1] for x in PRESETS], 'All seven requested names and Original appear exactly as specified')
         page.keyboard.press('ArrowDown');page.keyboard.press('End');page.keyboard.press('Enter')
         check(state()['rpm']==78 and page.locator('#preset-name').inner_text()=='Chipmunk' and not state()['platterRunning'], 'Keyboard selection configures empty hardware without starting it')
         options.wait_for(state='hidden')

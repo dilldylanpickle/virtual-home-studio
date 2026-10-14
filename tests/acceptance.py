@@ -165,6 +165,7 @@ def run():
         check(state()["rotation"] != initial and probe()["active"] == 0, "Platter rotates silently with arm on rest")
         seek(.35)
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         page.wait_for_timeout(450)
         check(probe()["active"] == 1 and state()["position"] > raw_duration * .35 + .25, "Lowering stylus starts one advancing audio source")
         check(rms() > .0001, "Short fixture produces a real nonzero Web Audio signal", rms=rms())
@@ -179,6 +180,7 @@ def run():
             seek(fraction)
             check(probe()["active"] == 0, "Seeking mutes the raised stylus")
             click("cue")
+            page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
             page.wait_for_timeout(70)
             check(probe()["active"] == 1, "Repeated seek resumes one source")
         click("quartz")
@@ -207,6 +209,7 @@ def run():
         click("start-stop")
         seek(.94)
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         page.wait_for_timeout(550)
         check(probe()["active"] == 0 and state()["position"] == state()["duration"] and state()["platterRunning"], "End of side stops audio but keeps the manual platter spinning")
         click("cue")
@@ -214,6 +217,7 @@ def run():
         page.keyboard.press("Home")
         check(state()["position"] < .01 and state()["stylusRaised"], "Keyboard Home returns to first groove with stylus raised")
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         page.wait_for_function("turntable.state.grooveRegion === 'music'")
         check(probe()["active"] == 1, "Record can play again after the run-in")
 
@@ -228,11 +232,13 @@ def run():
             s = seek(fraction)
             angles.append(s["tonearmAngle"])
             click("cue")
+            page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
             page.wait_for_timeout(220)
             check(probe()["active"] == 1 and state()["position"] > long_duration * fraction + .1, f"Long track plays after {fraction:.0%} seek")
         check(angles == sorted(angles), "Long-track groove positions move progressively inward")
         seek(.25)
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         click("quartz")
         pitch(12)
         select_speed(page, 45)
@@ -291,6 +297,7 @@ def run():
             check(abs(state()["duration"] - 2) < .15, "Arbitrary MP3 upload decodes")
             seek(.1)
             click("cue")
+            page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
             page.wait_for_timeout(200)
             check(rms() > .005, "Independent MP3 produces audio")
             # Decode errors leave the existing record intact.

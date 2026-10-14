@@ -291,6 +291,7 @@ def run():
         check(abs(state()['position'] / state()['duration'] - .42) < .003 and state()['stylusRaised'],
               'Direct tonearm drag on the aligned control surface selects the chosen groove and preserves CUE')
         page.locator('#cue').click()
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         start = state()['position']
         radius = 230
         def vinyl_point(degrees):

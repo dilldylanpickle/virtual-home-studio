@@ -3,7 +3,7 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 let Processor;
 const scope = {sampleRate:48000,currentTime:0, AudioWorkletProcessor:class{constructor(){this.port={postMessage(){}}}}, registerProcessor:(_,p)=>{Processor=p}};
-const source=['condition-profiles.js','simulation-state.js','mechanics.js','vinyl-effects.js','vinyl-processor.js'].map(file=>fs.readFileSync(new URL('../static/'+file,import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/^export /gm,'')).join('\n');
+const source=['condition-profiles.js','simulation-state.js','mechanics.js','vinyl-effects.js','trance-gate.js','vinyl-processor.js'].map(file=>fs.readFileSync(new URL('../static/'+file,import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/^export /gm,'')).join('\n');
 vm.runInNewContext(source+'\nglobalThis.selectSpeed=deriveSpeed;',scope);
 const near=(a,b,t=1e-8)=>assert.ok(Math.abs(a-b)<t,`${a} vs ${b}`);
 function render(e,seconds){const samples=[];for(let n=Math.round(seconds*48000);n>0;){const k=Math.min(128,n);const out=[new Float32Array(k),new Float32Array(k)];e.process([],[out]);samples.push(...out[0]);scope.currentTime+=k/48000;n-=k;}assert.ok(samples.every(Number.isFinite));return samples;}

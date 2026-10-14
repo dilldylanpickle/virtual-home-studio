@@ -65,7 +65,7 @@ NATIVE_SETUP = '''() => {
       roi={left:Math.min(...points.map(p=>p.x))-2,right:Math.max(...points.map(p=>p.x))+2,
         top:Math.min(...points.map(p=>p.y))-2,bottom:Math.max(...points.map(p=>p.y))+2};
     }
-    let visiblePixels=0,forbiddenPixels=0,holePixels=0,maxForbiddenDifference=0,minChannel=255,maxChannel=0;
+    let visiblePixels=0,nearPixels=0,forbiddenPixels=0,holePixels=0,maxForbiddenDifference=0,minChannel=255,maxChannel=0;
     for(let i=0;i<a.data.length;i+=4) {
       const x=(i/4)%a.width+.5,y=Math.floor((i/4)/a.width)+.5;
       minChannel=Math.min(minChannel,a.data[i],a.data[i+1],a.data[i+2]);
@@ -76,13 +76,16 @@ NATIVE_SETUP = '''() => {
       visiblePixels++;
       if(mode==='without-spindle') {
         const distance=Math.hypot(x-center.x,y-center.y);
+        // The spindle can only appear within the record; the translucent open lid can
+        // flicker a lone edge pixel elsewhere between the two passes.
+        if(distance<opaque+2) nearPixels++;
         if(distance<hole+2) holePixels++;
         if(snapshot.visual.recordPresent&&snapshot.visual.recordOpacity>.999&&distance>hole+2&&distance<opaque-2) {
           forbiddenPixels++;maxForbiddenDifference=Math.max(maxForbiddenDifference,difference);
         }
       }
     }
-    return {visiblePixels,forbiddenPixels,holePixels,maxForbiddenDifference,
+    return {visiblePixels,nearPixels,forbiddenPixels,holePixels,maxForbiddenDifference,
       dynamicRange:maxChannel-minChannel,hardware:nativeHardwareCheck(),visual:snapshot.visual,
       image:pair['media-visibility'],center,scale,roi};
   };
@@ -165,9 +168,9 @@ def run():
                           f'{name}: only elevated media fades at the lifecycle endpoint')
                 if (kind == 'insert' and progress == 1) or (kind == 'eject' and progress == 0):
                     check(visual['recordOpacity'] == 1 and abs(visual['recordLift']) < .00001
-                          and sample['holePixels'] > 4 and sample['holePixels'] == sample['visiblePixels'],
+                          and sample['holePixels'] > 4 and sample['holePixels'] == sample['nearPixels'],
                           f'{name}: seated spindle is exposed only through the real center hole',
-                          hole_pixels=sample['holePixels'], visible_pixels=sample['visiblePixels'])
+                          hole_pixels=sample['holePixels'], visible_pixels=sample['nearPixels'], stray_pixels=sample['visiblePixels'] - sample['nearPixels'])
             resume_motion(page)
             phase(page, 'ready' if kind == 'insert' else 'empty')
 

@@ -139,6 +139,7 @@ def run():
         page.keyboard.press("Home")
         page.keyboard.press("ArrowRight")
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         click("start-stop")
         page.wait_for_timeout(250)
         check(rms() > .01 and state()["position"] > .2, "Loaded record plays through the existing audio processor")

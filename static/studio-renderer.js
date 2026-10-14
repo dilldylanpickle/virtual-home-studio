@@ -38,7 +38,7 @@ const GRADE = Object.freeze({
 export class StudioRenderer {
   constructor(host, { onFailure = () => {} } = {}) {
     this.onFailure = onFailure;
-    this.host = host; this.quality = 'balanced'; this.frameId = 0; this.reflectionUpdates = 0;
+    this.host = host; this.quality = 'cinematic'; this.frameId = 0; this.reflectionUpdates = 0;
     this.dirty = true; this.visible = true; this.inspection = 0; this.ready = false;
     this.resolution = { scale: 1, samples: 0, slow: 0, calm: 0 };
     try {
@@ -73,7 +73,7 @@ export class StudioRenderer {
       });
       this.canvas.addEventListener('webglcontextlost', this.onContextLost);
       this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
-      this.setQuality('balanced'); this.resize();
+      this.setQuality('cinematic'); this.resize();
       this.loadPlateEnvironment().catch(() => {}).then(() => { if (!this.disposed) { this.ready = true; this.invalidate(); } });
     } catch (error) {
       this.dispose(); throw error;
@@ -309,10 +309,11 @@ export class StudioRenderer {
     this.deck.update(state, presentation ?? {}, now);
     const signature = [audible, state.rotation, state.recordRotation, state.tonearmAngle, state.stylusRaised, state.powerAngle,
       state.pitch, state.pitchRange, state.quartzLock, state.speed33Pressed, state.speed45Pressed, state.recordPresent,
-      state.recordPhase, state.turntableColor, state.vinylColor, state.labelColor, state.condition, state.targetLight, this.deck.parts.coverHinge.rotation.x].join('|');
+      state.recordPhase, state.turntableColor, state.vinylColor, state.labelColor, state.condition, state.targetLight, this.deck.parts.coverHinge.rotation.x, this.deck.parts.tonearm.position.y, this.deck.parts.cue.rotation.x].join('|');
     if (this.signature !== signature || presentation) this.dirty = true;
     this.signature = signature;
-    const shadowSignature = [state.tonearmAngle.toFixed(2), state.stylusRaised, state.recordPresent, state.pitch.toFixed(2), state.pitchRange, state.speed33Pressed, state.speed45Pressed, state.coverClosed, presentation?.recordLift.toFixed(3)].join('|');
+    // The arm's shadow follows the damped cue height and the lever, not only the contact edge.
+    const shadowSignature = [state.tonearmAngle.toFixed(2), state.stylusRaised, this.deck.parts.tonearm.position.y.toFixed(5), this.deck.parts.cue.rotation.x.toFixed(3), state.recordPresent, state.pitch.toFixed(2), state.pitchRange, state.speed33Pressed, state.speed45Pressed, state.coverClosed, presentation?.recordLift.toFixed(3)].join('|');
     if (this.shadowSignature !== shadowSignature) { this.shadowSignature = shadowSignature; this.renderer.shadowMap.needsUpdate = true; }
     if (!this.dirty || !this.visible || this.lost || document.hidden || now - (this.lastFrame || 0) < 1000 / QUALITY[this.quality].fps - 1) return;
     this.lastFrame = now; this.frameId++;

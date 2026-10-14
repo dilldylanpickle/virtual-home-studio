@@ -360,12 +360,32 @@ export function createStudioTurntable({ anisotropy = 4, printScale = 1 } = {}) {
     hinge.rotation.x = -lid.amount * HINGE.open;
   };
 
+  // Cue presentation: the arm follows the model's damped descent exactly (contact happens at
+  // its end) and rises over 300 ms when lifted; the lever itself moves quickly.
+  const CUE_HEIGHT = .008, LIFT_MS = 300, LEVER_MS = 160;
+  const cueState = { lift: null, lever: null, last: 0 };
+  const settleCue = (state, now) => {
+    const dt = cueState.last ? Math.min(100, now - cueState.last) : 0; cueState.last = now;
+    const descent = state.cueDescent, raised = Boolean(state.stylusRaised);
+    const p = descent ? (descent.duration ? clamp((now - descent.started) / descent.duration, 0, 1) : 1) : null;
+    const leverTarget = raised && !descent ? 1 : 0;
+    if (cueState.lift === null || reduceMotion.matches) { cueState.lift = descent ? 1 - p * p * (3 - 2 * p) : raised ? 1 : 0; cueState.lever = leverTarget; }
+    else {
+      if (descent) cueState.lift = Math.min(cueState.lift, 1 - p * p * (3 - 2 * p));
+      else if (raised) cueState.lift = Math.min(1, cueState.lift + dt / LIFT_MS);
+      else cueState.lift = 0;
+      const step = dt / LEVER_MS; cueState.lever += clamp(leverTarget - cueState.lever, -step, step);
+    }
+    const lift = cueState.lift, ease = lift * lift * (3 - 2 * lift);
+    arm.position.y = CUE_HEIGHT * (raised && !descent ? ease : lift);
+    cue.rotation.x = -.26 * (1 - cueState.lever);
+  };
   const setLed = (entry, lit) => { entry.material.color.set(lit ? '#dc4255' : '#572f37'); entry.material.emissiveIntensity = lit ? .55 : 0; };
   function update(state, presentation = {}, now = performance.now()) {
     if (!state) return;
     platter.rotation.y = -(Number(state.rotation) || 0) * DEG; record.rotation.y = -(Number(state.recordRotation) || 0) * DEG;
-    arm.rotation.y = -((Number(state.tonearmAngle) || REST) - REST) * DEG; arm.position.y = state.stylusRaised ? .008 : 0;
-    cue.rotation.x = state.stylusRaised ? 0 : -.26; power.rotation.y = -(Number(state.powerAngle) || 0) * DEG;
+    arm.rotation.y = -((Number(state.tonearmAngle) || REST) - REST) * DEG; settleCue(state, now);
+    power.rotation.y = -(Number(state.powerAngle) || 0) * DEG;
     fader.position.z = .106 + (clamp((Number(state.pitch) || 0) / (Number(state.pitchRange) || 8), -1, 1) + 1) * .112;
     start.position.y = TOP + (state.platterRunning ? .0055 : .007); swingCover(Boolean(state.coverClosed), now); record.visible = Boolean(state.recordPresent);
     record.position.set(CENTER.x + (Number(presentation.recordOffsetX) || 0), RECORD_Y + (Number(presentation.recordLift) || 0), CENTER.z + (Number(presentation.recordOffsetZ) || 0));

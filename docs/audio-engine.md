@@ -7,7 +7,8 @@ Selected files decode once to PCM in the browser and transfer to one persistent 
 ```mermaid
 flowchart LR
     PCM[Decoded PCM] --> Read[Motor / scratch / groove reader]
-    Read --> Wear[Groove softening / treble shelf / saturation]
+    Read --> Gate[Trance Gate: beat grid at read-head song time]
+    Gate --> Wear[Groove softening / treble shelf / saturation]
     Wear --> Width[Condition stereo width]
     Width --> Mix[Worklet output mix]
     Surface[Filtered procedural surface texture] --> Mix
@@ -62,3 +63,9 @@ On calibrated probes, Poor reduces 9.6 kHz by about **7.7 dB**, with approximate
 The musical preview `artifacts/condition-ab.wav` contains Mint → Poor → Mint, eight seconds per section. It is intended for listening as well as the automated measurements.
 
 The browser report also records audio-node routing, live playback continuity, and one playback engine/one PCM upload. Sample-level checks independently verify profile progression, harmonic restraint, stereo behavior, nonperiodic defects, and rapid parameter ramps.
+
+## Tempo analysis and Trance Gate
+
+Tempo analysis is offline (once per file, in a worker): log-magnitude spectral flux at ~86 frames/s for timing, a linear low-band flux for kick weighting, autocorrelation tempo with a log-tempo prior, 8 s local tempo windows for changing tempos, dynamic-programming beat tracking on the kick-weighted pulse, a quarter-beat phase check against kick energy, and for steady tracks a whole-BPM grid placed on the attacks. On synthetic grooves (70–174 BPM, offbeat hats and offbeat bass, 44.1 and 48 kHz) `tests/tempo-engine.mjs` measures beats within about 1 ms; a 120→136 BPM ramp is tracked within 3 ms; noise and irregular hits report near-zero confidence.
+
+The gate multiplies only the music sample (before wear and width) by a smoothed 16-step envelope. Its clock is the beat grid evaluated at the read head's song time, not wall time, which is why seeks, pauses, scratches and 45/78 RPM stay on the beat in the same test.

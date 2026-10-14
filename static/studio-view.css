@@ -14,7 +14,17 @@ body{background:#26333c}
 .masthead .text-button{font-size:13px;font-weight:600;letter-spacing:.2px;color:var(--on-scene-muted);text-shadow:var(--scene-shadow);padding:10px 0}
 .masthead .text-button:hover:not(:disabled){color:#fff}
 .masthead .text-button:focus-visible{outline-color:#fff;outline-offset:4px}
-.masthead #studio-focus[hidden]{display:none}
+.masthead #studio-focus[hidden],.masthead #skyline-toggle[hidden]{display:none}
+/* Skyline: only in the studio view; while active it is the one header control, a Back pill. */
+.room:has(#studio[data-target=turntable]) .masthead #skyline-toggle{display:none}
+.masthead-links>*{transition:opacity var(--ui-motion-panel) var(--ui-ease)}
+.room[data-skyline] .masthead-links>:not(#skyline-toggle){opacity:0;visibility:hidden}
+.room[data-skyline] .masthead #skyline-toggle{order:1}
+.masthead #skyline-toggle{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:999px}
+.masthead #skyline-toggle span{font-size:16px;line-height:1}
+.masthead #skyline-toggle kbd{font:600 10px/1 Arial,sans-serif;padding:4px 6px;border:1px solid #ffffff59;border-radius:5px;color:#e6edf3}
+.room[data-skyline] .masthead #skyline-toggle{min-height:42px;padding:0 14px 0 12px;border-color:#ffffff59;background:rgb(12 22 32 / .72);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:14px;text-shadow:none;box-shadow:0 8px 24px #05101a59}
 /* Close-up: the header toggle becomes an unmissable Back to studio pill. */
 .masthead #studio-focus{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:999px;
   transition:background-color var(--ui-motion-quick) var(--ui-ease),border-color var(--ui-motion-quick) var(--ui-ease),padding var(--ui-motion-quick) var(--ui-ease)}
@@ -26,7 +36,15 @@ body{background:#26333c}
 
 /* StudioView sets --intro-away from camera progress, so the copy returns with the studio, not at the click. */
 .intro{flex:none;margin:clamp(22px,3.4vh,44px) 0 0;pointer-events:none;color:var(--on-scene);opacity:calc(1 - var(--intro-away,0))}
-.room .intro h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(26px,calc(1.2vw + 13px),37px);line-height:1.18;letter-spacing:-.4px;color:var(--on-scene);text-shadow:var(--scene-shadow);max-width:none}
+/* Sized to the column so the full joke, punchline included, fits one desktop line. */
+.room .intro h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(22px,calc(min(100vw - 2 * var(--gutter), var(--column)) / 43),30px);line-height:1.18;letter-spacing:-.4px;color:var(--on-scene);text-shadow:var(--scene-shadow);max-width:none}
+/* The punchline: people read "$10" first; then a red line strikes it and the real price writes itself in. */
+.intro .price-old{position:relative;text-decoration:none;animation:price-fade .3s 3s both}
+.intro .price-old::after{content:'';position:absolute;left:-6%;right:-6%;top:54%;height:.1em;border-radius:2px;background:#ff1f1f;box-shadow:0 0 6px #ff1f1f99,0 1px 3px #05101a99;transform:scaleX(0);transform-origin:left;animation:price-strike .45s 2.6s cubic-bezier(.65,0,.35,1) forwards}
+.intro .price-new{display:inline-block;vertical-align:top;max-width:0;overflow:hidden;white-space:nowrap;animation:price-write .9s 3.2s steps(14,end) forwards}
+@keyframes price-strike{to{transform:scaleX(1)}}
+@keyframes price-fade{to{opacity:.62}}
+@keyframes price-write{to{max-width:8.5em}}
 .room .intro .intro-note{font-weight:500;font-size:clamp(13px,.35vw + 9px,16px);line-height:1.6;margin:clamp(8px,1.2vh,14px) 0 0;color:var(--on-scene-muted);text-shadow:var(--scene-shadow)}
 
 .scene-frame{flex:1 1 auto;min-height:clamp(220px,34vh,520px)}
@@ -36,6 +54,10 @@ body{background:#26333c}
 /* Photographic plate, positioned by StudioView from the shared calibration; only its
    presentation (push-in, focus, exposure) changes during travel. */
 #studio-plate{position:absolute;z-index:0;max-width:none;display:block;user-select:none;pointer-events:none;will-change:transform,filter}
+/* Until StudioView has placed the plate and the camera (data-ready), the image would show
+   at its natural size and then jump: keep the scene hidden and fade it in once framed. */
+#studio-plate,#studio-canvas{opacity:0;transition:opacity 450ms var(--ui-ease)}
+#studio[data-ready=true] #studio-plate,#studio[data-ready=true] #studio-canvas{opacity:1}
 /* A soft sky-side scrim keeps the header and hero legible without a box. */
 #studio::before{content:'';position:absolute;z-index:3;inset:0 0 auto;height:min(46%,520px);pointer-events:none;background:linear-gradient(to bottom,#07111bcc 0%,#07111b99 30%,#07111b4d 62%,#07111b00 100%)}
 #studio-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
@@ -72,8 +94,11 @@ body{background:#26333c}
 @media(min-width:1180px){.room:has(#studio[data-target=turntable])>.notice{top:42px;transform:translate(-50%,-50%);max-width:min(480px,calc(100% - 2 * (var(--gutter) + 330px)))}}
 
 /* Close-up: the panel can slide away for a full view of the deck. */
+/* The footer row holds Turntable details and, in close-up, Hide controls on the summary's line. */
+.hud-footer{grid-column:1/-1;display:flex;align-items:flex-start;gap:12px;border-top:1px solid var(--border)}
+.hud-footer #turntable-details{flex:1;min-width:0;border-top:0}
 .hud-hide{display:none}
-.room:has(#studio[data-target=turntable]) .hud-hide{display:inline-flex;align-items:center;gap:6px;position:absolute;right:18px;bottom:8px;z-index:1;min-height:30px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--text-secondary);font-size:12px;font-weight:600}
+.room:has(#studio[data-target=turntable]) .hud-hide{display:inline-flex;flex:none;align-items:center;gap:6px;margin-top:4px;min-height:30px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--text-secondary);font-size:12px;font-weight:600}
 .room:has(#studio[data-renderer=fallback]) .hud-hide{display:none}
 .room:has(#studio[data-target=turntable]) .hud-hide:hover{background:var(--hud-hover);color:var(--accent-hover)}
 .room>.hud-show{position:absolute;z-index:4;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 18px;border:1px solid #ffffff59;border-radius:999px;background:rgb(12 22 32 / .72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:14px;font-weight:600;box-shadow:0 8px 24px #05101a59}
@@ -81,7 +106,7 @@ body{background:#26333c}
 .room>.hud-show:hover{background:rgb(12 22 32 / .88)}
 .room>.hud-show:focus-visible{outline:2px solid #fff;outline-offset:3px}
 /* --hud-away follows camera progress during travel and animates Hide/Show once settled. */
-.room>.listening-hud{transform:translateY(calc(var(--hud-away,0) * (100% + 40px)));opacity:calc(1 - var(--hud-away,0));transition:transform var(--ui-motion-panel) var(--ui-ease),opacity var(--ui-motion-panel) var(--ui-ease)}
+.room>.listening-hud{transform:translateY(calc(var(--hud-away,0) * (100% + 40px)));opacity:calc(1 - max(var(--hud-away,0), var(--hud-fade,0)));transition:transform var(--ui-motion-panel) var(--ui-ease),opacity var(--ui-motion-panel) var(--ui-ease)}
 .room:has(#studio[data-moving=true])>.listening-hud{transition:none}
 .room[data-controls=hidden]>.listening-hud{pointer-events:none}
 
@@ -130,10 +155,11 @@ body{background:#26333c}
   .masthead .text-button{font-size:11px}
   .masthead .text-button span{display:none}
   .room:has(#studio[data-target=turntable]) .masthead #studio-focus{min-height:36px;font-size:12px;padding:0 10px}
-  .masthead #studio-focus kbd{display:none}
-  /* The Back to studio pill is wider than Close-up: let the brand wrap so How to play stays on screen. */
-  .room:has(#studio[data-target=turntable]) .masthead .brand{white-space:normal;min-width:0;line-height:1.35}
-  .room:has(#studio[data-target=turntable]) .masthead-links{flex:none;gap:12px}
+  .masthead #studio-focus kbd,.masthead #skyline-toggle kbd{display:none}
+  .room[data-skyline] .masthead #skyline-toggle{min-height:36px;font-size:12px;padding:0 10px}
+  /* Three header links (or a Back pill) leave little room: the brand may wrap so every link stays on screen. */
+  .masthead .brand{white-space:normal;min-width:0;line-height:1.35}
+  .masthead-links{flex:none;gap:12px}
   .intro{margin-top:18px}
   .room .intro h1{font-size:24px;line-height:1.2}
   .scene-frame{min-height:max(260px,40vh)}
@@ -158,4 +184,6 @@ body{background:#26333c}
   .masthead .text-button{font-size:10.5px}
   .masthead .text-button span{padding-left:5px}
 }
+@media(prefers-reduced-motion:reduce){.intro .price-old,.intro .price-old::after,.intro .price-new{animation-duration:0s;animation-delay:0s}}
+@media(prefers-reduced-motion:reduce){#studio-plate,#studio-canvas{transition:none}}
 @media(prefers-reduced-motion:reduce){#studio-enter,.masthead #studio-focus,.room>.listening-hud{transition:none}}

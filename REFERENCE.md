@@ -116,7 +116,7 @@ All printed text is canvas-rendered at ≥4× its former texel density, mipmappe
 
 ### Quality budgets
 
-Balanced is the default. Profiles change rendering cost without changing audio or simulation.
+Cinematic is the default; dynamic resolution still protects frame rate on slower GPUs. Profiles change rendering cost without changing audio or simulation.
 
 | Profile | Maximum pixel ratio | Shadow | Reflection | Multisampling |
 | --- | --- | --- | --- | --- |

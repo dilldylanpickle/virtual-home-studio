@@ -48,6 +48,7 @@ The workflow publishes only the HTML and `static/` assets. Local music stays in 
 - Presets, dialogs and expandable details open and close smoothly; reduced motion keeps them immediate.
 - 33⅓ / 45 / 78 RPM, pitch adjustment and Quartz lock.
 - Vinyl scratching, direct scrubbing and audible motor transitions.
+- Automatic BPM and beat detection (offline, cached per file) driving a beat-synced Trance Gate, with manual BPM, tap tempo, half/double time and grid nudging.
 - Eight turntable finishes, vinyl/label colors, record condition, surface texture and cartridge character.
 - Open **Customize** to change the chassis color, including Black, Red, and the default Silver. Colors stay selected through record changes within the session.
 
@@ -63,12 +64,15 @@ The workflow publishes only the HTML and `static/` assets. Local music stays in 
 | Control | Action |
 | --- | --- |
 | Close-up / Back to studio | Header toggle between the room and close inspection; clicking the deck also moves closer. In close-up it becomes **← Back to studio** (Escape also works outside dialogs and drop previews) |
+| Skyline / Back to studio | In the studio view, fade the controls and look out over the city while the music plays (Escape or a click also returns) |
 | Hide / Show controls | In close-up, slide the slim listening bar away for a full view of the turntable, or bring it back |
-| Graphics | In **Turntable details**. Balanced by default; Performance reduces rendering cost, Cinematic increases shadow/reflection detail. Resolution steps down automatically if frames run late, but never below one device pixel per CSS pixel |
+| Graphics | In **Turntable details**. Cinematic by default; Balanced and Performance reduce rendering cost. Resolution steps down automatically if frames run late, but never below one device pixel per CSS pixel |
 | Play / Pause | Cue automatically / hold your place, with the same spin-up and slowdown as START/STOP |
-| Presets | Pick one of seven speed/pitch combinations, or Original to reset; the physical fader glides into place and the sound follows |
+| Presets | Pick one of seven speed/pitch combinations, or Original to reset; the physical fader glides into place and the sound follows. The popup's right column holds Tempo and the Trance Gate |
+| BPM chip / Tempo | Each record is analyzed when it loads; the chip shows its whole-number BPM and confidence and opens the popup. Fix the grid with ½× / 2×, a typed BPM, **Tap** (or **T**), **Auto**, ±10 ms grid offset and **Bar ↻** |
+| Trance Gate | Switch it on (or press **G**), pick a pattern and rate (1/8, 1/16, 1/32), set depth and gate length, or click the 16 steps. It follows the record's beats through seeks, pauses, scratches and speed changes, and never changes speed or pitch |
 | Repeat icon | Replay the current record after it finishes; click again to turn off |
-| Tonearm / CUE | Drag to another groove / lift or lower the stylus |
+| Tonearm / CUE | Drag to another groove / lift the stylus, or lower it on the damped cue (it touches down after about a second) |
 | Vinyl | Drag with the stylus down to scratch; hold still to silence |
 | Timeline | Hover to preview, click to seek, drag to scrub |
 | 33 + 45 | Press both for 78 RPM |

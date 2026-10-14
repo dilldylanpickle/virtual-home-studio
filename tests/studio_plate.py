@@ -105,6 +105,19 @@ def run():
                   f'{width}px: {"the slim docked row fits without collisions" if docked else "narrower screens keep the full panel"}', **layout)
             row.context.close()
 
+        # Skyline: the UI fades and the view tilts up to the city; Escape returns.
+        sky = page_for(1600, 1000)
+        place = "(r => Math.round(r.top))(document.querySelector('#studio-plate').getBoundingClientRect())"
+        settled_top = sky.evaluate(place)
+        sky.locator('#skyline-toggle').click(); sky.wait_for_timeout(1700)
+        up = sky.evaluate(f"[{place}, getComputedStyle(document.querySelector('.intro')).opacity, document.querySelector('#listening-hud').inert, getComputedStyle(document.querySelector('#studio-focus')).visibility, document.querySelector('#skyline-toggle').innerText]")
+        check(up[0] == 0 and settled_top < -100 and up[1] == '0' and up[2] and up[3] == 'hidden' and 'Back to studio' in up[4],
+              'Skyline fades the controls and tilts the view up to the city', settled=settled_top, skyline=up)
+        sky.keyboard.press('Escape'); sky.wait_for_timeout(1700)
+        back = sky.evaluate(f"[{place}, getComputedStyle(document.querySelector('.intro')).opacity, document.querySelector('#listening-hud').inert]")
+        check(back == [settled_top, '1', False], 'Escape returns from the skyline to the settled studio view', back=back)
+        sky.context.close()
+
         page = page_for(1600, 1000)
         hud_height = "Math.round(document.querySelector('#listening-hud').getBoundingClientRect().height)"
         heights, lid_states = [page.evaluate(hud_height)], []

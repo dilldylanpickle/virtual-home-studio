@@ -95,7 +95,7 @@ def run():
                 click("start-stop")
             arm_seek(.5)
             click("cue")
-            page.wait_for_timeout(70)
+            page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
             check(not state()["stylusRaised"], "CUE lowers only when explicitly selected")
             # This is the user's requested behavior: no automatic lift on pointerdown/move/up.
             arm_seek(.48)
@@ -133,6 +133,7 @@ def run():
             page.mouse.up()
 
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         click("start-stop")
         grab()
         before, after, rates, levels = turn(170, -60)

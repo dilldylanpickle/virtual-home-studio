@@ -79,7 +79,7 @@ def run():
             check(all(abs(f['angle']-groove_angle(g,f['position']/start['duration']))<.00002 for f in moving if f['angle']>=g['outerAngle']),label+': stylus progress follows physical pivot geometry')
             check(all(f['raised'] and not f['contact'] for f in frames) and all(f['rms']<1e-6 for f in frames if f['elapsed']>400),label+': suspended arm has no music or condition audio')
             check(trace['contactDelta']==1,label+': uses exactly one existing stylus-release sound')
-            check(500<=frames[-1]['elapsed']<=950,label+': complete mechanical action takes 500–900 ms plus a frame')
+            check(1300<=frames[-1]['elapsed']<=1950,label+': complete mechanical action (lift, weighted glide, settle) takes 1.3–1.9 s plus a frame')
             check(end['tonearmMotion'] is None and end['tonearmAngle']==g['rest'] and end['position']==0 and end['stylusRaised'],label+': exact raised rest geometry and empty groove position')
             check(all(f['running'] and abs(f['motor']-start['motorActualRate'])<.002 for f in frames),label+': independently spinning motor keeps its RPM')
             check(all(end[key]==start[key] for key in preserved),label+': unrelated hardware and customization settings remain intact')

@@ -147,6 +147,7 @@ def run():
         set_power(page, True)
         check(state()["power"] and not state()["platterRunning"], "Power knob turns on without starting the motor")
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         check(not state()["stylusRaised"] and pressed("cue"), "Physical cue lever lowers the stylus")
         click("cue")
         check(state()["stylusRaised"] and not pressed("cue"), "Physical cue lever raises the stylus")

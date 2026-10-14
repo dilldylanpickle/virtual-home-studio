@@ -54,7 +54,7 @@ def run():
         g=page.evaluate('turntable.geometry');s=state()
         check(g['rest']<s['tonearmAngle']<g['outerAngle'] and s['stylusRaised'], 'Assisted arm travels continuously around its pivot with the stylus raised')
         wait_play()
-        check(time.monotonic()-started<4, 'The easy path reaches music within a few seconds')
+        check(time.monotonic()-started<6, 'The easy path reaches music within a few seconds')
         page.wait_for_function('turntable.state.position>1.6')
         rms=page.evaluate('''()=>{const a=__probe.analyser,d=new Float32Array(a.fftSize);a.getFloatTimeDomainData(d);return Math.sqrt(d.reduce((s,x)=>s+x*x,0)/d.length)}''')
         check(rms>.001 and state()['stylusContact'], 'Short fixture produces real audio after automatic contact and run-in')

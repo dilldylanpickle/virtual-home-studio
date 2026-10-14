@@ -61,7 +61,9 @@ def run():
         page.mouse.move(*arm_point(page,g,state()['tonearmAngle']));page.mouse.down()
         page.mouse.move(*arm_point(page,g,groove_angle(g,.003)),steps=8);page.mouse.up()
         check(state()['position']==0, 'Hand placement near the outer edge enters the run-in area')
-        click('cue');click('start-stop');page.wait_for_timeout(90)
+        click('cue')
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
+        click('start-stop');page.wait_for_timeout(90)
         check(0 < state()['motorActualRate'] < 1 and state()['motorRamping'], 'START accelerates through intermediate velocities')
         check(state()['grooveRegion']=='run-in' and state()['position']==0, 'Outer edge enters the virtual run-in before music')
         page.wait_for_timeout(260)
@@ -109,11 +111,11 @@ def run():
         click('cue');page.wait_for_timeout(250)
         wait_for_silence(page, 1e-6)
         check(rms()<.000001 and page.evaluate('turntable.audioDiagnostics.contactCount')==count+1, 'Actual stylus separation triggers one lift and then silence')
-        click('cue');page.wait_for_timeout(250)
+        click('cue');page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent');page.wait_for_timeout(250)  # Damped cue: contact at touchdown.
         check(page.evaluate('turntable.audioDiagnostics.contactCount')==count+2, 'Actual groove contact triggers one needle drop')
         click('arm-rest');page.wait_for_function('turntable.state.tonearmMotion===null && turntable.state.tonearmAngle===turntable.geometry.rest')
         count=page.evaluate('turntable.audioDiagnostics.contactCount')
-        click('cue');page.wait_for_timeout(250)
+        click('cue');page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent');page.wait_for_timeout(250)
         wait_for_silence(page, 1e-6)
         check(rms()<.000001 and page.evaluate('turntable.audioDiagnostics.contactCount')==count, 'Cueing over the arm rest creates no false contact or surface sound')
 

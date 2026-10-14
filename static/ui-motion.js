@@ -34,6 +34,28 @@ preferences.addEventListener('change', () => {
   if (preferences.matches) for (const animation of activeTextAnimations) animation.cancel();
 });
 
+/** A single-line label too long for its box scrolls as a seamless loop: a copy of the
+ * text follows after a gap (CSS ::after from data-loop) and the track moves by exactly one
+ * text-plus-gap width. Reduced motion keeps the ellipsis; the tooltip has the full text. */
+export function marquee(node) {
+  const GAP = 48, SPEED = 38;
+  const update = () => {
+    node.classList.remove('marquee'); node.title = node.textContent;
+    if (node.scrollWidth - node.clientWidth <= 1 || preferences.matches) return;
+    const distance = node.scrollWidth + GAP;
+    node.dataset.loop = node.textContent;
+    node.style.setProperty('--marquee-gap', `${GAP}px`);
+    node.style.setProperty('--marquee-distance', `${distance}px`);
+    node.style.setProperty('--marquee-duration', `${(distance / SPEED).toFixed(2)}s`);
+    node.classList.add('marquee');
+  };
+  // Observe the clipping box, not the label: the running ticker changes the label's own width.
+  new ResizeObserver(update).observe(node.parentElement);
+  new MutationObserver(update).observe(node, { childList: true, characterData: true, subtree: true });
+  preferences.addEventListener('change', update);
+  update();
+}
+
 /** Keep a popup painted while it exits, but make it inert as soon as it closes. */
 export class PopupMotion {
   constructor(node, place = () => {}) {
