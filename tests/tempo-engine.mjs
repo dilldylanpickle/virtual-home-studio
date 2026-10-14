@@ -88,7 +88,7 @@ let Processor; const scope = {
   AudioWorkletProcessor: class { constructor() { this.port = { postMessage: () => {} }; } },
   registerProcessor: (_name, implementation) => { Processor = implementation; },
 };
-vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'vinyl-processor.js']
+vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'vinyl-processor.js']
   .map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n'), scope);
 const engine = new Processor(), rate = 48000;
 engine.command({ type: 'settings', settings: { surface: false, contacts: false } });
@@ -179,3 +179,106 @@ console.log('PASS Trance Gate gates music only; vinyl surface noise passes throu
   for (const name of ['Push', 'Pulse', 'Bounce', 'Breathe', 'Trance', 'Gallop']) { const m = gateMakeup(styleSettings(name)); assert.ok(m >= 1 && m <= 1.19, `${name} make-up gain within +1.5 dB`); }
 }
 console.log('PASS Trance Gate stays bright: full duck for lows, partial for highs, kick attack kept, bounded make-up gain');
+
+// --- Key detection and hardstyle mode ---------------------------------------------------------
+{
+  const { analyzeKey } = await import('../static/tempo-analysis.js');
+  const midi = n => 440 * 2 ** ((n - 69) / 12), sr = 44100;
+  const progression = chords => { const out = new Float32Array(sr * 24);
+    for (let i = 0; i < out.length; i++) { const c = chords[Math.floor(i / (sr * 2)) % chords.length], t = i / sr; let v = 0;
+      c.forEach((n, j) => { v += (j ? .15 : .25) * Math.sin(2 * Math.PI * midi(j ? n : n - 12) * t) + .05 * Math.sin(4 * Math.PI * midi(n) * t); }); out[i] = v; }
+    return out; };
+  for (const [tonic, mode, chords] of [[0, 'major', [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]]], [9, 'minor', [[57, 60, 64], [62, 65, 69], [64, 68, 71], [57, 60, 64]]],
+    [4, 'minor', [[64, 67, 71], [60, 64, 67], [62, 66, 69], [59, 63, 66], [64, 67, 71]]], [6, 'major', [[66, 70, 73], [71, 75, 78], [73, 77, 80], [66, 70, 73]]]]) {
+    const key = analyzeKey(progression(chords), sr);
+    assert.ok(key.tonic === tonic && key.mode === mode, `key detection: expected ${tonic} ${mode}, got ${key.tonic} ${key.mode}`);
+  }
+  console.log('PASS key detection: C major, A minor, E minor and F♯ major progressions');
+
+  // Hardstyle: a kick on each beat while playing forward, tuned to the root, song ducked.
+  const { kickTune, kitLanes: lanesOf } = await import('../static/tempo-grid.js');
+  const kickSteps = name => lanesOf(name).steps, floor = kickSteps('Classic');
+  const kickEngine = (motorRate, settings, music = 0, seconds = 12) => {
+    const e = new Processor();
+    e.command({ type: 'settings', settings: { surface: false, contacts: false } });
+    e.command({ type: 'load', channels: [new Float32Array(rate * seconds).fill(music)], sampleRate: rate });
+    e.command({ type: 'beats', beats: Float64Array.from({ length: Math.ceil(seconds * 2) + 2 }, (_, i) => .2 + i * period), downbeat: 0 });
+    if (settings) e.command({ type: 'kick', settings });
+    e.command({ type: 'control', revision: 1, enabled: true, contact: true, motorRate, holding: false, immediate: true, position: 1 / seconds });
+    return e;
+  };
+  const capture = (e, seconds) => { const out = [], times = []; for (let left = Math.round(seconds * rate); left > 0; left -= 128) { const o = [new Float32Array(128), new Float32Array(128)]; e.process([], [o]); for (const v of o[0]) out.push(v); times.push(e.position / rate); } return { out, times }; };
+  const tune = kickTune('auto', { tonic: 9 });
+  const kicking = kickEngine(1, { enabled: true, volume: .7, drive: .6, tail: .5, tune, steps: floor, duck: .6 });
+  capture(kicking, .05); const before = kicking.kick.fired ?? 0;
+  const { out } = capture(kicking, 3);
+  const fired = (kicking.kick.fired ?? 0) - before;
+  assert.ok(fired === 6, `one kick per beat while playing (${fired} in 3 s at 120 BPM)`);
+  // Tail pitch: zero crossings 150–400 ms after a kick.
+  // Window 120–320 ms after the kick: past the click, before the next kick even at 45 RPM.
+  const start = Math.round(rate * .12), span = Math.round(rate * .2); let crossings = 0;
+  const kickStart = out.findIndex(v => Math.abs(v) > .2);
+  for (let i = kickStart + start; i < kickStart + start + span; i++) if (out[i - 1] <= 0 && out[i] > 0) crossings++;
+  near(crossings / (span / rate), tune, tune * .08, 'kick tail sits on the tuned root (A ≈ 55 Hz)');
+  const fast = kickEngine(1.35, { enabled: true, volume: .7, drive: .6, tail: .5, tune, steps: floor, duck: .6 });
+  capture(fast, .05); const fastOut = capture(fast, 1.5).out, fastStart = fastOut.findIndex(v => Math.abs(v) > .2); let fastCrossings = 0;
+  for (let i = fastStart + start; i < fastStart + start + span; i++) if (fastOut[i - 1] <= 0 && fastOut[i] > 0) fastCrossings++;
+  near(fastCrossings / (span / rate), tune * 1.35, tune * .12, 'at 45 RPM the kick retunes with the record');
+  const half = kickEngine(1, { enabled: true, volume: .7, drive: .6, tail: .5, tune, steps: kickSteps('Half time'), duck: .6 });
+  capture(half, 3.05); assert.equal(half.kick.fired, 3, 'half time fires every other beat');
+  // Build ("do do do do do do do dodo do"): 8ths with a double at the bar's end = 9 per bar.
+  const build = kickEngine(1, { enabled: true, volume: .7, drive: .6, tail: .5, tune, steps: kickSteps('Build'), duck: .6 });
+  capture(build, .17); const buildBefore = build.kick.fired ?? 0; capture(build, 2);
+  assert.equal((build.kick.fired ?? 0) - buildBefore, 9, 'the Build kick bar fires 9 kicks per bar');
+  const stopped = kickEngine(0, { enabled: true, volume: .7, tune, steps: floor }); capture(stopped, 2); assert.ok(!stopped.kick.fired, 'no kicks while the record is stopped');
+  const seeking = kickEngine(1, { enabled: true, volume: .7, tune, steps: floor });
+  seeking.command({ type: 'control', revision: 2, enabled: true, contact: true, motorRate: 1, holding: false, immediate: true, seekTarget: .9, seekDuration: 1.2 });
+  capture(seeking, 1); assert.ok(!seeking.kick.fired, 'seeking across beats fires no kicks');
+  const ducked = kickEngine(1, { enabled: true, volume: .7, tune, steps: floor, duck: .6 }, .5); capture(ducked, .25); // 50 ms after the 1.2 s kick
+  assert.ok(ducked.kick.duck > .1, `the song ducks under each kick (${ducked.kick.duck.toFixed(2)})`);
+  console.log('PASS hardstyle kick bar: four on the floor, half time and Build fire on their 16ths; tuned to the root, retunes at 45 RPM, none when stopped or seeking, song ducks');
+  const off = kickEngine(1, { enabled: false, volume: .7, tune }, .3), plain = kickEngine(1, null, .3);
+  const a = capture(off, 1).out, b = capture(plain, 1).out;
+  assert.equal(Math.max(...a.map((v, i) => Math.abs(v - b[i]))), 0, 'with hardstyle off the output is unchanged');
+  console.log('PASS hardstyle off: output identical');
+
+  // Kit: claps on 2 and 4, open hats on the offbeats, crashes every 8 bars; drops build, pause, land.
+  const kitLanes = lanesOf;
+  const kitSettings = (extra = {}) => ({ enabled: true, volume: .7, drive: .6, tail: .5, tune, ...kitLanes('Classic'), crashEvery: 8, duck: .6, ...extra });
+  const kit = kickEngine(1, kitSettings());
+  capture(kit, .17); const at = { ...kit.kick }; capture(kit, 2);   // one bar at 120 BPM
+  assert.ok(kit.kick.claps - at.claps === 2 && kit.kick.hats - at.hats === 4 && kit.kick.fired - at.fired === 4, `Classic bar: 4 kicks, 2 claps, 4 hats (${kit.kick.fired - at.fired}/${kit.kick.claps - at.claps}/${kit.kick.hats - at.hats})`);
+  const long = kickEngine(1, kitSettings(), 0); capture(long, 9.5);
+  assert.ok(long.kick.crashes >= 1 && long.kick.crashes <= 2, `crash on bar 1 of every 8 (${long.kick.crashes} in ~5 bars)`);
+  console.log('PASS hardstyle kit: kick, clap and hat lanes, crash every 8 bars');
+  const dropping = kickEngine(1, kitSettings({ horn: true }), .5); capture(dropping, .1);
+  dropping.command({ type: 'drop' });
+  const startBar = Math.floor((dropping.gate.beat - dropping.gate.downbeat) / 4);
+  let pauseGain = 1, built = { kicks: 0 }, landed = null;
+  const before2 = { ...dropping.kick };
+  for (let block = 0; block < Math.round(rate * 5 / 128); block++) {
+    const o = [new Float32Array(128), new Float32Array(128)]; dropping.process([], [o]);
+    const bar = Math.floor((dropping.gate.beat - dropping.gate.downbeat) / 4), inBar = ((dropping.gate.beat - dropping.gate.downbeat) / 4) % 1;
+    if (bar === startBar + 1 && inBar > .8) pauseGain = Math.min(pauseGain, dropping.kick.musicGain);
+    if (bar === startBar + 1 && inBar < .74) built.kicks = dropping.kick.fired - before2.fired;
+    if (bar === startBar + 2 && inBar > .05 && !landed) landed = { crashes: dropping.kick.crashes - before2.crashes, horns: dropping.kick.horns - before2.horns };
+  }
+  assert.ok(dropping.kick.drops === 1 && built.kicks >= 11, `drop build rolls the kick in sixteenths (${built.kicks})`);
+  assert.ok(pauseGain < .3, `the beat before the drop pauses the music (${pauseGain.toFixed(2)})`);
+  assert.ok(landed && landed.crashes >= 1 && landed.horns === 1, `the drop lands with a crash and the air horn (${JSON.stringify(landed)})`);
+  const random = kickEngine(1, kitSettings({ drops: true, seed: 3 }), 0, 80); capture(random, 70);
+  const calm = kickEngine(1, kitSettings({ drops: false }), 0, 80); capture(calm, 70);
+  assert.ok(random.kick.drops >= 1 && !calm.kick.drops, `random drops happen at phrase ends only when switched on (${random.kick.drops})`);
+  console.log('PASS hardstyle drops: build, one-beat pause, crash + air horn landing; random drops on phrase ends');
+
+  // Kick sounds: each renders clean and bounded; Techno drive rumbles between kicks; Rawstyle screeches.
+  const sound = name => { const e = kickEngine(1, { enabled: true, volume: 1, drive: .6, tail: .5, tune, steps: floor, sound: name, duck: .6 }); capture(e, .16); return capture(e, 2).out; };
+  const between = out => { const k = out.findIndex(v => Math.abs(v) > .2); let sum = 0; for (let i = k + Math.round(rate * .33); i < k + Math.round(rate * .45); i++) sum += out[i] * out[i]; return sum; };
+  const rendered = Object.fromEntries(['euphoric', 'raw', 'techno', 'gabber'].map(name => [name, sound(name)]));
+  for (const [name, out] of Object.entries(rendered)) assert.ok(out.every(Number.isFinite) && Math.max(...out.map(Math.abs)) < 1.17, `${name} kick renders clean and bounded by the kit bus clipper`);
+  assert.ok(between(rendered.techno) > between(rendered.gabber) * 10, 'Techno drive rumbles between kicks');
+  const power = (x, f) => { const w = 2 * Math.PI * f / rate, c = 2 * Math.cos(w); let a = 0, b = 0; for (const v of x) { const y = v + c * a - b; b = a; a = y; } return a * a + b * b - c * a * b; };
+  const band900 = out => power(out.slice(0, Math.round(rate * .4)), 900);
+  assert.ok(band900(rendered.raw) > band900(rendered.euphoric) * 1.5, 'Rawstyle adds its nasal ~900 Hz screech');
+  console.log('PASS kick sounds: Euphoric, Rawstyle (screech), Techno drive (rumble) and Gabber render clean and distinct');
+}

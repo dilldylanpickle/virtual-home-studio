@@ -6,7 +6,7 @@
  * dynamic-programming beat tracking (Ellis 2007) → sub-frame refinement → a constant
  * grid fit when the tempo is steady → downbeat phase from low-band (kick) onsets. */
 // Bump when results change, so cached analyses from older versions are recomputed.
-export const ANALYSIS_VERSION = 2;
+export const ANALYSIS_VERSION = 3;
 
 const TARGET_RATE = 22050, FRAME = 1024, HOP = 256;
 // A spectral-flux peak at frame f marks an attack ~0.72 frames after the frame's start
@@ -109,6 +109,43 @@ function bestPeriod(onset, start, end, fps, minBpm, maxBpm, centerBpm, octaveWid
   return { period: best + shift, clarity: bestScore > 0 ? (bestScore - mean) / bestScore : 0 };
 }
 
+// Krumhansl–Kessler key profiles (major, minor), tonic first.
+const MAJOR_PROFILE = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+const pearson = (a, b) => {
+  const ma = a.reduce((s, v) => s + v, 0) / a.length, mb = b.reduce((s, v) => s + v, 0) / b.length;
+  let num = 0, da = 0, db = 0; for (let i = 0; i < a.length; i++) { num += (a[i] - ma) * (b[i] - mb); da += (a[i] - ma) ** 2; db += (b[i] - mb) ** 2; }
+  return da && db ? num / Math.sqrt(da * db) : 0;
+};
+
+/** Song key from a long-window chroma profile (100–2000 Hz, 4096-point frames every ~0.2 s)
+ * correlated with the 24 rotated key profiles. Returns tonic pitch class (0 = C), mode and a
+ * confidence (margin of the best key over the runner-up). */
+export function analyzeKey(mono, sampleRate) {
+  const factor = Math.max(1, Math.round(sampleRate / TARGET_RATE)), rate = sampleRate / factor, size = 4096, hop = 4096;
+  const length = Math.floor(mono.length / factor), signal = new Float32Array(length);
+  for (let i = 0; i < length; i++) { let sum = 0; for (let k = 0; k < factor; k++) sum += mono[i * factor + k]; signal[i] = sum / factor; }
+  const bins = size / 2, window = Float32Array.from({ length: size }, (_, i) => .5 - .5 * Math.cos(2 * Math.PI * i / size));
+  const cos = Float64Array.from({ length: bins }, (_, k) => Math.cos(2 * Math.PI * k / size)), sin = Float64Array.from({ length: bins }, (_, k) => Math.sin(2 * Math.PI * k / size));
+  const real = new Float64Array(size), imag = new Float64Array(size), buffer = new Float32Array(size), chroma = new Float64Array(12);
+  const lowBin = Math.ceil(100 * size / rate), highBin = Math.min(bins - 1, Math.floor(2000 * size / rate));
+  const pitchClass = new Int8Array(bins).fill(-1);
+  for (let k = lowBin; k <= highBin; k++) pitchClass[k] = ((Math.round(12 * Math.log2(k * rate / size / 440)) + 9) % 12 + 12) % 12;
+  for (let offset = 0; offset + size <= length; offset += hop) {
+    for (let i = 0; i < size; i++) buffer[i] = signal[offset + i] * window[i];
+    fftMagnitudes(buffer, real, imag, cos, sin, Math.log2(size));
+    for (let k = lowBin; k <= highBin; k++) chroma[pitchClass[k]] += Math.sqrt(Math.hypot(real[k], imag[k]));
+  }
+  const scores = [];
+  for (let tonic = 0; tonic < 12; tonic++) {
+    const rotated = Array.from({ length: 12 }, (_, i) => chroma[(i + tonic) % 12]);
+    scores.push({ tonic, mode: 'major', score: pearson(rotated, MAJOR_PROFILE) }, { tonic, mode: 'minor', score: pearson(rotated, MINOR_PROFILE) });
+  }
+  scores.sort((a, b) => b.score - a.score);
+  const [best, next] = scores;
+  return { tonic: best.tonic, mode: best.mode, confidence: Math.max(0, Math.min(1, (best.score - next.score) * 8 + best.score * .4)) };
+}
+
 const median = values => { const sorted = [...values].sort((a, b) => a - b); return sorted.length ? sorted[sorted.length >> 1] : 0; };
 
 /** Full analysis. Returns beat times (seconds), tempo, confidence (0–1), downbeat phase
@@ -118,7 +155,7 @@ export function analyzeTempo(mono, sampleRate, { minBpm = 60, maxBpm = 200, fit 
   const toFrame = time => Math.round((time - lag) * fps);
   const peakNear = (envelope, time) => { const f = toFrame(time); let peak = 0; for (let k = f - 2; k <= f + 2; k++) peak = Math.max(peak, envelope[k] ?? 0); return peak; };
   const n = onset.length, duration = mono.length / sampleRate;
-  if (n < fps * 4) return { version: ANALYSIS_VERSION, bpm: 0, confidence: 0, beats: [], downbeat: 0, varies: false, duration };
+  if (n < fps * 4) return { version: ANALYSIS_VERSION, bpm: 0, confidence: 0, beats: [], downbeat: 0, varies: false, duration, key: analyzeKey(mono, sampleRate) };
   // Tempo uses full-band plus kick-band onsets: dense hats correlate at every 16th-note lag,
   // so the kick's periodicity is what separates the beat from 3/4- or 3/2-beat lags.
   const pulse = Float32Array.from(onset, (value, i) => value + 1.5 * low[i]);
@@ -236,6 +273,6 @@ export function analyzeTempo(mono, sampleRate, { minBpm = 60, maxBpm = 200, fit 
   const sorted = Float32Array.from(onset).sort(), spikes = sorted[Math.floor(sorted.length * .99)];
   const impulsive = Math.max(0, Math.min(1, (spikes - 2) / 1.5));
   const confidence = Math.max(0, Math.min(1, (periodicity - .05) / .3)) * regularity * impulsive;
-  return { version: ANALYSIS_VERSION, bpm, confidence, beats, downbeat, varies, duration,
+  return { version: ANALYSIS_VERSION, bpm, confidence, beats, downbeat, varies, duration, key: analyzeKey(mono, sampleRate),
     tempo: local.map((item, i) => ({ time: item.center / fps, bpm: 60 * fps / smoothed[i] })) };
 }

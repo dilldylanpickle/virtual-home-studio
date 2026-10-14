@@ -116,3 +116,33 @@ export function tapBpm(times) {
 export function confidenceLabel(confidence) {
   return confidence >= .7 ? 'High' : confidence >= .4 ? 'Medium' : 'Low';
 }
+
+/** Hardstyle mode: a synthesized kick on the beat grid tuned to the song's root note. */
+/** Hardstyle kit presets: one bar of 16ths per lane (kick, clap on 2 and 4, open hats on the
+ * offbeats). "Build" is the do-do-do… do-do do hardstyle build. */
+const BACKBEAT = '....x.......x...', OFFBEATS = '..x...x...x...x.';
+export const KIT_PATTERNS = Object.freeze({
+  Classic: { kick: 'x...x...x...x...', clap: BACKBEAT, hat: OFFBEATS },
+  Build: { kick: 'x.x.x.x.x.x.x.xx', clap: BACKBEAT, hat: OFFBEATS },
+  Gallop: { kick: 'x..x..x.x..x..x.', clap: BACKBEAT, hat: OFFBEATS },
+  Roll: { kick: 'xxxxxxxxxxxxxxxx', clap: '................', hat: '................' },
+  'Half time': { kick: 'x.......x.......', clap: '........x.......', hat: OFFBEATS },
+});
+export const KIT_LANES = Object.freeze(['kick', 'clap', 'hat']);
+const toSteps = text => [...text].map(step => step === 'x');
+export const kitLanes = name => { const kit = KIT_PATTERNS[name] ?? KIT_PATTERNS.Classic; return { steps: toSteps(kit.kick), clap: toSteps(kit.clap), hat: toSteps(kit.hat) }; };
+export const kitName = kick => Object.keys(KIT_PATTERNS).find(name => {
+  const kit = kitLanes(name); return ['steps', 'clap', 'hat'].every(lane => kit[lane].every((on, i) => on === Boolean(kick[lane]?.[i])));
+}) ?? 'Custom';
+/** Kick sounds by hard dance school; the synthesis lives in hardstyle.js (KICK_SOUNDS). */
+export const KIT_SOUNDS = Object.freeze({ euphoric: 'Euphoric', raw: 'Rawstyle', techno: 'Techno drive', gabber: 'Gabber' });
+export const DEFAULT_KICK = Object.freeze({ enabled: false, ...kitLanes('Classic'), sound: 'euphoric', crashEvery: 8, drops: false, horn: false, volume: .7, drive: .6, tail: .5, tune: 'auto' });
+export const KEY_NAMES = Object.freeze(['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B']);
+export const keyLabel = key => key ? `${KEY_NAMES[key.tonic]} ${key.mode}` : '';
+/** Kick tail frequency (Hz): the chosen or detected root, in the 41–78 Hz hardstyle range
+ * (E1–E♭2). 'auto' uses the detected key; '0'…'11' pick a root (0 = C). */
+export function kickTune(choice, detected) {
+  const tonic = /^(?:[0-9]|1[01])$/.test(String(choice)) ? Number(choice) : detected?.tonic ?? 9;
+  const midi = 28 + ((tonic - 4) % 12 + 12) % 12;
+  return 440 * 2 ** ((midi - 69) / 12);
+}

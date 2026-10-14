@@ -1,5 +1,5 @@
 import { ANALYSIS_VERSION } from './tempo-analysis.js';
-import { BPM_RANGE, DEFAULT_GATE, DEFAULT_TEMPO, GATE_RATES, GATE_SHAPES, GATE_STEPS, MIN_CONFIDENCE, effectiveGrid, gateCycle, gateMakeup, patternSteps, styleSettings, tapBpm } from './tempo-grid.js';
+import { BPM_RANGE, DEFAULT_GATE, DEFAULT_KICK, DEFAULT_TEMPO, GATE_RATES, GATE_SHAPES, GATE_STEPS, KIT_PATTERNS, KIT_SOUNDS, MIN_CONFIDENCE, effectiveGrid, gateCycle, gateMakeup, kickTune, kitLanes, patternSteps, styleSettings, tapBpm } from './tempo-grid.js';
 
 const CACHE_PREFIX = 'vhs-tempo:', CACHE_INDEX = 'vhs-tempo-index', CACHE_LIMIT = 40;
 const storage = {
@@ -17,7 +17,8 @@ export class Rhythm {
     this.deck = deck; this.analysis = null; this.grid = { beats: new Float64Array(0), downbeat: 0, bpm: 0 };
     this.key = null; this.duration = 0; this.request = 0; this.taps = []; this.memory = new Map(); this.analyses = 0;
     deck.state.gate = { ...DEFAULT_GATE, steps: [...DEFAULT_GATE.steps] };
-    deck.state.tempo = { status: 'empty', bpm: 0, detectedBpm: 0, confidence: 0, varies: false, ...DEFAULT_TEMPO };
+    deck.state.tempo = { status: 'empty', bpm: 0, detectedBpm: 0, confidence: 0, varies: false, key: null, ...DEFAULT_TEMPO };
+    deck.state.kick = { ...DEFAULT_KICK, ...kitLanes('Classic') };
   }
 
   // --- Analysis lifecycle -------------------------------------------------------------
@@ -65,12 +66,12 @@ export class Rhythm {
   apply(analysis) {
     this.analysis = analysis;
     // Without a usable beat the gate falls back to a steady grid (tempo-grid FALLBACK_BPM).
-    this.updateTempo({ status: analysis.beats?.length > 1 && analysis.confidence >= MIN_CONFIDENCE ? 'ready' : 'unavailable', detectedBpm: analysis.bpm || 0, confidence: analysis.confidence || 0, varies: Boolean(analysis.varies) });
+    this.updateTempo({ status: analysis.beats?.length > 1 && analysis.confidence >= MIN_CONFIDENCE ? 'ready' : 'unavailable', detectedBpm: analysis.bpm || 0, confidence: analysis.confidence || 0, varies: Boolean(analysis.varies), key: analysis.key ?? null });
     this.sync();
   }
   clear() {
     ++this.request; this.key = null; this.analysis = null; this.duration = 0; this.taps = [];
-    this.updateTempo({ status: 'empty', bpm: 0, detectedBpm: 0, confidence: 0, varies: false, ...DEFAULT_TEMPO });
+    this.updateTempo({ status: 'empty', bpm: 0, detectedBpm: 0, confidence: 0, varies: false, key: null, ...DEFAULT_TEMPO });
     this.sync();
   }
 
@@ -81,7 +82,7 @@ export class Rhythm {
     this.grid = effectiveGrid(this.analysis, tempo, this.duration);
     if (Math.abs(tempo.bpm - this.grid.bpm) > 1e-9) this.deck.state.tempo = { ...tempo, bpm: this.grid.bpm };
     this.post({ type: 'beats', beats: this.grid.beats, downbeat: this.grid.downbeat });
-    this.syncGate();
+    this.syncGate(); this.syncKick();
   }
   syncGate() {
     const gate = this.deck.state.gate;
@@ -90,6 +91,13 @@ export class Rhythm {
       attackMs: 1.5 + (gate.soft ?? 0) * 12, releaseMs: 9 + (gate.soft ?? 0) * 45,
       // Pumps let the kick's first 25 ms through; highs take part of the duck; small make-up gain.
       punchMs: gate.shape === 'pump' ? 25 : 0, highs: gate.highs ?? 1, makeup: gateMakeup(gate) } });
+  }
+  syncKick() {
+    const kick = this.deck.state.kick;
+    // The sidechain duck scales with the kick's volume so louder kicks cut through further.
+    this.post({ type: 'kick', settings: { enabled: kick.enabled, volume: kick.volume, drive: kick.drive, tail: kick.tail, steps: kick.steps, clap: kick.clap, hat: kick.hat,
+      crashEvery: kick.crashEvery, drops: kick.drops, horn: kick.horn, seed: this.request || 1, sound: kick.sound,
+      tune: kickTune(kick.tune, this.deck.state.tempo.key), duck: .45 + kick.volume * .35 } });
   }
   post(message) { this.deck.engine?.port.postMessage(message); }
 
@@ -109,6 +117,23 @@ export class Rhythm {
     if (Number.isInteger(patch.toggleStep) && patch.toggleStep >= 0 && patch.toggleStep < GATE_STEPS) gate.steps = gate.steps.map((on, i) => i === patch.toggleStep ? !on : on);
     this.deck.state.gate = gate; this.syncGate(); this.deck.emit();
   }
+  setKick(patch) {
+    const kick = { ...this.deck.state.kick };
+    if ('enabled' in patch) kick.enabled = Boolean(patch.enabled);
+    if (patch.pattern in KIT_PATTERNS) Object.assign(kick, kitLanes(patch.pattern));
+    // Lanes: kick (`steps`), clap and hat, one bar of sixteenths each.
+    const lane = { kick: 'steps', clap: 'clap', hat: 'hat' }[patch.lane ?? 'kick'];
+    if (lane && Number.isInteger(patch.toggleStep) && patch.toggleStep >= 0 && patch.toggleStep < 16) kick[lane] = kick[lane].map((on, i) => i === patch.toggleStep ? !on : on);
+    if ([0, 4, 8].includes(patch.crashEvery)) kick.crashEvery = patch.crashEvery;
+    if ('drops' in patch) kick.drops = Boolean(patch.drops);
+    if ('horn' in patch) kick.horn = Boolean(patch.horn);
+    if (patch.sound in KIT_SOUNDS) kick.sound = patch.sound;
+    for (const key of ['volume', 'drive', 'tail']) if (Number.isFinite(patch[key])) kick[key] = Math.max(0, Math.min(1, patch[key]));
+    if (patch.tune === 'auto' || /^(?:[0-9]|1[01])$/.test(String(patch.tune ?? ''))) kick.tune = String(patch.tune);
+    this.deck.state.kick = kick; this.syncKick(); this.deck.emit();
+  }
+  /** Drop it: build next bar, pause, then crash + kick (+ air horn) on the bar after. */
+  dropNow() { if (this.deck.state.kick.enabled) this.post({ type: 'drop' }); }
   /** Tempo corrections. Each recalculates the grid immediately and is remembered for the file. */
   setManualBpm(bpm, anchor) {
     if (!Number.isFinite(bpm)) return;

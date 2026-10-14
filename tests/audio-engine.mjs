@@ -10,7 +10,7 @@ const scope = {
   AudioWorkletProcessor: class { constructor() { this.port = { postMessage: (m) => messages.push(m) }; } },
   registerProcessor: (_name, implementation) => { Processor = implementation; },
 };
-const source = ['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'vinyl-processor.js'].map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n');
+const source = ['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'vinyl-processor.js'].map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n');
 vm.runInNewContext(source, scope);
 const engine = new Processor();
 engine.command({type:'settings', settings:{surface:false, contacts:false}});

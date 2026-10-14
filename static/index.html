@@ -240,6 +240,26 @@
                 <label class="rhythm-slider" for="gate-depth"><span>Depth <output id="gate-depth-value">50%</output></span><input id="gate-depth" type="range" min="0" max="1" step=".05" value=".5"></label>
                 <label class="rhythm-slider" for="gate-length"><span><span id="gate-length-label">Swell</span> <output id="gate-length-value">65%</output></span><input id="gate-length" type="range" min="0" max="1" step=".05" value=".65"></label>
               </div>
+              <div class="rhythm-section">
+                <div class="rhythm-head"><h3>Hardstyle</h3><label class="gate-switch"><input id="kick-enabled" type="checkbox"><span>Off</span></label></div>
+                <p class="tempo-source">A hardstyle kit on the beat, tuned to the song: kick, clap, hats, crashes and drops.</p>
+                <div class="rhythm-row"><label class="rhythm-label" for="kick-sound">Sound</label><select id="kick-sound"></select>
+                  <label class="rhythm-label kick-tune-label" for="kick-tune">Tune</label><select id="kick-tune"></select></div>
+                <div class="rhythm-row"><label class="rhythm-label" for="kick-pattern">Pattern</label><select id="kick-pattern"></select></div>
+                <div class="kit-lanes">
+                  <span class="lane-label">Kick</span><div id="kick-steps" class="gate-steps kit-lane" data-lane="kick" role="group" aria-label="Kick lane: one bar of sixteenths"></div>
+                  <span class="lane-label">Clap</span><div id="clap-steps" class="gate-steps kit-lane" data-lane="clap" role="group" aria-label="Clap lane: one bar of sixteenths"></div>
+                  <span class="lane-label">Hat</span><div id="hat-steps" class="gate-steps kit-lane" data-lane="hat" role="group" aria-label="Hat lane: one bar of sixteenths"></div>
+                </div>
+                <div class="rhythm-row"><span class="rhythm-label">Crash</span><span class="gate-rates crash-options" role="radiogroup" aria-label="Crash cymbal"></span></div>
+                <div class="rhythm-row drop-row"><button id="drop-now" class="rhythm-button drop-button" type="button" aria-describedby="drop-hint">Drop it!</button>
+                  <label class="gate-switch"><input id="kick-drops" type="checkbox"><span>Random drops</span></label>
+                  <label class="gate-switch"><input id="kick-horn" type="checkbox"><span>Air horn</span></label></div>
+                <p id="drop-hint" class="tap-status">Builds for a bar, pauses a beat, then slams back in (or press D).</p>
+                <label class="rhythm-slider" for="kick-volume"><span>Volume <output id="kick-volume-value">70%</output></span><input id="kick-volume" type="range" min="0" max="1" step=".05" value=".7"></label>
+                <label class="rhythm-slider" for="kick-drive"><span>Distortion <output id="kick-drive-value">60%</output></span><input id="kick-drive" type="range" min="0" max="1" step=".05" value=".6"></label>
+                <label class="rhythm-slider" for="kick-tail"><span>Tail <output id="kick-tail-value">50%</output></span><input id="kick-tail" type="range" min="0" max="1" step=".05" value=".5"></label>
+              </div>
               <div class="rhythm-section reverb-section" aria-disabled="true">
                 <div class="rhythm-head"><h3>Reverb</h3><span class="coming-soon">Coming soon</span></div>
               </div>
@@ -337,6 +357,7 @@
         <div><dt><kbd>R</kbd></dt><dd>Lift &amp; park arm</dd></div>
         <div><dt><kbd>G</kbd></dt><dd>Trance Gate on / off</dd></div>
         <div><dt><kbd>T</kbd></dt><dd>Tap tempo</dd></div>
+        <div><dt><kbd>D</kbd></dt><dd>Hardstyle drop</dd></div>
       </dl>
       <details class="help-focus-keys">
         <summary>More keys for focused controls</summary>

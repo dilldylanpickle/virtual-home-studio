@@ -527,7 +527,7 @@ dialog:is(#help,#customize,#media-source)[data-motion=closed]::backdrop{backgrou
 .tempo-manual{display:inline-flex;align-items:center;gap:6px}
 .tempo-manual .rhythm-label{min-width:0}
 .gate-step.unused{opacity:.25;cursor:default}
-#gate-style{min-height:30px;padding:0 6px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font-size:11px}
+#gate-style,#kick-tune,#kick-pattern,#kick-sound{min-height:30px;padding:0 6px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font-size:11px}
 .reverb-section{opacity:.6}
 .reverb-section .rhythm-head{margin-bottom:0}
 .coming-soon{padding:3px 8px;border-radius:999px;background:var(--hud-control);font-size:10px;color:var(--hud-muted)}
@@ -584,3 +584,17 @@ dialog:is(#help,#customize,#media-source)[data-motion=closed]::backdrop{backgrou
 .adjust-controls input{width:70px;min-height:30px;padding:0 7px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
 .tempo-reset{font-size:10px;padding:2px 0}
 @media(prefers-reduced-motion:reduce){.tap-button.pulse{animation:none}}
+/* Hardstyle kit: kick/clap/hat lanes (red, orange, gold), beat marks every four sixteenths. */
+.kit-lanes{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:4px 8px;margin:2px 0 8px}
+.kit-lanes .gate-steps{margin:0}
+.kit-lanes .gate-step{height:20px}
+.lane-label{font-size:10px;color:var(--hud-muted)}
+.kick-step[aria-pressed=true]{background:#c8463c;border-color:#c8463c}
+.clap-step[aria-pressed=true]{background:#d87a2c;border-color:#d87a2c}
+.hat-step[aria-pressed=true]{background:#c9a227;border-color:#c9a227}
+.kit-step.now{box-shadow:0 0 0 2px #fff,0 0 0 4px #c8463c}
+.kick-tune-label{margin-left:auto}
+.drop-row{gap:10px}
+.drop-button{min-height:34px;padding:0 14px;font-weight:700;background:#c8463c;border-color:#c8463c;color:#fff}
+.drop-button:hover:not(:disabled){background:#b23c33}
+.drop-button.pulse{animation:tap-pulse .3s var(--ui-ease)}

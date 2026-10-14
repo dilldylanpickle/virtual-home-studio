@@ -1,5 +1,5 @@
 import { TranceGate } from './trance-gate.js';
-import { GATE_RATES, GATE_SHAPES, GATE_STEPS, GATE_STYLES, confidenceLabel, gateCycle, styleName } from './tempo-grid.js';
+import { GATE_RATES, GATE_SHAPES, GATE_STEPS, GATE_STYLES, KEY_NAMES, KIT_PATTERNS, KIT_SOUNDS, confidenceLabel, gateCycle, kitName, styleName } from './tempo-grid.js';
 
 const $ = id => document.getElementById(id);
 const percent = value => `${Math.round(value * 100)}%`;
@@ -36,6 +36,28 @@ export class RhythmPanel {
     // Chop: hard 16th stutter. Pump: duck-and-swell on each step, the sidechain "push".
     segment(document.querySelector('.gate-shapes'), 'gate-shape', GATE_SHAPES, shape => shape[0].toUpperCase() + shape.slice(1), shape => controls.setGate({ shape }));
     $('gate-enabled').addEventListener('change', event => controls.setGate({ enabled: event.target.checked }));
+    // Hardstyle kit: kick, clap and hat lanes (one bar of sixteenths each) with kit presets,
+    // crashes, drops (button, random, D key) and the air horn; tuned to the song's root.
+    for (const name of [...Object.keys(KIT_PATTERNS), 'Custom']) { const option = document.createElement('option'); option.value = option.textContent = name; option.disabled = name === 'Custom'; $('kick-pattern').append(option); }
+    $('kick-pattern').addEventListener('change', event => controls.setKick({ pattern: event.target.value }));
+    for (const [value, label] of Object.entries(KIT_SOUNDS)) { const option = document.createElement('option'); option.value = value; option.textContent = label; $('kick-sound').append(option); }
+    $('kick-sound').addEventListener('change', event => controls.setKick({ sound: event.target.value }));
+    for (const lane of ['kick', 'clap', 'hat']) for (let i = 0; i < 16; i++) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = `gate-step kit-step ${lane}-step`; button.dataset.step = i;
+      button.setAttribute('aria-label', `${lane[0].toUpperCase() + lane.slice(1)} on sixteenth ${i + 1}`); button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('click', () => controls.setKick({ lane, toggleStep: i }));
+      $(`${lane}-steps`).append(button);
+    }
+    segment(document.querySelector('.crash-options'), 'kick-crash', ['0', '4', '8'], every => every === '0' ? 'Off' : `Every ${every} bars`, every => controls.setKick({ crashEvery: Number(every) }));
+    $('kick-drops').addEventListener('change', event => controls.setKick({ drops: event.target.checked }));
+    $('kick-horn').addEventListener('change', event => controls.setKick({ horn: event.target.checked }));
+    $('drop-now').addEventListener('click', () => { controls.dropNow(); const button = $('drop-now'); button.classList.remove('pulse'); void button.offsetWidth; button.classList.add('pulse'); });
+    const auto = document.createElement('option'); auto.value = 'auto'; $('kick-tune').append(auto);
+    KEY_NAMES.forEach((name, tonic) => { const option = document.createElement('option'); option.value = String(tonic); option.textContent = name; $('kick-tune').append(option); });
+    $('kick-tune').addEventListener('change', event => controls.setKick({ tune: event.target.value }));
+    $('kick-enabled').addEventListener('change', event => controls.setKick({ enabled: event.target.checked }));
+    for (const key of ['volume', 'drive', 'tail']) $(`kick-${key}`).addEventListener('input', event => controls.setKick({ [key]: Number(event.target.value) }));
     $('gate-depth').addEventListener('input', event => controls.setGate({ depth: Number(event.target.value) }));
     $('gate-length').addEventListener('input', event => controls.setGate({ length: Number(event.target.value) }));
     $('tempo-half').addEventListener('click', () => controls.scaleTempo(.5));
@@ -102,6 +124,16 @@ export class RhythmPanel {
     $('gate-depth').value = gate.depth; $('gate-depth-value').textContent = percent(gate.depth);
     $('gate-length').value = gate.length; $('gate-length-value').textContent = percent(gate.length);
 
+    const kick = s.kick;
+    $('kick-enabled').checked = kick.enabled; $('kick-enabled').nextElementSibling.textContent = kick.enabled ? 'On' : 'Off';
+    $('kick-tune').value = kick.tune;
+    $('kick-tune').options[0].textContent = tempo.key ? `Auto · ${KEY_NAMES[tempo.key.tonic]}` : 'Auto';
+    $('kick-pattern').value = kitName(kick); $('kick-sound').value = kick.sound;
+    for (const [lane, key] of [['kick', 'steps'], ['clap', 'clap'], ['hat', 'hat']]) for (const button of $(`${lane}-steps`).children) button.setAttribute('aria-pressed', String(Boolean(kick[key][Number(button.dataset.step)])));
+    for (const input of document.querySelectorAll('input[name=kick-crash]')) input.checked = Number(input.value) === kick.crashEvery;
+    $('kick-drops').checked = kick.drops; $('kick-horn').checked = kick.horn; $('drop-now').disabled = !kick.enabled;
+    for (const key of ['volume', 'drive', 'tail']) { $(`kick-${key}`).value = kick[key]; $(`kick-${key}-value`).textContent = percent(kick[key]); }
+
     // BPM chip on the track line: tempo, confidence and whether the gate is running.
     const chip = $('tempo-chip');
     chip.hidden = !record;
@@ -112,25 +144,24 @@ export class RhythmPanel {
     this.follow();
   }
 
-  /** While the popup is open and the gate runs, light the step under the read head. */
+  /** While the popup is open, light the gate step and kick-bar step under the read head. */
   follow() {
-    const open = !$('preset-options').hidden, s = this.state;
-    if (!open || !s?.gate.enabled || s.tempo.status === 'empty') {
-      cancelAnimationFrame(this.frame); this.frame = null;
-      for (const button of $('gate-steps').children) button.classList.remove('now');
-      return;
-    }
+    const open = !$('preset-options').hidden, s = this.state, running = state => state.gate.enabled || state.kick.enabled;
+    const lanes = () => [...$('kick-steps').children, ...$('clap-steps').children, ...$('hat-steps').children];
+    const clear = () => { for (const button of [...$('gate-steps').children, ...lanes()]) button.classList.remove('now'); };
+    if (!open || !s || !running(s) || s.tempo.status === 'empty') { cancelAnimationFrame(this.frame); this.frame = null; clear(); return; }
     if (this.frame) return;
     const tick = () => {
       this.frame = null;
       const state = this.controls.getState(), grid = this.controls.beatGrid();
       if (grid.beats !== this.gridBeats) { this.gridBeats = grid.beats; this.clock.setGrid(grid.beats, grid.downbeat); }
       this.clock.downbeat = grid.downbeat;
-      const beat = this.clock.beatAt(state.position), current = beat === null ? -1
-        : ((Math.floor((beat - grid.downbeat) * GATE_RATES[state.gate.rate]) % gateCycle(state.gate.rate)) + gateCycle(state.gate.rate)) % gateCycle(state.gate.rate);
-      for (const button of $('gate-steps').children) button.classList.toggle('now', Number(button.dataset.step) === current);
-      if (!$('preset-options').hidden && state.gate.enabled) this.frame = requestAnimationFrame(tick);
-      else for (const button of $('gate-steps').children) button.classList.remove('now');
+      const beat = this.clock.beatAt(state.position), cycle = gateCycle(state.gate.rate);
+      const gateStep = beat === null || !state.gate.enabled ? -1 : ((Math.floor((beat - grid.downbeat) * GATE_RATES[state.gate.rate]) % cycle) + cycle) % cycle;
+      const kickStep = beat === null || !state.kick.enabled ? -1 : ((Math.floor((beat - grid.downbeat) * 4) % 16) + 16) % 16;
+      for (const button of $('gate-steps').children) button.classList.toggle('now', Number(button.dataset.step) === gateStep);
+      for (const button of lanes()) button.classList.toggle('now', Number(button.dataset.step) === kickStep);
+      if (!$('preset-options').hidden && running(state)) this.frame = requestAnimationFrame(tick); else clear();
     };
     this.frame = requestAnimationFrame(tick);
   }
