@@ -106,7 +106,7 @@ Open **http://127.0.0.1:42069** and stop the server with Ctrl+C. A graphics card
 The app is plain static files, so Pages can host it as is.
 
 1. In **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**.
-2. Push to `master`. The included [Pages workflow](.github/workflows/pages.yml) publishes the HTML and `static/` assets only.
+2. Push to `master`. The included [Pages workflow](.github/workflows/pages.yml) publishes the HTML and `static/` assets only, with every file URL stamped with the commit so browsers never mix cached files from an older deploy.
 3. Open `https://<user>.github.io/<repository>/` (keep the trailing slash).
 
 ## How it works
