@@ -2,6 +2,7 @@ import * as THREE from './vendor/three.module.min.js';
 import { RoundedBoxGeometry } from './vendor/addons/geometries/RoundedBoxGeometry.js';
 import { FINISHES, VINYL, LABELS, contrastColor } from './record-customization.js';
 import { CONDITIONS } from './condition-profiles.js';
+import { RECORD_FILE } from './record-lifecycle.js';
 
 const TAU = Math.PI * 2, DEG = Math.PI / 180;
 const TOP = .075, MAT_TOP = .103, RECORD_Y = .1045;
@@ -252,7 +253,7 @@ export function createStudioTurntable({ anisotropy = 4, printScale = 1 } = {}) {
     ctx.globalAlpha = .28; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(384, 384, 356, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(384, 384, 112, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
     ctx.font = '600 31px Arial,sans-serif'; ctx.fillText('V I R T U A L  H O M E  S T U D I O', 384, 167, 610);
     ctx.globalAlpha = .38; ctx.beginPath(); ctx.moveTo(116, 227); ctx.lineTo(652, 227); ctx.stroke(); ctx.globalAlpha = 1;
-    const name = (state.pendingFilename || state.filename || 'Your own pressing').replace(/\.(mp3|wav)$/i, '').replace(/_/g, ' ');
+    const name = (state.pendingFilename || state.filename || 'Your own pressing').replace(RECORD_FILE, '').replace(/_/g, ' ');
     ctx.font = '600 66px Georgia,serif'; ctx.fillText(name.length > 20 ? `${name.slice(0, 19)}…` : name, 384, 300, 625);
     ctx.font = '600 31px Arial,sans-serif'; ctx.fillText('S I D E  A', 384, 525); ctx.font = '500 28px Arial,sans-serif'; ctx.fillText('33⅓ RPM · STEREO', 384, 612);
     ctx.font = '24px Arial,sans-serif'; ctx.fillText('PRESSED LOCALLY. PLAYED HERE.', 384, 665); labelPrint.texture.needsUpdate = true;

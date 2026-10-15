@@ -33,6 +33,7 @@ Paths below are relative to the repository root; module names are under `static/
 | File | Responsibility |
 | --- | --- |
 | `app.py` | FastAPI static server; loopback port 42069 |
+| `youtube_records.py` | Local-server-only `/api/youtube`: yt-dlp downloads one video's original audio stream (M4A/WebM, no transcoding) to a temporary folder; loopback Host/Origin guards, 20-minute limit |
 | `.github/workflows/pages.yml` | Static GitHub Pages deployment from `master`; publishes the entry page and browser assets only, stamped by `tools/stamp-site.py` |
 | `tools/stamp-site.py` | Deploy step: adds the commit to every page asset URL and relative module import (including workers and the worklet) so Pages' 10-minute browser cache never mixes one deploy's files with another's; the source tree stays unstamped |
 | `static/index.html` | Physical SVG, HUD, customization and help dialogs |
@@ -61,7 +62,7 @@ Paths below are relative to the repository root; module names are under `static/
 | `static/ui-motion.js` | Shared motion timing, reversible preset popup and immediate-value label transitions |
 | `static/dialog-motion.js` | Animated native dialogs, focus restoration and safe closing/reopening |
 | `static/details-motion.js` | Reversible native details expansion/collapse |
-| `static/media-source-ui.js` | Local-file source chooser and empty-state attention |
+| `static/media-source-ui.js` | Source chooser (local file, YouTube link form and download), empty-state attention |
 | `static/record-lifecycle.js` | Validation/decode, serialized removal/insertion, stale-request rejection |
 | `static/record-customization.js` | Chassis finishes, material palettes, condition UI and coordinated record/thumbnail appearance |
 | `static/style.css` | Hardware and software presentation, hit areas and responsive layout |
@@ -140,7 +141,7 @@ Eject: ready → park / stop → lift / fade → clear PCM → empty
 ```
 
 - Opening the source chooser or file picker alone changes nothing; same-file selection works because the input resets.
-- Local File and drag-and-drop use the same `load(file)` command. The grey, disabled “YouTube link — Coming soon” entry is only a placeholder.
+- Local File, drag-and-drop and YouTube links use the same `load(file)` command. A YouTube link works only with the local server: the chooser probes `./api/youtube` and keeps the option disabled (“Works when you run the studio on your computer”) on static hosts such as GitHub Pages. The server downloads the audio with yt-dlp; the browser wraps it as a `File` named after the video (`lastModified` 0, so tempo analysis recognizes it again) and decodes it locally like any file. Downloads happen before the lifecycle starts, so the seated record keeps playing; closing the chooser (from the moment it starts closing) or loading another record abandons the download: the browser ignores the result, and the server deletes its temporary copy when yt-dlp finishes (at most three downloads at once). Errors stay in the dialog. Never add an embedded player or a second playback path.
 - Keep the Choose/Replace action label stable during decoding, removal and insertion; update it only when the lifecycle settles empty or ready. Keep the action row’s dimensions stable across those labels and avoid helper text that shifts it when media loads.
 - Empty-state attention belongs to the source chooser: fade it after media loads, let valid file dragging take priority, and use a static highlight for reduced motion.
 - Generation checks discard stale decodes; insertion/removal operations serialize.
@@ -191,7 +192,7 @@ Each button toggles independently; the printed 78 bracket is inert. Tempo Range 
 - Hardware controls retain physical shapes; transparent hit areas must stay invisible.
 - Use muted-blue software accents. Default media is black vinyl with a blue label.
 - Site, chassis, slipmat and record-label identity is **Virtual Home Studio**.
-- Keep the headline “Why spend $449 on a turntable when you can vibe code one for $10?” with its punchline (a line strikes through “$10”, then “$449 in tokens” writes in; immediate under reduced motion), one-line desktop fit (font sized to the column) and concise in-app help.
+- Keep the headline “Why spend $449 on a turntable when you can vibe code one for $10?” with its punchline (a line strikes through “$10”, then “$449 in tokens” writes in and Google's animated loudly-crying emoji pops in where the “?” was; immediate, with the still Noto emoji, under reduced motion; both bundled in `static/assets/` with `EMOJI-LICENSE.md`), one-line desktop fit (font sized to the column) and concise in-app help.
 - Long HUD titles use the shared `marquee()` (glide to the end and back with pauses, full text in the tooltip; ellipsis under reduced motion).
 - Put technical details here or in `docs/`, not into product copy.
 - Software UI motion uses shared 220 ms panel / 140 ms feedback timing. Animate both entry and exit; newer input reverses/cancels old transitions. Keep panel placement and action dimensions stable.
@@ -228,7 +229,7 @@ Use the same Python prefix or `node` with the relevant paths below. There is no 
 | Physical controls, RPM and geometry | `controls.py`, `hardware.py`, `motor.py` |
 | Assisted transport and arm motion | `assisted.py`, `return_arm.py`, `phase2.py`, `replay.py`, `presets.py`, `preset_motion.py` |
 | Scratching, seeking and HUD input | `scratching.py`, `seeking.py`, `direct_scrub.py`, `timeline_hover.py` |
-| Media handling and appearance | `media_sources.py`, `record_paths.py`, `customization.py`, `branding.py`, `occlusion.py` |
+| Media handling and appearance | `media_sources.py` (mocked YouTube endpoint), `youtube_server.py` (endpoint guards; `VHS_TEST_YOUTUBE=1` adds live downloads), `record_paths.py`, `customization.py`, `branding.py`, `occlusion.py` |
 | Effects and UI polish | `realism.py`, `condition_audio.py`, `polish.py`, `ui_motion.py` |
 | Tempo detection and Trance Gate | `trance_gate.py` |
 

@@ -482,6 +482,16 @@ body.drag-over #load::after,body:has(#drop-zone.drag-over) #load::after{opacity:
 #media-source .source-drop-note{margin:19px 0 0;font-size:10px;line-height:1.6;color:var(--text-muted)}
 .source-option:disabled{opacity:.5;cursor:default;background:transparent;color:var(--text-muted)}
 .source-option:disabled>svg{stroke:var(--text-muted)}
+.source-option:disabled>.source-arrow{display:none}
+.youtube-form{margin-top:-2px;padding:12px;border:1px solid var(--accent);border-radius:11px;background:var(--accent-soft)}
+.youtube-row{display:flex;gap:8px}
+#youtube-url{flex:1;min-width:0;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel-background);color:var(--text-primary);font:inherit;font-size:12px}
+#youtube-url:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#youtube-url:read-only{color:var(--text-muted)}
+.youtube-submit{flex:none;min-width:92px;min-height:44px;padding:0 14px;border:0;border-radius:8px;background:var(--accent);color:var(--hud-on-accent);font:inherit;font-size:12px;font-weight:600}
+.youtube-submit:disabled{opacity:.65;cursor:progress}
+.youtube-status{margin:8px 2px 0;min-height:1.5em;font-size:10px;line-height:1.5;color:var(--text-muted)}
+.youtube-status.error{color:#a1493c}
 @media(max-width:600px){.hud-record{min-height:60px}#load{flex-basis:112px;width:112px}.hud-actions .record-action{padding-inline:7px}#media-source{padding:26px 22px}.source-option{padding:14px 11px;gap:11px}.source-option small{font-size:10px}}
 @media(prefers-reduced-motion:reduce){#load.needs-record::after{animation:none}#load::after{transition:none}}
 

@@ -22,9 +22,10 @@ def run():
         page.goto('http://127.0.0.1:42069')
         page.wait_for_function('window.turntable')
         enter_turntable(page)
-        check(page.locator('h1').evaluate("el => el.textContent.replace(/\\u00a0/g, ' ')") == 'Why spend $449 on a turntable when you can vibe code one for $10 $449 in tokens?'
-              and page.locator('h1 s.price-old').inner_text() == '$10',
-              'Hero keeps the turntable joke and strikes $10 for $449 in tokens')
+        check(page.locator('h1').evaluate("el => el.textContent.replace(/\\u00a0/g, ' ')") == 'Why spend $449 on a turntable when you can vibe code one for $10 $449 in tokens'
+              and page.locator('h1 s.price-old').inner_text() == '$10'
+              and page.locator('h1 .price-cry img').get_attribute('alt') == '😭',
+              'Hero keeps the turntable joke, strikes $10 for $449 in tokens and ends crying')
         check(page.locator('.intro-note').inner_text()=='Drop in a song or paste a link and play it like a record.', 'Supporting copy stays concise')
         check(page.evaluate("!document.querySelector('footer,.edition')"), 'Decorative edition and footer content stay removed')
         page.evaluate('''() => {

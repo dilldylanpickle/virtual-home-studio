@@ -3,7 +3,13 @@ name = "virtual-home-studio"
 version = "0.1.0"
 description = "A local, interactive Virtual Home Studio VHS-42069 turntable simulation"
 requires-python = ">=3.11"
-dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+    "yt-dlp[default]>=2026.8.19",
+    # yt-dlp's JavaScript runtime for YouTube, where a wheel exists; elsewhere it uses a deno on PATH.
+    "deno>=2.6.6; (sys_platform == 'darwin' and platform_machine in 'x86_64 arm64') or (sys_platform == 'linux' and platform_machine in 'x86_64 aarch64') or (sys_platform == 'win32' and platform_machine == 'AMD64')",
+]
 
 [dependency-groups]
 dev = ["playwright>=1.50,<2"]

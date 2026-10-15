@@ -15,7 +15,7 @@ import { COVER_SWING_MS } from './studio-turntable-3d.js';
 const CUE_DESCENT_MS = 1100;
 // Must match vinyl-processor.js; bump both when the engine's messages change.
 const ENGINE_VERSION = 5;
-import { RecordLifecycle } from './record-lifecycle.js';
+import { RECORD_FILE, RecordLifecycle } from './record-lifecycle.js';
 import { Rhythm } from './rhythm.js';
 import { setupCustomization, renderMaterial, VINYL, LABELS, FINISHES } from './record-customization.js';
 
@@ -661,10 +661,10 @@ function render() {
   attr($('range-16-led'), 'fill', s.power && s.pitchRange === 16 ? '#f44c60' : '#747c77');
   attr($('pitch-zero'), 'fill', s.power && (s.quartzLock || s.pitch === 0) ? '#f55364' : '#8b928c');
   text('cover-toggle', `Cover ${s.coverClosed ? 'closed' : 'open'}`);
-  text('track-name', s.filename ? s.filename.replace(/\.(mp3|wav)$/i, '').replace(/_/g, ' ') : s.pendingFilename ? 'Seating your record' : 'Choose a record');
+  text('track-name', s.filename ? s.filename.replace(RECORD_FILE, '').replace(/_/g, ' ') : s.pendingFilename ? 'Seating your record' : 'Choose a record');
   $('track-name').title = s.filename;
   text('track-meta', s.filename ? `${s.filename.split('.').pop().toUpperCase()} · ${timeLabel(s.duration)}` : 'MP3 or WAV');
-  const label = (s.pendingFilename || s.filename).replace(/\.(mp3|wav)$/i, '').replace(/_/g, ' ');
+  const label = (s.pendingFilename || s.filename).replace(RECORD_FILE, '').replace(/_/g, ' ');
   text('label-title', label.length > 20 ? `${label.slice(0, 19)}…` : label);
   text('elapsed', timeLabel(s.position)); text('duration', timeLabel(s.duration));
   const targetRPM = s.quartzLock || s.pitch === 0 ? (s.rpm === NOMINAL_RPM ? '33⅓' : s.rpm) : (NOMINAL_RPM * s.effectiveRate).toFixed(2);
@@ -953,7 +953,7 @@ document.addEventListener('drop', event => {
   if (!event.dataTransfer?.files.length) return;
   event.preventDefault();
   const files = Array.from(event.dataTransfer.files);
-  void turntable.load(files.find(file => /\.(mp3|wav)$/i.test(file.name)) ?? files[0]);
+  void turntable.load(files.find(file => RECORD_FILE.test(file.name)) ?? files[0]);
 });
 document.addEventListener('dragend', clearDrop);
 window.addEventListener('blur', clearDrop);

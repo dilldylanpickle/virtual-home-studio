@@ -49,6 +49,11 @@ body{background:#26333c}
 @keyframes price-strike{to{transform:scaleX(1)}}
 @keyframes price-fade{to{opacity:.62}}
 @keyframes price-write{to{max-width:8.5em}}
+/* Then the joke lands: Google's animated loudly-crying emoji takes the question mark's place. */
+.intro .price-end{white-space:nowrap}
+.intro .price-cry{display:inline-block;margin-left:.14em;vertical-align:-.2em;animation:price-cry .4s 4.1s cubic-bezier(.34,1.56,.64,1) both}
+.intro .price-cry img{display:block;width:1.15em;height:1.15em;filter:drop-shadow(0 1px 3px #05101a99)}
+@keyframes price-cry{from{opacity:0;transform:scale(.3) rotate(-12deg)}to{opacity:1;transform:none}}
 .room .intro .intro-note{font-weight:500;font-size:clamp(13px,.35vw + 9px,16px);line-height:1.6;margin:clamp(8px,1.2vh,14px) 0 0;color:var(--on-scene-muted);text-shadow:var(--scene-shadow)}
 
 .scene-frame{flex:1 1 auto;min-height:clamp(220px,34vh,520px)}
@@ -188,6 +193,6 @@ body{background:#26333c}
   .masthead .text-button{font-size:10.5px}
   .masthead .text-button span{padding-left:5px}
 }
-@media(prefers-reduced-motion:reduce){.intro .price-old,.intro .price-old::after,.intro .price-new,.intro .price-gap{animation-duration:0s;animation-delay:0s}}
+@media(prefers-reduced-motion:reduce){.intro .price-old,.intro .price-old::after,.intro .price-new,.intro .price-gap,.intro .price-cry{animation-duration:0s;animation-delay:0s}}
 @media(prefers-reduced-motion:reduce){#studio-plate,#studio-canvas{transition:none}}
 @media(prefers-reduced-motion:reduce){#studio-enter,.masthead #studio-focus,.room>.listening-hud{transition:none}}

@@ -21,7 +21,7 @@
       </nav>
     </header>
     <section class="intro">
-      <h1>Why spend $449 on a turntable when you can vibe code one for <s class="price-old">$10</s><span class="price-gap"> </span><span class="price-new">$449 in tokens</span>?</h1>
+      <h1>Why spend $449 on a turntable when you can vibe code one for <s class="price-old">$10</s><span class="price-gap"> </span><span class="price-end"><span class="price-new">$449 in tokens</span><span class="price-cry"><picture><source srcset="./static/assets/loudly-crying.webp" type="image/webp" media="(prefers-reduced-motion: no-preference)"><img src="./static/assets/loudly-crying.svg" alt="😭" width="72" height="72" decoding="async"></picture></span></span></h1>
       <p class="intro-note">Drop in a song or paste a link and play it like a record.</p>
     </section>
     <!-- Open area between the hero and the panel; the camera frames the deck here. -->
@@ -263,7 +263,12 @@
     <p id="media-source-description" class="source-intro">From your collection to the turntable.</p>
     <div class="source-options">
       <button id="source-local" class="source-option" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M5.7 10A6.5 6.5 0 0 1 10 5.7m4 12.6a6.5 6.5 0 0 0 4.3-4.3"/></svg><span><strong>Local file</strong><small>MP3 or WAV · the full turntable experience</small></span><span class="source-arrow" aria-hidden="true">↗</span></button>
-      <button id="source-youtube" class="source-option" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="m10 9 5 3-5 3Z"/></svg><span><strong>YouTube link</strong><small>Coming soon</small></span></button>
+      <button id="source-youtube" class="source-option" type="button" disabled aria-expanded="false" aria-controls="youtube-form"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="m10 9 5 3-5 3Z"/></svg><span><strong>YouTube link</strong><small id="youtube-availability">Works when you run the studio on your computer</small></span><span class="source-arrow" aria-hidden="true">↓</span></button>
+      <form id="youtube-form" class="youtube-form" hidden novalidate>
+        <label class="sr-only" for="youtube-url">YouTube link</label>
+        <div class="youtube-row"><input id="youtube-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Paste a YouTube link" aria-describedby="youtube-status"><button id="youtube-submit" class="youtube-submit" type="submit">Put it on</button></div>
+        <p id="youtube-status" class="youtube-status" aria-live="polite"></p>
+      </form>
     </div>
     <p class="source-drop-note">You can also drop an MP3 or WAV onto the turntable.</p>
   </dialog>

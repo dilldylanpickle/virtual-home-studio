@@ -1,4 +1,4 @@
-"""Local record chooser, drag/drop, onboarding, and disabled future-source UI."""
+"""Local record chooser, drag/drop, onboarding, and the local-server YouTube link (mocked)."""
 import base64
 import json
 from urllib.parse import urlsplit
@@ -14,6 +14,65 @@ def check(ok, message):
     assert ok, message
     checks.append(message)
     print('PASS ' + message, flush=True)
+
+
+def youtube_links(page, state, modal, load, future, ready, out):
+    """The server endpoint is mocked; tests/youtube_server.py covers the server itself."""
+    status = page.locator('#youtube-status')
+    submit = page.locator('#youtube-submit')
+    url = page.locator('#youtube-url')
+    held = []
+
+    def answer(route):
+        if route.request.method != 'POST': return route.continue_()
+        body = route.request.post_data_json
+        mode = body['url'].rsplit('=', 1)[-1]
+        if mode == 'hold': held.append(route); return
+        if mode == 'private':
+            return route.fulfill(status=502, json={'detail': 'That video is private, age-restricted or unavailable.'})
+        route.fulfill(status=200, body=RAW.read_bytes(), headers={'Content-Type': 'audio/mp4', 'X-Record-Title': 'Mocked%20Session%20%2F%20Live'})
+
+    page.route('**/api/youtube', answer)
+    page.set_viewport_size({'width': 1440, 'height': 1300})
+    load.click(); future.click()
+    check(page.locator('#youtube-form').is_visible() and url.evaluate('node => node === document.activeElement') and future.get_attribute('aria-expanded') == 'true', 'Choosing YouTube link reveals the form and focuses the link field')
+    before = state()
+    url.fill('https://example.com/watch?v=x'); page.keyboard.press('Enter')
+    check('youtube' in status.inner_text().lower() and status.evaluate("node => node.classList.contains('error')") and state() == before, 'A non-YouTube link is explained in place without touching the turntable')
+    url.focus(); page.keyboard.type(' gtrc'); page.wait_for_timeout(150)
+    check(state() == before, 'Typing in the link field never triggers deck shortcuts')
+    url.fill('https://www.youtube.com/watch?v=private'); page.keyboard.press('Enter')
+    page.wait_for_function("document.querySelector('#youtube-status').textContent.includes('private')")
+    check(modal.is_visible() and not submit.is_disabled() and not state()['recordPresent'] and state()['recordPhase'] == 'empty', 'A refused video reports the reason and leaves the empty platter unchanged')
+    url.fill('https://www.youtube.com/watch?v=hold'); page.keyboard.press('Enter')
+    page.wait_for_function('document.querySelector("#youtube-submit").disabled')
+    check(submit.inner_text() == 'Fetching…' and url.evaluate('node => node.readOnly'), 'A pending download shows its progress and locks the form')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    check(load.evaluate('node => node === document.activeElement') and state()['recordPhase'] == 'empty', 'Closing the chooser cancels the download and returns focus')
+    held[0].fulfill(status=200, body=RAW.read_bytes(), headers={'Content-Type': 'audio/mp4', 'X-Record-Title': 'Late'}); page.wait_for_timeout(500)
+    check(not state()['recordPresent'] and state()['recordPhase'] == 'empty', 'A canceled download never loads a record later')
+    load.click(); future.click()
+    check(not submit.is_disabled() and status.inner_text() == '', 'Reopening the chooser starts with a fresh, usable link form')
+    url.fill('youtu.be/success'); page.keyboard.press('Enter')
+    modal.wait_for(state='hidden'); ready()
+    page.wait_for_function("turntable.state.filename && !turntable.state.pendingFilename")
+    page.wait_for_timeout(450)
+    check(state()['filename'] == 'Mocked Session - Live.m4a' and state()['recordLoaded'] and page.locator('#track-name').inner_text() == 'Mocked Session - Live', 'A fetched video seats through the shared lifecycle with its title as the record name')
+    check(page.evaluate('__probe.worklets === 1 && __probe.starts === 0'), 'Linked audio uses the same persistent worklet without extra sources')
+    page.screenshot(path=str(out / 'youtube-loaded.png'), full_page=True)
+    load.click(); future.click(); url.fill('https://www.youtube.com/watch?v=hold'); page.keyboard.press('Enter')
+    page.wait_for_function('document.querySelector("#youtube-submit").disabled')
+    page.evaluate(r"""data => {
+      const transfer = new DataTransfer(); const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+      transfer.items.add(new File([bytes], 'dropped.wav', {type: 'audio/wav'}));
+      document.dispatchEvent(new DragEvent('drop', {dataTransfer: transfer, bubbles: true, cancelable: true}));
+    }""", base64.b64encode(RAW.read_bytes()).decode())
+    page.wait_for_function("turntable.state.recordPhase === 'ready' && turntable.state.filename === 'dropped.wav'")
+    held[-1].fulfill(status=200, body=RAW.read_bytes(), headers={'Content-Type': 'audio/mp4', 'X-Record-Title': 'Superseded'}); page.wait_for_timeout(600)
+    check(state()['filename'] == 'dropped.wav' and not submit.is_disabled(), 'A record dropped during a download supersedes it')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    page.unroute('**/api/youtube')
+    page.locator('#eject').click(); page.wait_for_function("turntable.state.recordPhase === 'empty'")
 
 
 def run():
@@ -112,15 +171,14 @@ def run():
         page.screenshot(path=str(out / 'empty-desktop.png'), full_page=True)
         load.focus(); page.keyboard.press('Enter')
         check(modal.is_visible() and page.evaluate("document.querySelector('#media-source').contains(document.activeElement)"), 'Keyboard opens the source dialog and moves focus inside')
-        check(future.is_disabled() and 'coming soon' in future.inner_text().lower(), 'YouTube link is only a disabled Coming soon placeholder')
-        check(page.locator('#youtube-form, #youtube-url, #youtube-area, iframe').count() == 0, 'The placeholder exposes no URL form or embedded player')
-        before = state(); future.evaluate('node => node.click()')
-        check(modal.is_visible() and state() == before, 'Clicking the disabled future-source option changes no turntable state')
+        page.wait_for_function("!document.querySelector('#source-youtube').disabled")
+        check(future.is_enabled() and 'paste a link' in future.inner_text().lower() and future.get_attribute('aria-expanded') == 'false', 'The local server enables the YouTube link source')
+        check(not page.locator('#youtube-form').is_visible() and page.locator('iframe').count() == 0, 'The link form stays collapsed until chosen, with no embedded player')
         focused = []
         for _ in range(8):
             page.keyboard.press('Tab')
             focused.append(page.evaluate('document.activeElement.id'))
-        check('source-youtube' not in focused, 'Keyboard navigation skips the disabled future-source option')
+        check('source-youtube' in focused and 'youtube-url' not in focused, 'Keyboard reaches the YouTube source but not its collapsed form')
         check(page.evaluate("document.querySelector('#media-source').contains(document.activeElement)"), 'Native modal keeps tab focus inside its usable controls')
         page.keyboard.press('Escape'); modal.wait_for(state='hidden')
         check(not modal.is_visible() and load.evaluate('node => node === document.activeElement'), 'Escape closes the dialog and returns focus to Choose Record')
@@ -199,7 +257,11 @@ def run():
             box = modal.bounding_box()
             check(0 <= box['x'] and box['x'] + box['width'] <= width and 0 <= box['y'] and box['y'] + box['height'] <= height, f'{name}: source dialog fits the viewport')
             check(page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'{name}: source selection has no horizontal overflow')
-            check(future.is_visible() and future.is_disabled() and page.locator('#source-local').bounding_box()['height'] >= 44, f'{name}: local choice stays touch-friendly and Coming soon remains visibly unavailable')
+            check(future.is_visible() and future.is_enabled() and page.locator('#source-local').bounding_box()['height'] >= 44, f'{name}: local choice stays touch-friendly and the YouTube source is available')
+            future.click(); page.locator('#youtube-url').wait_for(state='visible')
+            page.wait_for_function("!document.querySelector('#media-source').getAnimations({subtree: true}).length")
+            box = modal.bounding_box(); row = page.locator('.youtube-row').bounding_box()
+            check(box['y'] + box['height'] <= height and row['x'] + row['width'] <= box['x'] + box['width'] and page.locator('#youtube-submit').bounding_box()['height'] >= 44, f'{name}: the open link form fits the dialog with a touch-friendly button')
             page.screenshot(path=str(out / f'{name}-source.png'), full_page=True)
             page.keyboard.press('Escape'); modal.wait_for(state='hidden')
             if name == 'mobile':
@@ -220,10 +282,17 @@ def run():
                 stable_actions(name, 'ejected')
         page.emulate_media(reduced_motion='reduce'); page.wait_for_timeout(100)
         check(glow()['enabled'] and glow()['animation'] == 'none' and glow()['opacity'] == 1, 'Reduced motion retains static empty highlighting without continuous animation')
-        check(page.evaluate("typeof window.YT === 'undefined' && !('loadYouTube' in turntable.controls)"), 'No embedded-player API or YouTube loading command is installed')
+        check(page.evaluate("typeof window.YT === 'undefined' && !('loadYouTube' in turntable.controls)"), 'YouTube audio uses the shared load command, not an embedded player or separate command')
+        youtube_links(page, state, modal, load, future, ready, out)
         external = [url for url in requests if urlsplit(url).scheme in ('http', 'https') and urlsplit(url).hostname not in ('127.0.0.1', 'localhost')]
-        check(not external, 'The complete loading and placeholder flow makes no external media or API requests')
-        check(not errors, 'No browser exceptions in local source selection, playback, drop or replacement')
+        check(not external, 'The complete loading flow, including mocked links, makes no external requests from the browser')
+        check(not errors, 'No browser exceptions in local source selection, playback, drop, replacement or links')
+        static = browser.new_page(viewport={'width': 1440, 'height': 1000})
+        static.route('**/api/youtube', lambda route: route.fulfill(status=404, body='Not Found'))
+        static.goto('http://127.0.0.1:42069/'); static.wait_for_function('window.turntable'); static.wait_for_timeout(300)
+        static.locator('#load').click()
+        option = static.locator('#source-youtube')
+        check(option.is_disabled() and 'on your computer' in option.inner_text().lower() and not static.locator('#youtube-form').is_visible(), 'A static host (no server API) keeps YouTube links visibly unavailable')
         browser.close()
     (out / 'checks.json').write_text(json.dumps({'checks': checks, 'action_transitions': {'first_load': initial_load, 'replacement': replacement, 'eject': ejection, 'mobile_loading': mobile_loading}, 'action_geometry': layout_audit}, indent=2) + '\n')
     print(f'All {len(checks)} local media-source checks passed.', flush=True)

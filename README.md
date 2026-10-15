@@ -2,7 +2,7 @@
 
 ![The VHS-42069 turntable on a glass desk in a daylight Manhattan studio](docs/images/studio.webp)
 
-**Why spend $449 on a turntable when you can vibe code one for ~~$10~~ $449 in tokens?**
+**Why spend $449 on a turntable when you can vibe code one for ~~$10~~ $449 in tokens** <img src="static/assets/loudly-crying.webp" alt="😭" width="24" height="24">
 
 Drop an MP3 or WAV onto the page and the VHS-42069, a fictional direct-drive turntable, plays it like a record: the platter spins up, the arm cues down, and you can scratch, change speed and nudge the pitch. It sits on a glass desk in a sunny Manhattan studio, and your music never leaves your browser.
 
@@ -17,6 +17,7 @@ Drop an MP3 or WAV onto the page and the VHS-42069, a fictional direct-drive tur
 - **Hears the beat.** Every record gets its tempo detected when it loads. The **Trance Gate** pumps or chops the music in time with it, and stays locked through seeks, pauses, scratches and speed changes.
 - **Make it yours.** 8 turntable finishes, 18 vinyl colors (clear and smoke included), 19 label colors, and a record condition from Mint to Poor that you can hear: wear, crackle, pops, wow and flutter.
 - **Your music stays yours.** Files are decoded and played entirely in your browser. Nothing is uploaded.
+- **YouTube links, when you run it yourself.** Paste a link and your own computer fetches the audio; the record then plays like any file, scratching and Trance Gate included.
 
 | Close-up | Tempo and Trance Gate |
 | --- | --- |
@@ -89,6 +90,8 @@ The gate never changes the record's speed or pitch. Reverb is coming soon.
 
 > [!NOTE]
 > Selected files are decoded and played entirely in your browser; they are never uploaded to GitHub or any other server. The hosted version is a static GitHub Pages site over HTTPS: no account, no backend. GitHub does log visitors' IP addresses for security, so local audio is not the same as anonymous browsing (see [GitHub's data collection disclosure](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection)).
+>
+> YouTube links need the local server, so the hosted site shows them as unavailable. When you run the studio yourself, your computer downloads the video's audio from YouTube to a temporary folder, hands it to the browser and deletes it; nothing else is sent anywhere.
 
 ## Run it locally
 
@@ -100,6 +103,8 @@ uv run python app.py
 ```
 
 Open **http://127.0.0.1:42069** and stop the server with Ctrl+C. A graphics card helps: the studio is real-time 3D (WebGL 2), and **Graphics → Performance** lightens it on slower machines. Without WebGL, the full turntable still works as an interactive 2D deck.
+
+**Choose record → YouTube link** accepts a link to one video up to 20 minutes long; [yt-dlp](https://github.com/yt-dlp/yt-dlp) (installed by `uv sync`, with the deno JavaScript runtime it needs on macOS, Windows x64 and Linux x64/arm64; elsewhere install [deno](https://deno.com) yourself) fetches the original audio stream, so no ffmpeg is needed. Downloading from YouTube is subject to YouTube's terms; use it for audio you have the right to play. When YouTube changes and links stop working, update yt-dlp with `uv lock --upgrade-package yt-dlp && uv sync`.
 
 ## Host it on GitHub Pages
 
@@ -132,4 +137,4 @@ There is no single test runner; [AGENTS.md](AGENTS.md#tests) lists every suite, 
 
 ## License
 
-[MIT](LICENSE). The VHS-42069 and the Virtual Home Studio name and logo are original to this project; Three.js is MIT-licensed by its authors.
+[MIT](LICENSE). The VHS-42069 and the Virtual Home Studio name and logo are original to this project; Three.js is MIT-licensed by its authors. The headline's 😭 is Google's [Noto emoji](static/assets/EMOJI-LICENSE.md): the animation under CC BY 4.0, the still under Apache 2.0.

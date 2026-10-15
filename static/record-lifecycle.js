@@ -1,3 +1,6 @@
+/** Local MP3/WAV files, plus the M4A/WebM audio the local server fetches from YouTube. */
+export const RECORD_FILE = /\.(mp3|wav|m4a|webm)$/i;
+
 /** Latest request wins; physical operations serialize through one shared removal. */
 export class RecordLifecycle {
   constructor(deck, view) {
@@ -38,7 +41,7 @@ export class RecordLifecycle {
   }
   async load(file) {
     if (!file) return;
-    if (!/\.(mp3|wav)$/i.test(file.name)) { this.view.notice('Please choose an MP3 or WAV audio file.', true); return; }
+    if (!RECORD_FILE.test(file.name)) { this.view.notice('Please choose an MP3 or WAV audio file.', true); return; }
     const version = ++this.generation;
     // Finish any physical move already in flight before changing its phase.
     if (this.removal) await this.removal;
