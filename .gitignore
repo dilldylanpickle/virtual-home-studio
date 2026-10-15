@@ -27,8 +27,26 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Private development photography is not public artwork
+# Private reference material (photography, reference recordings) is not public
 /docs/reference/
+
+# Audio stays local anywhere in the tree (personal and third-party music, renders);
+# only the generated test fixtures, with their provenance, are tracked
+# (bracket classes: matching is case-sensitive, and music often arrives as .MP3 or .WAV)
+*.[mM][pP]3
+*.[wW][aA][vV]
+*.[fF][lL][aA][cC]
+*.[mM]4[aA]
+*.[aA][aA][cC]
+*.[oO][gG][gG]
+*.[oO][gG][aA]
+*.[oO][pP][uU][sS]
+*.[aA][iI][fF]
+*.[aA][iI][fF][fF]
+*.[wW][mM][aA]
+*.[mM][iI][dD]
+*.[mM][iI][dD][iI]
+!/tests/fixtures/audio/*.wav
 
 # Unpublished studio plate masters; only the WebP derivatives in static/assets/ ship
 /docs/source/
