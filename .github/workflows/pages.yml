@@ -33,6 +33,8 @@ jobs:
           mkdir -p _site
           cp -R static _site/static
           mv _site/static/index.html _site/index.html
+          # Deploy-specific asset and module URLs: browsers never mix cached old and new files.
+          python3 tools/stamp-site.py _site "${GITHUB_SHA::8}"
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:

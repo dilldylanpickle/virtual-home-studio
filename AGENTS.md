@@ -22,7 +22,7 @@ The public turntable is the fictional **Virtual Home Studio VHS-42069**.
 - Treat manual tonearm sound as the reference for the shared scrub reader.
 - Animate removable media independently of permanent hardware.
 - Keep audio decoding and playback local to the browser.
-- Preserve static hosting under a repository URL prefix: HTML uses document-relative asset/home links; worklet URLs resolve against `import.meta.url`. Verify loading and playback under a subdirectory as well as the local server when changing entry points or deployment packaging.
+- Preserve static hosting under a repository URL prefix: HTML uses document-relative asset/home links; worklet URLs resolve against `import.meta.url`. Verify loading and playback under a subdirectory as well as the local server when changing entry points or deployment packaging. Keep page asset URLs `./static/…` and module imports relative string literals (`from './x.js'`, `import('./x.js')`, `new URL('./x.js', import.meta.url)`) so the deploy stamp reaches them; it fails the deploy if any relative import is left unstamped.
 - Reuse existing motion, lifecycle and audio primitives.
 - Keep changes focused; avoid unrelated visual redesigns.
 
@@ -33,7 +33,8 @@ Paths below are relative to the repository root; module names are under `static/
 | File | Responsibility |
 | --- | --- |
 | `app.py` | FastAPI static server; loopback port 42069 |
-| `.github/workflows/pages.yml` | Static GitHub Pages deployment from `master`; publishes the entry page and browser assets only |
+| `.github/workflows/pages.yml` | Static GitHub Pages deployment from `master`; publishes the entry page and browser assets only, stamped by `tools/stamp-site.py` |
+| `tools/stamp-site.py` | Deploy step: adds the commit to every page asset URL and relative module import (including workers and the worklet) so Pages' 10-minute browser cache never mixes one deploy's files with another's; the source tree stays unstamped |
 | `static/index.html` | Physical SVG, HUD, customization and help dialogs |
 | `static/studio-view.js` / `static/studio-view.css` | Full-bleed page layout, Close-up toggle, open-area measurement for framing, canonical SVG input projection, focus and WebGL fallback |
 | `static/studio-renderer.js` | Transparent Three.js renderer for the turntable over the plate: calibrated plate camera, close-up travel, plate-derived environment, sun, shadow/contact/reflection catchers, grade, quality budgets and dynamic resolution; visual frame subscriber |
