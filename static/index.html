@@ -233,12 +233,18 @@
               </div>
               <div class="rhythm-section">
                 <div class="rhythm-head"><h3>Trance gate</h3><label class="gate-switch"><input id="gate-enabled" type="checkbox"><span>Off</span></label></div>
-                <div class="rhythm-row"><label class="rhythm-label" for="gate-style">Style</label><select id="gate-style"></select>
-                  <span class="gate-rates gate-shapes" role="radiogroup" aria-label="Gate shape"></span></div>
-                <div id="gate-steps" class="gate-steps" role="group" aria-label="Gate pattern steps"></div>
+                <div class="rhythm-row"><label class="rhythm-label" for="gate-style">Style</label><select id="gate-style"></select></div>
+                <canvas id="gate-scope" class="gate-scope" aria-hidden="true"></canvas>
+                <div id="gate-steps" class="gate-steps" role="group" aria-label="Gate pattern steps" aria-describedby="gate-steps-hint"></div>
+                <p id="gate-steps-hint" class="tap-status">Click a step to turn it on or off. Drag across steps (or Shift-click) to hold one note.</p>
                 <div class="rhythm-row"><span class="rhythm-label">Rate</span><span class="gate-rates gate-rate-options" role="radiogroup" aria-label="Gate rate"></span></div>
-                <label class="rhythm-slider" for="gate-depth"><span>Depth <output id="gate-depth-value">50%</output></span><input id="gate-depth" type="range" min="0" max="1" step=".05" value=".5"></label>
-                <label class="rhythm-slider" for="gate-length"><span><span id="gate-length-label">Swell</span> <output id="gate-length-value">65%</output></span><input id="gate-length" type="range" min="0" max="1" step=".05" value=".65"></label>
+                <div class="gate-envelope">
+                  <label class="rhythm-slider" for="gate-attack"><span>Attack <output id="gate-attack-value">1 ms</output></span><input id="gate-attack" type="range" min="0" max="1" step=".01"></label>
+                  <label class="rhythm-slider" for="gate-decay"><span>Decay <output id="gate-decay-value">70 ms</output></span><input id="gate-decay" type="range" min="0" max="1" step=".01"></label>
+                  <label class="rhythm-slider" for="gate-sustain"><span>Sustain <output id="gate-sustain-value">30%</output></span><input id="gate-sustain" type="range" min="0" max="1" step=".05"></label>
+                  <label class="rhythm-slider" for="gate-release"><span>Release <output id="gate-release-value">25 ms</output></span><input id="gate-release" type="range" min="0" max="1" step=".01"></label>
+                </div>
+                <label class="rhythm-slider" for="gate-mix"><span>Mix <output id="gate-mix-value">100%</output></span><input id="gate-mix" type="range" min="0" max="1" step=".05"></label>
               </div>
               <div class="rhythm-section reverb-section" aria-disabled="true">
                 <div class="rhythm-head"><h3>Reverb</h3><span class="coming-soon">Coming soon</span></div>

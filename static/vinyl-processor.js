@@ -3,7 +3,7 @@ import { VinylImperfections } from './vinyl-effects.js';
 import { TranceGate } from './trance-gate.js';
 
 // Reported to the page so it can detect a stale cached engine; keep in step with app.js.
-const ENGINE_VERSION = 5;
+const ENGINE_VERSION = 7;
 
 /** One PCM reader and one audio clock own motor, scratching and virtual grooves. */
 class VinylProcessor extends AudioWorkletProcessor {

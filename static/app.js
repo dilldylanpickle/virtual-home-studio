@@ -14,7 +14,7 @@ import { COVER_SWING_MS } from './studio-turntable-3d.js';
 
 const CUE_DESCENT_MS = 1100;
 // Must match vinyl-processor.js; bump both when the engine's messages change.
-const ENGINE_VERSION = 5;
+const ENGINE_VERSION = 7;
 import { RECORD_FILE, RecordLifecycle } from './record-lifecycle.js';
 import { Rhythm } from './rhythm.js';
 import { setupCustomization, renderMaterial, VINYL, LABELS, FINISHES } from './record-customization.js';

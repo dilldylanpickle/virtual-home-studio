@@ -1,5 +1,5 @@
 import { ANALYSIS_VERSION } from './tempo-analysis.js';
-import { BPM_RANGE, DEFAULT_GATE, DEFAULT_TEMPO, GATE_RATES, GATE_SHAPES, GATE_STEPS, MIN_CONFIDENCE, effectiveGrid, gateCycle, gateMakeup, patternSteps, styleSettings, tapBpm } from './tempo-grid.js';
+import { BPM_RANGE, DEFAULT_GATE, DEFAULT_TEMPO, GATE_ENVELOPE, GATE_RATES, GATE_STEPS, MIN_CONFIDENCE, STEP_OFF, STEP_ON, STEP_TIE, effectiveGrid, gateCycle, normalizeSteps, patternSteps, styleSettings, tapBpm } from './tempo-grid.js';
 
 const CACHE_PREFIX = 'vhs-tempo:', CACHE_INDEX = 'vhs-tempo-index', CACHE_LIMIT = 40;
 const storage = {
@@ -85,11 +85,8 @@ export class Rhythm {
   }
   syncGate() {
     const gate = this.deck.state.gate;
-    this.post({ type: 'gate', settings: { enabled: gate.enabled, depth: gate.depth, stepsPerBeat: GATE_RATES[gate.rate], length: gate.length, shape: gate.shape, steps: gate.steps, cycle: gateCycle(gate.rate),
-      // Softer edges: longer attack/release ramps keep chops musical on a full mix.
-      attackMs: 1.5 + (gate.soft ?? 0) * 12, releaseMs: 9 + (gate.soft ?? 0) * 45,
-      // Pumps let the kick's first 25 ms through; highs take part of the duck; small make-up gain.
-      punchMs: gate.shape === 'pump' ? 25 : 0, highs: gate.highs ?? 1, makeup: gateMakeup(gate) } });
+    this.post({ type: 'gate', settings: { enabled: gate.enabled, stepsPerBeat: GATE_RATES[gate.rate], steps: gate.steps, cycle: gateCycle(gate.rate),
+      attackMs: gate.attack, decayMs: gate.decay, sustain: gate.sustain, releaseMs: gate.release, mix: gate.mix } });
   }
   post(message) { this.deck.engine?.port.postMessage(message); }
 
@@ -100,15 +97,21 @@ export class Rhythm {
     // A style sets everything at once; later individual changes make the gate Custom.
     if (typeof patch.style === 'string' && styleSettings(patch.style)) Object.assign(gate, styleSettings(patch.style));
     if (patch.rate in GATE_RATES) gate.rate = patch.rate;
-    if (GATE_SHAPES.includes(patch.shape)) gate.shape = patch.shape;
-    if (Number.isFinite(patch.depth)) gate.depth = Math.max(0, Math.min(1, patch.depth));
-    if (Number.isFinite(patch.length)) gate.length = Math.max(0, Math.min(1, patch.length));
-    if (Number.isFinite(patch.highs)) gate.highs = Math.max(0, Math.min(1, patch.highs));
+    for (const key of ['attack', 'decay', 'release']) if (Number.isFinite(patch[key])) gate[key] = Math.max(GATE_ENVELOPE[key][0], Math.min(GATE_ENVELOPE[key][1], patch[key]));
+    for (const key of ['sustain', 'mix']) if (Number.isFinite(patch[key])) gate[key] = Math.max(0, Math.min(1, patch[key]));
     if (typeof patch.pattern === 'string') gate.steps = patternSteps(patch.pattern);
-    if (Array.isArray(patch.steps) && patch.steps.length === GATE_STEPS) gate.steps = patch.steps.map(Boolean);
-    if (Number.isInteger(patch.toggleStep) && patch.toggleStep >= 0 && patch.toggleStep < GATE_STEPS) gate.steps = gate.steps.map((on, i) => i === patch.toggleStep ? !on : on);
+    if (Array.isArray(patch.steps) && patch.steps.length === GATE_STEPS) gate.steps = patch.steps.map(step => step === true ? STEP_ON : [STEP_OFF, STEP_ON, STEP_TIE].includes(step) ? step : STEP_OFF);
+    // Click a step: off turns on; a note (or a tie) turns off.
+    if (Number.isInteger(patch.toggleStep) && patch.toggleStep >= 0 && patch.toggleStep < GATE_STEPS) gate.steps = gate.steps.map((step, i) => i === patch.toggleStep ? (step === STEP_OFF ? STEP_ON : STEP_OFF) : step);
+    // Drag across steps: one note from the first step, tied through the last.
+    if (Array.isArray(patch.tie) && patch.tie.every(Number.isInteger)) {
+      const [from, to] = [Math.min(...patch.tie), Math.max(...patch.tie)];
+      if (from >= 0 && to < GATE_STEPS && to > from) gate.steps = gate.steps.map((step, i) => i === from ? (step === STEP_TIE ? STEP_TIE : STEP_ON) : i > from && i <= to ? STEP_TIE : step);
+    }
+    gate.steps = normalizeSteps(gate.steps, gateCycle(gate.rate));
     this.deck.state.gate = gate; this.syncGate(); this.deck.emit();
   }
+
   /** Tempo corrections. Each recalculates the grid immediately and is remembered for the file. */
   setManualBpm(bpm, anchor) {
     if (!Number.isFinite(bpm)) return;
