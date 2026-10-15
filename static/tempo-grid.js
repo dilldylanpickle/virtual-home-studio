@@ -143,17 +143,22 @@ export const kitName = kick => Object.keys(KIT_PATTERNS).find(name => {
 }) ?? 'Custom';
 /** Kick sounds by hard dance school; the synthesis lives in hardstyle.js (KICK_SOUNDS). */
 export const KIT_SOUNDS = Object.freeze({ euphoric: 'Euphoric', raw: 'Rawstyle', techno: 'Techno drive', gabber: 'Gabber' });
-export const DEFAULT_KICK = Object.freeze({ enabled: false, ...kitLanes('Classic'), sound: 'euphoric', crashEvery: 8, drops: false, horn: false, volume: .7, drive: .6, tail: .5, tune: 'auto' });
-/** Pixel Cat melodies: two bars of sixteenths. Lead digits are chord-tone steps (0 root,
- * 1 third, 2 fifth, 3 octave…), bass digits 0 root, 1 octave, 2 fifth; '-' holds, '.' rests. */
-export const CAT_PATTERNS = Object.freeze({
-  Bounce: { lead: '3-5-4.3.2-3-4.5.6-5-4.3.2-1-2-..', bass: '0.1.0.1.0.1.0.1.' },
-  Sparkle: { lead: '34565432345654322345654323456543', bass: '0.1.0.1.0.1.0.1.' },
-  Hop: { lead: '3.3.5.4.3.2.1.2.3.5.6.5.4-3-2...', bass: '0-..1-..0-..2-..' },
+export const DEFAULT_KICK = Object.freeze({ enabled: false, ...kitLanes('Classic'), sound: 'raw', crashEvery: 8, drops: true, horn: true, volume: .7, drive: .6, tail: .5, tune: 'auto' });
+/** 8-bit mode melodies (original): two bars of sixteenths. Lead digits are pentatonic degrees
+ * of the song's key (0 tonic, 1, 2, 3, 4, 5 octave…; notes on the beat snap to the chord),
+ * bass digits 0 root, 1 octave, 2 fifth of the chord, '-' holds and '.' rests; drums are one
+ * bar of 'k' kick, 's' snare, 'h' hat. */
+export const CHIP_PATTERNS = Object.freeze({
+  Overworld: { lead: '3432123210123-3-4345432343212---', bass: '0.1.0.1.0.1.0.1.', drums: 'k.h.s.h.k.h.s.h.' },
+  Sparkle: { lead: '0235323575323.2.1346434676434...', bass: '0.1.0.1.0.1.0.1.', drums: 'k.h.s.h.k.h.s.hh' },
+  'Boss fight': { lead: '05050505272716160505050538384.3.', bass: '0.0.0.0.2.2.1.1.', drums: 'k.hhs.hhk.hhs.hk' },
+  Chill: { lead: '3.3.4.3.2.1.2.3.5-4-3.2.3---....', bass: '0---1---0---2---', drums: 'k...s...k.k.s...' },
 });
 const toNotes = text => [...text].map(step => step === '-' ? null : step === '.' ? -1 : Number(step));
-export const catLanes = name => { const pattern = CAT_PATTERNS[name] ?? CAT_PATTERNS.Bounce; return { lead: toNotes(pattern.lead), bass: toNotes(pattern.bass) }; };
-export const DEFAULT_CAT = Object.freeze({ enabled: false, pattern: 'Bounce', meow: true, volume: .6, crunch: .5 });
+export const chipLanes = name => { const pattern = CHIP_PATTERNS[name] ?? CHIP_PATTERNS.Overworld; return { lead: toNotes(pattern.lead), bass: toNotes(pattern.bass), drums: [...pattern.drums] }; };
+/** Sound chips; the synthesis lives in chiptune.js (CHIP_SOUNDS). */
+export const CHIP_SOUND_NAMES = Object.freeze({ console: 'Console', pocket: 'Pocket', computer: 'Computer' });
+export const DEFAULT_CHIP = Object.freeze({ enabled: false, sound: 'console', pattern: 'Overworld', chords: true, drums: true, pixels: true, volume: .6, crunch: .5 });
 export const KEY_NAMES = Object.freeze(['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B']);
 export const keyLabel = key => key ? `${KEY_NAMES[key.tonic]} ${key.mode}` : '';
 /** Kick tail frequency (Hz): the chosen or detected root, in the 41–78 Hz hardstyle range

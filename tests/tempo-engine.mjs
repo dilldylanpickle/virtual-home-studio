@@ -88,7 +88,7 @@ let Processor; const scope = {
   AudioWorkletProcessor: class { constructor() { this.port = { postMessage: () => {} }; } },
   registerProcessor: (_name, implementation) => { Processor = implementation; },
 };
-vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'pixel-cat.js', 'vinyl-processor.js']
+vm.runInNewContext(['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'chiptune.js', 'vinyl-processor.js']
   .map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n'), scope);
 const engine = new Processor(), rate = 48000;
 engine.command({ type: 'settings', settings: { surface: false, contacts: false } });
@@ -300,51 +300,68 @@ console.log('PASS Trance Gate stays bright: full duck for lows, partial for high
   assert.ok(Math.abs(phrase.kick.fired - expected) <= 1 && expected - oneBar >= 4, `the kick plays the 8-bar phrase with its fills (${phrase.kick.fired} kicks, phrase ${expected}, one bar ${oneBar})`);
   console.log('PASS hardstyle phrases: 8-bar presets with fills in bars 4 and 8 play through the engine');
 
-  // Pixel Cat: a chiptune band on the sixteenths in the song's chords, over the crunched record.
-  const catEngine = (motorRate, settings, chords, music = .3, seconds = 12) => {
+  // 8-bit mode: a chip band on the sixteenths in the song's key and chords, over the crunched record.
+  const { CHIP_SOUND_NAMES, chipLanes } = await import('../static/tempo-grid.js');
+  const chipEngine = (motorRate, settings, chords, music = .3, seconds = 12) => {
     const e = new Processor();
     e.command({ type: 'settings', settings: { surface: false, contacts: false } });
     e.command({ type: 'load', channels: [Float32Array.from({ length: rate * seconds }, (_, i) => music * Math.sin(2 * Math.PI * 220 * i / rate))], sampleRate: rate });
     e.command({ type: 'beats', beats: Float64Array.from({ length: Math.ceil(seconds * 2) + 2 }, (_, i) => .2 + i * period), downbeat: 0 });
     if (chords) e.command({ type: 'chords', ...chords });
-    if (settings) e.command({ type: 'cat', settings });
+    if (settings) e.command({ type: 'chip', settings });
     e.command({ type: 'control', revision: 1, enabled: true, contact: true, motorRate, holding: false, immediate: true, position: 1 / seconds });
     return e;
   };
-  const catSettings = (extra = {}) => ({ enabled: true, volume: .6, crunch: .5, meow: false, ...catLanes('Sparkle'), tonic: 0, minor: false, ...extra });
+  const chipSettings = (extra = {}) => ({ enabled: true, volume: .6, crunch: .5, sound: 'console', chords: true, drumsOn: true, ...chipLanes('Sparkle'), tonic: 0, minor: false, ...extra });
   const pitchClass = frequency => ((Math.round(12 * Math.log2(frequency / 440)) + 9) % 12 + 12) % 12;
   // C major until 3 s, then A minor (song seconds; the read head starts at 1 s).
-  const band = catEngine(1, catSettings(), { times: [0, 3], roots: [0, 9], minors: [0, 1] });
-  const heard = { c: new Set(), am: new Set(), bass: new Set() }; let peak = 0;
+  const band = chipEngine(1, chipSettings(), { times: [0, 3], roots: [0, 9], minors: [0, 1] }), events = [];
+  const onStep = band.chip.onStep.bind(band.chip);
+  band.chip.onStep = (step, t) => {
+    const before = { notes: band.chip.notes, stabs: band.chip.stabs }; onStep(step, t);
+    events.push({ step, t, lead: band.chip.lead.frequency, fresh: band.chip.notes > before.notes, bass: band.chip.bass.frequency, stab: [...band.chip.stab.notes], stabbed: band.chip.stabs > before.stabs });
+  };
+  let peak = 0;
   for (let block = 0; block < Math.round(rate * 3.5 / 128); block++) {
     const o = [new Float32Array(128), new Float32Array(128)]; band.process([], [o]);
     for (const v of o[0]) peak = Math.max(peak, Math.abs(v));
-    const time = band.position / rate;
-    if (band.cat.lead.on && time > 1.1 && time < 2.9) heard.c.add(pitchClass(band.cat.lead.frequency));
-    if (band.cat.lead.on && time > 3.15) heard.am.add(pitchClass(band.cat.lead.frequency));
-    if (band.cat.bass.on && time > 1.1 && time < 2.9) heard.bass.add(pitchClass(band.cat.bass.frequency));
   }
-  assert.deepEqual([...heard.c].sort((a, b) => a - b), [0, 4, 7], 'the lead plays C major chord tones over C');
-  assert.deepEqual([...heard.am].sort((a, b) => a - b), [0, 4, 9], 'the lead follows the change to A minor');
-  assert.deepEqual([...heard.bass], [0], 'the bass bounces on the root');
-  assert.ok(band.cat.notes >= 26 && band.cat.notes <= 30 && band.cat.bassNotes >= 12, `Sparkle plays sixteenths (${band.cat.notes} notes in 3.5 s at 120 BPM)`);
+  const notes = events.filter(event => event.fresh), inC = notes.filter(event => event.t > 1.05 && event.t < 2.95), inAm = notes.filter(event => event.t > 3.05);
+  assert.ok(inC.every(event => [0, 2, 4, 7, 9].includes(pitchClass(event.lead))), 'the melody stays in the key (C major pentatonic)');
+  const onBeat = list => list.filter(event => ((event.step % 4) + 4) % 4 === 0).map(event => pitchClass(event.lead));
+  assert.ok(onBeat(inC).length >= 3 && onBeat(inC).every(pc => [0, 4, 7].includes(pc)), `notes on the beat land on the C chord (${onBeat(inC)})`);
+  assert.ok(onBeat(inAm).length >= 1 && onBeat(inAm).every(pc => [9, 0, 4].includes(pc)), `after the change they land on A minor (${onBeat(inAm)})`);
+  assert.deepEqual([...new Set(events.filter(event => event.t > 1.05 && event.t < 2.95 && event.step % 2 === 0).map(event => pitchClass(event.bass)))], [0], 'the bass bounces on the root');
+  const stabs = events.filter(event => event.stabbed);
+  assert.ok(stabs.length >= 5 && stabs.every(event => ((event.step % 4) + 4) % 4 === 2), 'chip chords stab on the offbeat eighths');
+  assert.deepEqual(stabs.filter(event => event.t > 3.05).at(-1).stab.map(pitchClass), [9, 0, 4], 'chip chords arpeggiate the current chord (A minor)');
+  assert.ok(band.chip.notes >= 20 && band.chip.bassNotes >= 12 && band.chip.hits >= 10, `Sparkle plays sixteenths with bass and drums (${band.chip.notes} notes, ${band.chip.hits} drum hits in 3.5 s at 120 BPM)`);
   assert.ok(peak < 1.2, `the band stays bounded (${peak.toFixed(2)})`);
-  const stoppedCat = catEngine(0, catSettings()); capture(stoppedCat, 2); assert.equal(stoppedCat.cat.notes, 0, 'no notes while the record is stopped');
-  const seekingCat = catEngine(1, catSettings());
-  seekingCat.command({ type: 'control', revision: 2, enabled: true, contact: true, motorRate: 1, holding: false, immediate: true, seekTarget: .9, seekDuration: 1.2 });
-  capture(seekingCat, 1); assert.equal(seekingCat.cat.notes, 0, 'seeking plays no notes');
-  // Without chords the band plays the song's key chord.
-  const keyed = catEngine(1, catSettings({ tonic: 7, minor: false })); capture(keyed, .6);
-  assert.ok(keyed.cat.lead.on && [7, 11, 2].includes(pitchClass(keyed.cat.lead.frequency)), 'without detected chords the band plays the key chord (G)');
-  const nya = catEngine(1, catSettings({ meow: true })); const nyaOut = capture(nya, 2).out;
-  assert.ok(nya.cat.meows > 10 && nyaOut.every(Number.isFinite) && Math.max(...nyaOut.map(Math.abs)) < 1.2, 'nya vocals render clean and bounded');
+  const bare = chipEngine(1, chipSettings({ chords: false, drumsOn: false })); capture(bare, 2);
+  assert.ok(bare.chip.stabs === 0 && bare.chip.hits === 0 && bare.chip.notes > 8, 'chip chords and drums switch off');
+  // Each sound chip renders clean and bounded, and they sound different.
+  const sounds = Object.fromEntries(Object.keys(CHIP_SOUND_NAMES).map(name => { const e = chipEngine(1, chipSettings({ sound: name }), null, 0); return [name, capture(e, 2).out]; }));
+  for (const [name, out] of Object.entries(sounds)) assert.ok(out.every(Number.isFinite) && Math.max(...out.map(Math.abs)) < 1.2 && Math.max(...out.map(Math.abs)) > .05, `the ${name} chip renders clean and bounded`);
+  const difference = (a, b) => a.reduce((sum, v, i) => sum + (v - b[i]) ** 2, 0) / a.reduce((sum, v) => sum + v * v, 0);
+  assert.ok(difference(sounds.console, sounds.pocket) > .05 && difference(sounds.console, sounds.computer) > .05, 'Console, Pocket and Computer chips sound different');
+  // Power up: the jingle starts on the next beat and rises.
+  const powered = chipEngine(1, chipSettings({ drumsOn: false, chords: false }), null, 0); capture(powered, .3);
+  powered.command({ type: 'powerup' }); capture(powered, .6);
+  assert.ok(powered.chip.powerUps === 1 && powered.chip.jingle.notes.every((f, i, all) => !i || f > all[i - 1]), 'Power up plays one rising jingle on the next beat');
+  const stoppedChip = chipEngine(0, chipSettings()); capture(stoppedChip, 2); assert.equal(stoppedChip.chip.notes, 0, 'no notes while the record is stopped');
+  const seekingChip = chipEngine(1, chipSettings());
+  seekingChip.command({ type: 'control', revision: 2, enabled: true, contact: true, motorRate: 1, holding: false, immediate: true, seekTarget: .9, seekDuration: 1.2 });
+  capture(seekingChip, 1); assert.equal(seekingChip.chip.notes, 0, 'seeking plays no notes');
+  // Without chords the band plays in the key: the bass sits on its root (G).
+  const keyed = chipEngine(1, chipSettings({ tonic: 7, minor: false })); capture(keyed, .6);
+  assert.equal(pitchClass(keyed.chip.bass.frequency), 7, 'without detected chords the band plays the key (G)');
   // Crunch alone (band silent): 4-bit/4 kHz audibly changes the record; 0 leaves it untouched.
-  const plainCat = catEngine(1, null), clean = catEngine(1, catSettings({ volume: 0, crunch: 0 })), crushed = catEngine(1, catSettings({ volume: 0, crunch: 1 }));
-  const reference = capture(plainCat, 1).out, cleanOut = capture(clean, 1).out, crushedOut = capture(crushed, 1).out;
+  const plainChip = chipEngine(1, null), clean = chipEngine(1, chipSettings({ volume: 0, crunch: 0 })), crushed = chipEngine(1, chipSettings({ volume: 0, crunch: 1 }));
+  const reference = capture(plainChip, 1).out, cleanOut = capture(clean, 1).out, crushedOut = capture(crushed, 1).out;
   assert.equal(Math.max(...cleanOut.map((v, i) => Math.abs(v - reference[i]))), 0, 'crunch 0 with the band silent leaves the record unchanged');
-  const error = crushedOut.reduce((sum, v, i) => sum + (v - reference[i]) ** 2, 0) / reference.reduce((sum, v) => sum + v * v, 0);
+  const error = difference(crushedOut, reference) * reference.reduce((sum, v) => sum + v * v, 0) / crushedOut.reduce((sum, v) => sum + v * v, 0);
   assert.ok(error > .003 && error < .5, `full crunch degrades the record audibly but keeps it (${(10 * Math.log10(error)).toFixed(1)} dB error)`);
-  const offCat = catEngine(1, { ...catSettings(), enabled: false }), offOut = capture(offCat, 1).out, plainOut = capture(catEngine(1, null), 1).out;
-  assert.equal(Math.max(...offOut.map((v, i) => Math.abs(v - plainOut[i]))), 0, 'with Pixel Cat off the output is unchanged');
-  console.log('PASS Pixel Cat: chiptune lead and bass in the detected chords on the sixteenths, nya vocals, crunch, silent when stopped, seeking or off');
+  const offChip = chipEngine(1, { ...chipSettings(), enabled: false }), offOut = capture(offChip, 1).out, plainOut = capture(chipEngine(1, null), 1).out;
+  assert.equal(Math.max(...offOut.map((v, i) => Math.abs(v - plainOut[i]))), 0, 'with 8-bit mode off the output is unchanged');
+  console.log('PASS 8-bit mode: pulse lead in the key and on the chord, octave bass, offbeat chip chords, drums, three sound chips, power-up, crunch; silent when stopped, seeking or off');
 }

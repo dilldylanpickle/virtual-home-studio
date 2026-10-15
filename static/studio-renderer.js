@@ -24,14 +24,22 @@ const QUALITY = Object.freeze({
 // Colour match to the plate: its warm daylight, deep blacks and saturated sky.
 const GRADE = Object.freeze({
   name: 'StudioGrade',
-  uniforms: { tDiffuse: { value: null }, contrast: { value: .16 }, saturation: { value: 1.06 }, warmth: { value: new THREE.Vector3(1.01, 1, .985) }, lift: { value: .012 } },
+  uniforms: { tDiffuse: { value: null }, contrast: { value: .16 }, saturation: { value: 1.06 }, warmth: { value: new THREE.Vector3(1.01, 1, .985) }, lift: { value: .012 }, levels: { value: 0 } },
   vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-  fragmentShader: `uniform sampler2D tDiffuse;uniform float contrast,saturation,lift;uniform vec3 warmth;varying vec2 vUv;
+  // levels > 0 (pixel view): a reduced palette with gentle 4×4 ordered dithering per drawn
+  // pixel, on solid pixels only (translucent shadow and reflection catchers stay smooth).
+  fragmentShader: `uniform sampler2D tDiffuse;uniform float contrast,saturation,lift,levels;uniform vec3 warmth;varying vec2 vUv;
+    float bayer2(vec2 a){a=floor(a);return fract(dot(a,vec2(.5,a.y*.75)));}
+    float bayer4(vec2 a){return bayer2(.5*a)*.25+bayer2(a);}
     void main(){vec4 source=texture2D(tDiffuse,vUv);vec3 color=clamp(source.rgb*warmth,0.,1.);
       float luma=dot(color,vec3(.2126,.7152,.0722));color=clamp(mix(vec3(luma),color,saturation),0.,1.);
       color=mix(color,color*color*(3.-2.*color),contrast);color=color*(1.-lift)+lift*vec3(.86,.9,1.);
+      if(levels>0.&&source.a>.6)color=clamp(floor(color*levels+.25+.5*bayer4(gl_FragCoord.xy)),0.,levels)/levels;
       gl_FragColor=vec4(color,source.a);}`,
 });
+
+// Pixel view palette: steps per colour channel (shared with the pixelated plate).
+export const PIXEL_LEVELS = 6;
 
 /** A visual subscriber only: the native turntable composited over the studio plate.
  * Audio, mechanics and all controls remain in app.js. */
@@ -40,7 +48,7 @@ export class StudioRenderer {
     this.onFailure = onFailure;
     this.host = host; this.quality = 'cinematic'; this.frameId = 0; this.reflectionUpdates = 0;
     this.dirty = true; this.visible = true; this.inspection = 0; this.ready = false;
-    this.resolution = { scale: 1, samples: 0, slow: 0, calm: 0 };
+    this.resolution = { scale: 1, samples: 0, slow: 0, calm: 0 }; this.pixelArt = 0;
     try {
       this.renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, premultipliedAlpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
       this.canvas = this.renderer.domElement; this.canvas.id = 'studio-canvas';
@@ -206,13 +214,24 @@ export class StudioRenderer {
   basePixelRatio() { return Math.min(devicePixelRatio || 1, QUALITY[this.quality].dpr); }
   minimumScale() { return Math.min(1, 1 / this.basePixelRatio()); }
 
+  /** Pixel view (8-bit mode): draw one pixel per `size` CSS pixels, upscale without smoothing
+   * and reduce the palette with ordered dithering; 0 restores normal rendering. Presentation
+   * only: framing, projection and input are unchanged. */
+  setPixelArt(size) {
+    size = Math.max(0, Math.round(size || 0));
+    if (size === this.pixelArt) return;
+    this.pixelArt = size; this.canvas.style.imageRendering = size ? 'pixelated' : '';
+    this.grade.uniforms.levels.value = size ? PIXEL_LEVELS : 0;
+    this.resizeKey = null; this.resize(); this.invalidate();
+  }
+
   resize() {
     // Allocate integer buffers explicitly: a fractional target height corrupts readback row stride.
     this.width = Math.max(1, this.host.clientWidth); this.height = Math.max(1, this.host.clientHeight);
-    const resizeKey = `${this.width}|${this.height}|${devicePixelRatio}|${this.quality}|${this.resolution.scale}`;
+    const resizeKey = `${this.width}|${this.height}|${devicePixelRatio}|${this.quality}|${this.resolution.scale}|${this.pixelArt}`;
     if (this.resizeKey === resizeKey) return;
     this.resizeKey = resizeKey;
-    this.pixelRatio = this.basePixelRatio() * this.resolution.scale;
+    this.pixelRatio = this.pixelArt ? 1 / this.pixelArt : this.basePixelRatio() * this.resolution.scale;
     this.drawWidth = Math.max(1, Math.floor(this.width * this.pixelRatio));
     this.drawHeight = Math.max(1, Math.floor(this.height * this.pixelRatio));
     this.renderer.setPixelRatio(this.pixelRatio); this.renderer.setSize(this.width, this.height, false);
@@ -325,7 +344,7 @@ export class StudioRenderer {
    * headroom restores it. On 1× displays it is effectively disabled. */
   adaptResolution(interval) {
     const budget = 1000 / QUALITY[this.quality].fps, state = this.resolution;
-    if (!(interval > 0) || interval > budget * 4) return;
+    if (this.pixelArt || !(interval > 0) || interval > budget * 4) return;
     state.samples++; if (interval > budget * 1.3) state.slow++;
     if (state.samples < 90) return;
     const slow = state.slow / state.samples, floor = this.minimumScale(); let scale = state.scale;
@@ -359,7 +378,7 @@ export class StudioRenderer {
     });
     const { calls, triangles } = this.renderer.info.render;
     return { ready: this.ready, renderer: 'Three.js WebGL', composite: 'studio plate', quality: this.quality, frameId: this.frameId, reflectionUpdates: this.reflectionUpdates, render: { calls, triangles },
-      size: { width: this.width, height: this.height, pixelRatio: this.pixelRatio, devicePixelRatio, resolutionScale: this.resolution.scale, minimumPixelRatio: this.basePixelRatio() * this.minimumScale() },
+      size: { width: this.width, height: this.height, pixelRatio: this.pixelRatio, pixelArt: this.pixelArt, devicePixelRatio, resolutionScale: this.resolution.scale, minimumPixelRatio: this.basePixelRatio() * this.minimumScale() },
       maxAnisotropy: this.renderer.capabilities.getMaxAnisotropy(),
       plate: this.frames().plate, calibration: { pitch: platePitch(), height: PLATE.cameraHeight, distance: PLATE.deckDistance, focal: PLATE.focal },
       camera: { fov: this.camera.fov, aspect: this.camera.aspect,

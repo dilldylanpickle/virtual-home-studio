@@ -8,7 +8,7 @@ const scope = { sampleRate: rate, currentTime: 0,
   AudioWorkletProcessor: class { constructor() { this.port = { postMessage() {} }; } },
   registerProcessor: (_, value) => { Processor = value; },
 };
-const source = ['condition-profiles.js','mechanics.js','vinyl-effects.js','trance-gate.js','hardstyle.js','pixel-cat.js','vinyl-processor.js']
+const source = ['condition-profiles.js','mechanics.js','vinyl-effects.js','trance-gate.js','hardstyle.js','chiptune.js','vinyl-processor.js']
   .map(name => fs.readFileSync(new URL('../static/'+name,import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/^export /gm,'')).join('\n');
 vm.runInNewContext(source+'\nglobalThis.Effects=VinylImperfections;globalThis.profiles=CONDITIONS;globalThis.defaultCondition=DEFAULT_CONDITION;',scope);
 const fresh = new Processor().effects;

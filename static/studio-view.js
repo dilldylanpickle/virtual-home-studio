@@ -1,10 +1,12 @@
-import { StudioRenderer } from './studio-renderer.js';
+import { PIXEL_LEVELS, StudioRenderer } from './studio-renderer.js';
 import { PLATE, placePlate } from './studio-plate.js';
 
 const $ = id => document.getElementById(id);
 const mix = (a, b, t) => a + (b - a) * t;
 const ease = t => t * t * t * (t * (t * 6 - 15) + 10);
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// 4×4 ordered-dither thresholds (0–15), matching the renderer's pixel-view palette.
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 /** Camera navigation and the canonical control surface, with no playback state. */
 export class StudioView {
@@ -100,6 +102,8 @@ export class StudioView {
     const plate = placePlate(width, height, wide);
     // Let the browser pick the derivative for the plate's real rendered width.
     $('studio-plate').sizes = `${Math.ceil(plate.width)}px`;
+    // Pixel view redraws the pixelated plate when its displayed size changes.
+    if (this.pixelView && Math.abs(plate.width - (this.pixelWidth ?? 0)) > 1) queueMicrotask(() => this.pixelView && this.pixelPlate(Math.max(2, Math.min(6, Math.round(innerWidth / 300)))));
     // Narrower close-ups keep status messages in a row above the panel, not over the deck.
     const closeTop = header.bottom + 14, noticeRow = this.target === 'turntable' && !hidden && width < 1180 && width >= 600 ? 44 : 0;
     this.framing = { width, height, wide, plate, settledPlate: plate, close: rect(closeTop, Math.max(closeTop + 1, closeBottom - noticeRow), width < 600 ? 2 : gutter) };
@@ -247,6 +251,43 @@ export class StudioView {
   present() { this.graphics?.guard(() => this.graphics.redraw()); }
 
   renderFrame(state, now, audible) {
+    const pixels = Boolean(state.chip?.enabled && state.chip?.pixels);
+    if (pixels !== Boolean(this.pixelView)) this.setPixelView(pixels);
     this.graphics?.guard(() => this.graphics.update(state, now, audible));
+  }
+
+  /** Pixel view (8-bit mode): the native deck renders as pixel art and the plate is swapped
+   * for a downscaled copy at the same pixel size with the same dithered palette. Presentation
+   * only; turning it off restores the plate's responsive sources. */
+  setPixelView(on) {
+    this.pixelView = on; this.stage.toggleAttribute('data-pixels', on);
+    const plate = $('studio-plate'), size = Math.max(2, Math.min(6, Math.round(innerWidth / 300)));
+    this.stage.style.setProperty('--pixel', `${size}px`);
+    if (on) { this.plateSource ??= { src: plate.getAttribute('src'), srcset: plate.getAttribute('srcset'), current: plate.currentSrc || plate.src }; this.pixelPlate(size); }
+    else if (this.plateSource) {
+      plate.setAttribute('srcset', this.plateSource.srcset); plate.setAttribute('src', this.plateSource.src);
+      plate.style.imageRendering = ''; this.plateSource = null; this.pixelWidth = 0;
+    }
+    this.graphics?.guard(() => this.graphics.setPixelArt(on ? size : 0));
+  }
+  pixelPlate(size) {
+    const { plate } = this.framing ?? {}, source = this.plateSource; if (!plate || !source) return;
+    const width = Math.max(1, Math.round(plate.width / size)), height = Math.max(1, Math.round(plate.height / size)), token = this.pixelToken = {};
+    const image = new Image();
+    image.onload = () => {
+      if (this.pixelToken !== token || !this.pixelView) return;
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+      const context = canvas.getContext('2d'); context.imageSmoothingQuality = 'high'; context.drawImage(image, 0, 0, width, height);
+      const pixels = context.getImageData(0, 0, width, height), data = pixels.data, levels = PIXEL_LEVELS;
+      // The renderer's palette and its gentle 4×4 ordered dither.
+      for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        const threshold = .25 + .5 * BAYER[(y & 3) * 4 + (x & 3)] / 16, i = (y * width + x) * 4;
+        for (let c = 0; c < 3; c++) data[i + c] = Math.min(levels, Math.floor(data[i + c] / 255 * levels + threshold)) / levels * 255;
+      }
+      context.putImageData(pixels, 0, 0);
+      const element = $('studio-plate'); element.removeAttribute('srcset'); element.src = canvas.toDataURL('image/png');
+      element.style.imageRendering = 'pixelated'; this.pixelWidth = plate.width;
+    };
+    image.src = source.current;
   }
 }

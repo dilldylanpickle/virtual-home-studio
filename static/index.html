@@ -263,12 +263,17 @@
                 <label class="rhythm-slider" for="kick-tail"><span>Tail <output id="kick-tail-value">50%</output></span><input id="kick-tail" type="range" min="0" max="1" step=".05" value=".5"></label>
               </div>
               <div class="rhythm-section">
-                <div class="rhythm-head"><h3>Pixel Cat</h3><label class="gate-switch"><input id="cat-enabled" type="checkbox"><span>Off</span></label></div>
-                <p class="tempo-source">Turns the song into an 8-bit remix: a chiptune band plays along in the song's chords while the record gets crunchy.</p>
-                <div class="rhythm-row"><label class="rhythm-label" for="cat-pattern">Melody</label><select id="cat-pattern"></select>
-                  <label class="gate-switch cat-meow"><input id="cat-meow" type="checkbox"><span>Nya vocals</span></label></div>
-                <label class="rhythm-slider" for="cat-volume"><span>Band <output id="cat-volume-value">60%</output></span><input id="cat-volume" type="range" min="0" max="1" step=".05" value=".6"></label>
-                <label class="rhythm-slider" for="cat-crunch"><span>8-bit crunch <output id="cat-crunch-value">50%</output></span><input id="cat-crunch" type="range" min="0" max="1" step=".05" value=".5"></label>
+                <div class="rhythm-head"><h3>8-bit mode</h3><label class="gate-switch"><input id="chip-enabled" type="checkbox"><span>Off</span></label></div>
+                <p class="tempo-source">Turns any song into a chiptune remix: a chip band plays melody, chords, bass and drums in the song's key while the record gets crunched, and the room goes pixel art.</p>
+                <div class="rhythm-row"><label class="rhythm-label" for="chip-sound">Chip</label><select id="chip-sound"></select>
+                  <label class="rhythm-label chip-pattern-label" for="chip-pattern">Melody</label><select id="chip-pattern"></select></div>
+                <div class="rhythm-row chip-toggles"><label class="gate-switch"><input id="chip-chords" type="checkbox"><span>Chip chords</span></label>
+                  <label class="gate-switch"><input id="chip-drums" type="checkbox"><span>Drums</span></label>
+                  <label class="gate-switch"><input id="chip-pixels" type="checkbox"><span>Pixel view</span></label></div>
+                <div class="rhythm-row"><button id="power-up" class="rhythm-button power-button" type="button" aria-describedby="power-hint">Power up!</button>
+                  <p id="power-hint" class="tap-status">A jingle on the next beat (or press P).</p></div>
+                <label class="rhythm-slider" for="chip-volume"><span>Band <output id="chip-volume-value">60%</output></span><input id="chip-volume" type="range" min="0" max="1" step=".05" value=".6"></label>
+                <label class="rhythm-slider" for="chip-crunch"><span>8-bit crunch <output id="chip-crunch-value">50%</output></span><input id="chip-crunch" type="range" min="0" max="1" step=".05" value=".5"></label>
               </div>
               <div class="rhythm-section reverb-section" aria-disabled="true">
                 <div class="rhythm-head"><h3>Reverb</h3><span class="coming-soon">Coming soon</span></div>
@@ -368,6 +373,7 @@
         <div><dt><kbd>G</kbd></dt><dd>Trance Gate on / off</dd></div>
         <div><dt><kbd>T</kbd></dt><dd>Tap tempo</dd></div>
         <div><dt><kbd>D</kbd></dt><dd>Hardstyle drop</dd></div>
+        <div><dt><kbd>P</kbd></dt><dd>8-bit power-up</dd></div>
       </dl>
       <details class="help-focus-keys">
         <summary>More keys for focused controls</summary>

@@ -1,5 +1,5 @@
 import { ANALYSIS_VERSION } from './tempo-analysis.js';
-import { BPM_RANGE, CAT_PATTERNS, DEFAULT_CAT, DEFAULT_GATE, DEFAULT_KICK, DEFAULT_TEMPO, GATE_RATES, GATE_SHAPES, GATE_STEPS, KIT_BARS, KIT_PATTERNS, KIT_SOUNDS, MIN_CONFIDENCE, catLanes, effectiveGrid, gateCycle, gateMakeup, kickTune, kitLanes, patternSteps, styleSettings, tapBpm } from './tempo-grid.js';
+import { BPM_RANGE, CHIP_PATTERNS, CHIP_SOUND_NAMES, DEFAULT_CHIP, DEFAULT_GATE, DEFAULT_KICK, DEFAULT_TEMPO, GATE_RATES, GATE_SHAPES, GATE_STEPS, KIT_BARS, KIT_PATTERNS, KIT_SOUNDS, MIN_CONFIDENCE, chipLanes, effectiveGrid, gateCycle, gateMakeup, kickTune, kitLanes, patternSteps, styleSettings, tapBpm } from './tempo-grid.js';
 
 const CACHE_PREFIX = 'vhs-tempo:', CACHE_INDEX = 'vhs-tempo-index', CACHE_LIMIT = 40;
 const storage = {
@@ -9,7 +9,7 @@ const storage = {
 };
 
 /** Tempo analysis, beat-grid corrections and beat-synced effect settings for the Turntable
- * model. The model owns `state.tempo`, `state.gate`, `state.kick` and `state.cat`; the
+ * model. The model owns `state.tempo`, `state.gate`, `state.kick` and `state.chip`; the
  * worklet receives the effective grid, the detected chords and each effect's settings and
  * applies them at the read head's song time. Analysis is offline
  * (one worker request per loaded file) and cached per file, including user corrections. */
@@ -20,7 +20,7 @@ export class Rhythm {
     deck.state.gate = { ...DEFAULT_GATE, steps: [...DEFAULT_GATE.steps] };
     deck.state.tempo = { status: 'empty', bpm: 0, detectedBpm: 0, confidence: 0, varies: false, key: null, ...DEFAULT_TEMPO };
     deck.state.kick = { ...DEFAULT_KICK, ...kitLanes('Classic') };
-    deck.state.cat = { ...DEFAULT_CAT };
+    deck.state.chip = { ...DEFAULT_CHIP };
   }
 
   // --- Analysis lifecycle -------------------------------------------------------------
@@ -87,7 +87,7 @@ export class Rhythm {
     // Chords are song times from the analysis; grid corrections never move them.
     const chords = this.analysis?.chords ?? [];
     this.post({ type: 'chords', times: chords.map(chord => chord[0]), roots: chords.map(chord => chord[1]), minors: chords.map(chord => chord[2]) });
-    this.syncGate(); this.syncKick(); this.syncCat();
+    this.syncGate(); this.syncKick(); this.syncChip();
   }
   syncGate() {
     const gate = this.deck.state.gate;
@@ -104,11 +104,11 @@ export class Rhythm {
       crashEvery: kick.crashEvery, drops: kick.drops, horn: kick.horn, seed: this.request || 1, sound: kick.sound,
       tune: kickTune(kick.tune, this.deck.state.tempo.key), duck: .45 + kick.volume * .35 } });
   }
-  syncCat() {
-    const cat = this.deck.state.cat, key = this.deck.state.tempo.key;
+  syncChip() {
+    const chip = this.deck.state.chip, key = this.deck.state.tempo.key;
     // Without detected chords the band plays the song's key chord (C major without a key).
-    this.post({ type: 'cat', settings: { enabled: cat.enabled, volume: cat.volume, crunch: cat.crunch, meow: cat.meow, ...catLanes(cat.pattern),
-      tonic: key?.tonic ?? 0, minor: key?.mode === 'minor' } });
+    this.post({ type: 'chip', settings: { enabled: chip.enabled, volume: chip.volume, crunch: chip.crunch, sound: chip.sound, chords: chip.chords, drumsOn: chip.drums,
+      ...chipLanes(chip.pattern), tonic: key?.tonic ?? 0, minor: key?.mode === 'minor' } });
   }
   post(message) { this.deck.engine?.port.postMessage(message); }
 
@@ -147,14 +147,16 @@ export class Rhythm {
     if (patch.tune === 'auto' || /^(?:[0-9]|1[01])$/.test(String(patch.tune ?? ''))) kick.tune = String(patch.tune);
     this.deck.state.kick = kick; this.syncKick(); this.deck.emit();
   }
-  setCat(patch) {
-    const cat = { ...this.deck.state.cat };
-    if ('enabled' in patch) cat.enabled = Boolean(patch.enabled);
-    if (patch.pattern in CAT_PATTERNS) cat.pattern = patch.pattern;
-    if ('meow' in patch) cat.meow = Boolean(patch.meow);
-    for (const key of ['volume', 'crunch']) if (Number.isFinite(patch[key])) cat[key] = Math.max(0, Math.min(1, patch[key]));
-    this.deck.state.cat = cat; this.syncCat(); this.deck.emit();
+  setChip(patch) {
+    const chip = { ...this.deck.state.chip };
+    for (const key of ['enabled', 'chords', 'drums', 'pixels']) if (key in patch) chip[key] = Boolean(patch[key]);
+    if (patch.sound in CHIP_SOUND_NAMES) chip.sound = patch.sound;
+    if (patch.pattern in CHIP_PATTERNS) chip.pattern = patch.pattern;
+    for (const key of ['volume', 'crunch']) if (Number.isFinite(patch[key])) chip[key] = Math.max(0, Math.min(1, patch[key]));
+    this.deck.state.chip = chip; this.syncChip(); this.deck.emit();
   }
+  /** Power up: a rising jingle in key on the next beat (8-bit mode). */
+  powerUp() { if (this.deck.state.chip.enabled) this.post({ type: 'powerup' }); }
   /** Drop it: build next bar, pause, then crash + kick (+ air horn) on the bar after. */
   dropNow() { if (this.deck.state.kick.enabled) this.post({ type: 'drop' }); }
   /** Tempo corrections. Each recalculates the grid immediately and is remembered for the file. */

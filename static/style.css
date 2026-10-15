@@ -527,7 +527,7 @@ dialog:is(#help,#customize,#media-source)[data-motion=closed]::backdrop{backgrou
 .tempo-manual{display:inline-flex;align-items:center;gap:6px}
 .tempo-manual .rhythm-label{min-width:0}
 .gate-step.unused{opacity:.25;cursor:default}
-#gate-style,#kick-tune,#kick-pattern,#kick-sound,#cat-pattern{min-height:30px;padding:0 6px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font-size:11px}
+#gate-style,#kick-tune,#kick-pattern,#kick-sound,#chip-sound,#chip-pattern{min-height:30px;padding:0 6px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font-size:11px}
 .reverb-section{opacity:.6}
 .reverb-section .rhythm-head{margin-bottom:0}
 .coming-soon{padding:3px 8px;border-radius:999px;background:var(--hud-control);font-size:10px;color:var(--hud-muted)}
@@ -603,7 +603,12 @@ dialog:is(#help,#customize,#media-source)[data-motion=closed]::backdrop{backgrou
 .kit-bar.now{box-shadow:0 0 0 2px #fff,0 0 0 3px #c8463c}
 .kit-bar-row .rhythm-label{min-width:0}
 #kit-copy{margin-left:auto;min-height:24px;padding:0 7px;font-size:10px}
-.cat-meow{margin-left:auto}
+.chip-pattern-label{margin-left:auto}
+.chip-toggles{gap:6px 16px}
+.power-button{min-height:34px;padding:0 14px;font-weight:700;background:#d9a521;border-color:#d9a521;color:#2b2112}
+.power-button:hover:not(:disabled){background:#c6941a}
+.power-button.pulse{animation:tap-pulse .3s var(--ui-ease)}
+.power-button+.tap-status{flex:1;margin:0;min-width:140px}
 .drop-row{gap:10px}
 .drop-button{min-height:34px;padding:0 14px;font-weight:700;background:#c8463c;border-color:#c8463c;color:#fff}
 .drop-button:hover:not(:disabled){background:#b23c33}

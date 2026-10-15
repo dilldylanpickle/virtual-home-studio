@@ -1,10 +1,10 @@
 import { TranceGate } from './trance-gate.js';
-import { CAT_PATTERNS, GATE_RATES, GATE_SHAPES, GATE_STEPS, GATE_STYLES, KEY_NAMES, KIT_BARS, KIT_PATTERNS, KIT_SOUNDS, confidenceLabel, gateCycle, kitName, styleName } from './tempo-grid.js';
+import { CHIP_PATTERNS, CHIP_SOUND_NAMES, GATE_RATES, GATE_SHAPES, GATE_STEPS, GATE_STYLES, KEY_NAMES, KIT_BARS, KIT_PATTERNS, KIT_SOUNDS, confidenceLabel, gateCycle, kitName, styleName } from './tempo-grid.js';
 
 const $ = id => document.getElementById(id);
 const percent = value => `${Math.round(value * 100)}%`;
 
-/** Tempo and effects column of the presets popup (Trance Gate, Hardstyle, Pixel Cat), plus
+/** Tempo and effects column of the presets popup (Trance Gate, Hardstyle, 8-bit mode), plus
  * the BPM chip on the track line. Presentation only: every action delegates to the model
  * through `controls`; the bar the kit lanes show is view state. */
 export class RhythmPanel {
@@ -60,12 +60,15 @@ export class RhythmPanel {
       $('kit-bars').append(button);
     }
     $('kit-copy').addEventListener('click', () => controls.setKick({ copyBar: this.kitBar }));
-    // Pixel Cat: an 8-bit remix, a chiptune band in the song's chords over the crunched record.
-    for (const name of Object.keys(CAT_PATTERNS)) { const option = document.createElement('option'); option.value = option.textContent = name; $('cat-pattern').append(option); }
-    $('cat-pattern').addEventListener('change', event => controls.setCat({ pattern: event.target.value }));
-    $('cat-enabled').addEventListener('change', event => controls.setCat({ enabled: event.target.checked }));
-    $('cat-meow').addEventListener('change', event => controls.setCat({ meow: event.target.checked }));
-    for (const key of ['volume', 'crunch']) $(`cat-${key}`).addEventListener('input', event => controls.setCat({ [key]: Number(event.target.value) }));
+    // 8-bit mode: a chip band in the song's key and chords over the crunched record; the room
+    // goes pixel art. Power up (button or P) plays a jingle on the next beat.
+    for (const [value, label] of Object.entries(CHIP_SOUND_NAMES)) { const option = document.createElement('option'); option.value = value; option.textContent = label; $('chip-sound').append(option); }
+    for (const name of Object.keys(CHIP_PATTERNS)) { const option = document.createElement('option'); option.value = option.textContent = name; $('chip-pattern').append(option); }
+    $('chip-sound').addEventListener('change', event => controls.setChip({ sound: event.target.value }));
+    $('chip-pattern').addEventListener('change', event => controls.setChip({ pattern: event.target.value }));
+    for (const key of ['enabled', 'chords', 'drums', 'pixels']) $(`chip-${key}`).addEventListener('change', event => controls.setChip({ [key]: event.target.checked }));
+    for (const key of ['volume', 'crunch']) $(`chip-${key}`).addEventListener('input', event => controls.setChip({ [key]: Number(event.target.value) }));
+    $('power-up').addEventListener('click', () => { controls.powerUp(); const button = $('power-up'); button.classList.remove('pulse'); void button.offsetWidth; button.classList.add('pulse'); });
     segment(document.querySelector('.crash-options'), 'kick-crash', ['0', '4', '8'], every => every === '0' ? 'Off' : `Every ${every} bars`, every => controls.setKick({ crashEvery: Number(every) }));
     $('kick-drops').addEventListener('change', event => controls.setKick({ drops: event.target.checked }));
     $('kick-horn').addEventListener('change', event => controls.setKick({ horn: event.target.checked }));
@@ -162,10 +165,11 @@ export class RhythmPanel {
     $('kick-drops').checked = kick.drops; $('kick-horn').checked = kick.horn; $('drop-now').disabled = !kick.enabled;
     for (const key of ['volume', 'drive', 'tail']) { $(`kick-${key}`).value = kick[key]; $(`kick-${key}-value`).textContent = percent(kick[key]); }
 
-    const cat = s.cat;
-    $('cat-enabled').checked = cat.enabled; $('cat-enabled').nextElementSibling.textContent = cat.enabled ? 'On' : 'Off';
-    $('cat-pattern').value = cat.pattern; $('cat-meow').checked = cat.meow;
-    for (const key of ['volume', 'crunch']) { $(`cat-${key}`).value = cat[key]; $(`cat-${key}-value`).textContent = percent(cat[key]); }
+    const bits = s.chip;
+    $('chip-enabled').checked = bits.enabled; $('chip-enabled').nextElementSibling.textContent = bits.enabled ? 'On' : 'Off';
+    $('chip-sound').value = bits.sound; $('chip-pattern').value = bits.pattern; $('power-up').disabled = !bits.enabled;
+    for (const key of ['chords', 'drums', 'pixels']) $(`chip-${key}`).checked = bits[key];
+    for (const key of ['volume', 'crunch']) { $(`chip-${key}`).value = bits[key]; $(`chip-${key}-value`).textContent = percent(bits[key]); }
 
     // BPM chip on the track line: tempo, confidence and whether the gate is running.
     const chip = $('tempo-chip');

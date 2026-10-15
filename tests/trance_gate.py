@@ -195,6 +195,10 @@ def run():
         key = state()['tempo']['key']
         check(key['tonic'] == 0 and key['mode'] == 'major' and page.locator('#kick-tune option').first.inner_text() == 'Auto · C',
               'The song key is detected and the hardstyle kick tunes to its root (C)', key=key)
+        kick = state()['kick']
+        check(kick['sound'] == 'raw' and kick['drops'] and kick['horn'] and kick['crashEvery'] == 8 and page.locator('#kick-pattern').input_value() == 'Classic',
+              'Hardstyle defaults: Rawstyle, Classic, crash every 8 bars, random drops and the air horn')
+        page.evaluate('turntable.controls.setKick({ drops: false })')  # the counts below need no surprise drops
         fired = page.evaluate('turntable.audioDiagnostics.kick?.fired ?? 0')
         page.locator('#kick-enabled').check(); page.wait_for_timeout(2000)
         kicks = page.evaluate('turntable.audioDiagnostics.kick.fired') - fired
@@ -236,20 +240,39 @@ def run():
         bars.nth(0).click(); page.locator('#kick-pattern').select_option('Classic')
         page.locator('#kick-enabled').uncheck()
 
-        # Pixel Cat: the song's chords (C–F–G–C) reach the engine; the band plays on the beat.
-        diag = page.evaluate('turntable.audioDiagnostics.cat')
-        check(diag and diag['chords'] >= 3, "The song's chords reach the engine for Pixel Cat (C–F–G–C)", cat=diag)
-        page.locator('#cat-enabled').check(); before = page.evaluate('turntable.audioDiagnostics.cat'); page.wait_for_timeout(1500)
-        after = page.evaluate('turntable.audioDiagnostics.cat')
-        check(state()['cat']['enabled'] and after['notes'] - before['notes'] >= 6 and after['bassNotes'] > before['bassNotes'] and after['meows'] > before['meows'],
-              'Pixel Cat plays a chiptune melody, bass and nya vocals on the beat', before=before, after=after)
-        page.locator('#cat-pattern').select_option('Sparkle'); page.locator('#cat-meow').uncheck()
-        page.evaluate("turntable.controls.setCat({ crunch: 1, volume: .4 })")
-        cat = state()['cat']
-        check(cat['pattern'] == 'Sparkle' and not cat['meow'] and cat['crunch'] == 1 and page.locator('#cat-crunch-value').inner_text() == '100%',
-              'Melody, nya vocals, band level and 8-bit crunch reach the model and the panel', cat=cat)
-        page.screenshot(path=str(OUT / 'pixel-cat.png'))
-        page.locator('#cat-enabled').uncheck(); page.keyboard.press('Escape')
+        # 8-bit mode: the song's chords (C–F–G–C) reach the engine; the chip band plays on the
+        # beat; the room turns to pixel art and back.
+        page.evaluate('turntable.controls.seek(.1)'); page.wait_for_timeout(800)  # the 40 s groove is nearly over by now
+        diag = page.evaluate('turntable.audioDiagnostics.chip')
+        check(diag and diag['chords'] >= 3, "The song's chords reach the engine for 8-bit mode (C–F–G–C)", chip=diag)
+        plate_sources = page.evaluate("document.getElementById('studio-plate').getAttribute('srcset')")
+        page.locator('#chip-enabled').check(); before = page.evaluate('turntable.audioDiagnostics.chip'); page.wait_for_timeout(1500)
+        after = page.evaluate('turntable.audioDiagnostics.chip')
+        check(state()['chip']['enabled'] and after['notes'] - before['notes'] >= 6 and after['bassNotes'] > before['bassNotes'] and after['stabs'] > before['stabs'] and after['hits'] > before['hits'],
+              '8-bit mode plays a chip melody, bass, chip chords and drums on the beat', before=before, after=after)
+        page.locator('#power-up').click(); page.wait_for_timeout(900)
+        check(page.evaluate('turntable.audioDiagnostics.chip.powerUps') == after['powerUps'] + 1, 'Power up! plays the jingle on the next beat')
+        page.keyboard.press('Escape'); page.locator('#track-name').click(); page.keyboard.press('p'); page.wait_for_timeout(900)
+        check(page.evaluate('turntable.audioDiagnostics.chip.powerUps') == after['powerUps'] + 2, 'P plays a power-up too')
+        page.wait_for_function("studioView.snapshot().size.pixelArt > 0 && document.getElementById('studio-plate').src.startsWith('data:image/png')", timeout=5000)
+        size = page.evaluate('studioView.snapshot().size')
+        check(size['pixelRatio'] < 1 and page.evaluate("getComputedStyle(document.getElementById('studio-canvas')).imageRendering") == 'pixelated'
+              and page.evaluate("document.getElementById('studio').hasAttribute('data-pixels')"),
+              'Pixel view renders the deck and the plate as pixel art', size=size)
+        page.screenshot(path=str(OUT / 'pixel-view.png'))
+        page.locator('#tempo-chip').click(); options.wait_for(state='visible')
+        page.locator('#chip-sound').select_option('computer'); page.locator('#chip-pattern').select_option('Boss fight')
+        page.locator('#chip-chords').uncheck(); page.locator('#chip-drums').uncheck()
+        page.evaluate("turntable.controls.setChip({ crunch: 1, volume: .4 })")
+        chip = state()['chip']
+        check(chip['sound'] == 'computer' and chip['pattern'] == 'Boss fight' and not chip['chords'] and not chip['drums'] and chip['crunch'] == 1
+              and page.locator('#chip-crunch-value').inner_text() == '100%', 'Chip, melody, chords, drums, band level and crunch reach the model and the panel', chip=chip)
+        page.screenshot(path=str(OUT / 'eight-bit.png'))
+        page.locator('#chip-pixels').uncheck()
+        page.wait_for_function("studioView.snapshot().size.pixelArt === 0 && document.getElementById('studio-plate').getAttribute('srcset') !== null", timeout=5000)
+        check(page.evaluate("document.getElementById('studio-plate').getAttribute('srcset')") == plate_sources and page.evaluate('studioView.snapshot().size.pixelRatio') >= 1,
+              'Turning Pixel view off restores the sharp deck and the responsive plate')
+        page.locator('#chip-enabled').uncheck(); page.keyboard.press('Escape')
 
         # Cache: the same file loads without a second analysis, keeping your corrections.
         page.evaluate('turntable.controls.setManualBpm(126)')
