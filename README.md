@@ -37,7 +37,7 @@ Drop an MP3 or WAV onto the page and the VHS-42069, a fictional direct-drive tur
 | --- | --- |
 | Click the deck / **Close-up** | Move in for a top-down view with every control in reach. **← Back to studio** or Escape takes you back |
 | **Skyline** | Fade the controls and look out over the city; music keeps playing |
-| **Hide controls** | In close-up, slide the listening bar away for a clean view of the deck |
+| **Hide controls** / **Show controls** | Clicking into the close-up clears the controls away for a full view of the deck. One pill brings them back and sends them away again: it rides the panel's top edge and glides to the bottom of the screen with it |
 | **Graphics** | In **Turntable details**: Cinematic (default), Balanced or Performance |
 
 ### Playing records

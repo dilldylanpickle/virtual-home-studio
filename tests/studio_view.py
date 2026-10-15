@@ -122,6 +122,11 @@ def run():
         def settle(view):
             page.wait_for_function("view => {const s=document.querySelector('#studio'); return s.dataset.view===view && s.dataset.moving!=='true'}", arg=view, timeout=7000)
 
+        def show_controls():
+            # The close-up opens with the panel cleared away; press Show controls like a visitor.
+            page.locator('#hud-toggle').click()
+            page.wait_for_function("getComputedStyle(document.querySelector('.room')).getPropertyValue('--hud-away').trim() === '0.000'")
+
         def go(view):
             page.locator('#studio-enter' if view == 'turntable' else '#studio-focus').click()
             settle(view)
@@ -202,6 +207,7 @@ def run():
         select_speed(page, 45)
         page.locator('#quartz').click()
         page.locator('#pitch').focus(); page.keyboard.press('End')
+        show_controls()
         page.locator('#customize-open').click()
         page.get_by_role('button', name='Turntable: Red', exact=True).click()
         page.get_by_role('button', name='Vinyl: Blue', exact=True).click()
@@ -272,6 +278,7 @@ def run():
         }''')
         check(max(item['error'] for item in mesh_mapping) < 2,
               'Visible native hardware and transparent SVG input anchors agree at settled close view', pixel_errors=mesh_mapping)
+        show_controls()
         page.locator('#transport').click()
         page.wait_for_function('turntable.state.transportPaused && !turntable.state.motorRamping')
         page.wait_for_function('Math.abs(studioView.snapshot().visual.tonearmAngle-turntable.state.tonearmAngle) < .01')
@@ -347,11 +354,11 @@ def run():
         check(page.locator('#studio-enter').evaluate('node => document.activeElement === node'),
               'Returning by keyboard restores focus to the studio object target')
 
-        # A listener may move into the live HUD while the camera is travelling.
+        # A listener may bring the HUD back and move into it while the camera is travelling.
         # Completion must preserve that newer intent, including an open menu.
         page.locator('#studio-enter').focus(); page.keyboard.press('Enter')
         page.wait_for_function('document.querySelector("#studio").dataset.moving === "true"')
-        page.locator('#volume').focus()
+        page.locator('#hud-toggle').click(); page.locator('#volume').focus()
         volume_during_travel = page.locator('#studio').get_attribute('data-moving') == 'true'
         settle('turntable')
         check(volume_during_travel and page.locator('#volume').evaluate('node => document.activeElement === node'),

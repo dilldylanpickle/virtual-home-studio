@@ -41,6 +41,39 @@ GEOMETRY = r'''() => {
     centre: P(0, 0, 0), hudTop: hud.top, image: [r.x, r.y, r.width, r.height], source: img.currentSrc,
     viewport: [innerWidth, innerHeight], size: s.size};
 }'''
+# Click a button and sample, every frame, the panel's slide (--hud-away), the deck's width,
+# the Hide/Show pill's centre and the panel's top edge (both in viewport pixels).
+GLIDE = r'''selector => new Promise(done => {
+  const room = document.querySelector('.room'), deck = document.querySelector('#deck'), samples = [];
+  const pill = document.querySelector('#hud-toggle'), hud = document.querySelector('#listening-hud');
+  const away = () => +getComputedStyle(room).getPropertyValue('--hud-away');
+  document.querySelector(selector).click();
+  const start = performance.now(), inert = hud.inert;
+  const moving = document.querySelector('#studio').dataset.moving === 'true';
+  const tick = now => {
+    const p = pill.getBoundingClientRect();
+    samples.push([now - start, away(), Math.round(deck.getBoundingClientRect().width * 10) / 10,
+                  p.top + p.height / 2, hud.getBoundingClientRect().top]);
+    if (now - start < 900) requestAnimationFrame(tick); else done({inert, moving, samples});
+  };
+  requestAnimationFrame(tick);
+})'''
+TOGGLE = "(() => { const p = document.querySelector('#hud-toggle'), r = p.getBoundingClientRect(), s = getComputedStyle(p); return {x: r.x + r.width / 2, y: r.y + r.height / 2, bottom: innerHeight - r.bottom, visible: s.visibility === 'visible' && +s.opacity > .99, label: p.getAttribute('aria-label'), expanded: p.getAttribute('aria-expanded'), count: document.querySelectorAll('.hud-toggle').length}; })()"
+
+
+def glides(trace, to):
+    """A smooth, monotonic slide that reaches `to` in about 450 ms, never faster than the
+    curve allows (a snap is one or two frames covering most of the way)."""
+    samples = [(0, 1 - to)] + [sample[:2] for sample in trace['samples']]
+    done = next((t for t, away in samples if abs(away - to) < .001), None)
+    steps = [(b[1] - a[1]) * (1 if to else -1) / max(1, b[0] - a[0]) for a, b in zip(samples, samples[1:])]
+    trace.update(done=done if done is not None else 1e9, speed=max(steps), decks=[sample[2] for sample in trace['samples']])
+    middle = [away for _, away in samples[1:] if .02 < away < .98]
+    return done is not None and 350 < done < 700 and min(steps) >= 0 and max(steps) < 1.6 * 1.5 / 450 and len(middle) >= 4
+
+
+def glide_summary(trace):
+    return {'done_ms': round(trace.get('done', -1)), 'peak_per_ms': round(trace.get('speed', -1), 5), 'frames': len(trace['samples'])}
 
 
 def run():
@@ -191,27 +224,51 @@ def run():
         before = page.evaluate("JSON.stringify(turntable.state, ['filename','duration','position','pitch','quartzLock'])")
         hud_rect = "(r => [r.top, r.height, r.width].map(Math.round))(document.querySelector('#listening-hud').getBoundingClientRect())"
         studio_hud = page.evaluate(hud_rect)
-        page.locator('#studio-enter').click()
+        # Entering the close-up slides the controls away from the click, while the camera is
+        # still moving, over the same smooth glide as Hide and Show.
+        entering = page.evaluate(GLIDE, '#studio-enter')
+        check(entering['inert'] and entering['moving'] and glides(entering, 1), 'Clicking into the close-up slides the controls away at once, smoothly', **glide_summary(entering))
+        # One pill rides the panel's top edge down and rests above the bottom of the screen;
+        # it never jumps, and the panel never shows a second button.
+        pill_path = [round(y, 1) for *_, y, _ in entering['samples']]
+        check(all(b >= a - .5 for a, b in zip(pill_path, pill_path[1:])) and abs(pill_path[0] - entering['samples'][0][4]) < 6
+              and max(b - a for a, b in zip(pill_path, pill_path[1:])) < 40,
+              'Entering, the one Hide/Show pill glides down with the panel without jumping', path=pill_path[:12])
         page.wait_for_function("document.querySelector('#studio').dataset.view==='turntable' && document.querySelector('#studio').dataset.moving==='false'")
         plate_style = page.evaluate("getComputedStyle(document.getElementById('studio-plate')).filter")
-        # Close-up docks the panel by default; Hide controls trades it for a fuller deck.
         page.wait_for_timeout(300)
+        deck_hidden = page.locator('#deck').bounding_box()
+        rest = page.evaluate(TOGGLE)
+        check(rest['visible'] and rest['label'] == 'Show controls' and rest['expanded'] == 'false' and rest['count'] == 1
+              and 12 <= rest['bottom'] <= 30 and abs(rest['x'] - page.viewport_size['width'] / 2) < 2
+              and page.locator('#listening-hud').evaluate('el => el.inert')
+              and page.evaluate('document.documentElement.scrollHeight <= innerHeight + 1'),
+              'The close-up opens with the controls hidden and the pill resting as Show controls, without scrolling', pill=rest)
+        showing = page.evaluate(GLIDE, '#hud-toggle'); page.wait_for_timeout(100)
         deck_shown = page.locator('#deck').bounding_box()
-        check(not page.locator('#listening-hud').evaluate('el => el.inert') and page.locator('#hud-show').is_hidden()
-              and page.locator('#listening-hud').evaluate("el => getComputedStyle(el).getPropertyValue('--hud-docked').trim()") == '1',
-              'Close-up opens with the slim docked panel')
+        check(not page.locator('#listening-hud').evaluate('el => el.inert') and page.evaluate(TOGGLE)['label'] == 'Hide controls'
+              and page.locator('#listening-hud').evaluate("el => getComputedStyle(el).getPropertyValue('--hud-docked').trim()") == '1'
+              and deck_hidden['width'] > deck_shown['width'] * 1.05,
+              'Show controls brings back the slim docked panel; hidden, the deck is larger', shown=deck_shown['width'], hidden=deck_hidden['width'])
         check(page.evaluate(hud_rect) == studio_hud, 'The docked panel keeps its size and place between the studio and close-up',
               studio=studio_hud, close=page.evaluate(hud_rect))
-        page.locator('#hud-hide').click(); page.wait_for_timeout(450)
-        deck_hidden = page.locator('#deck').bounding_box()
-        check(page.locator('#hud-show').is_visible() and page.locator('#listening-hud').evaluate('el => el.inert')
-              and deck_hidden['width'] > deck_shown['width'] * 1.05
-              and page.evaluate('document.documentElement.scrollHeight <= innerHeight + 1'),
-              'Hide controls gives the deck a fuller close-up without scrolling', shown=deck_shown['width'], hidden=deck_hidden['width'])
-        page.locator('#hud-show').click(); page.wait_for_timeout(450)
-        check(not page.locator('#listening-hud').evaluate('el => el.inert') and page.locator('#hud-show').is_hidden()
-              and abs(page.locator('#deck').bounding_box()['width'] - deck_shown['width']) < 1,
-              'Show controls restores the panel and the docked framing')
+        tab, panel = page.evaluate(TOGGLE), page.locator('#listening-hud').bounding_box()
+        check(tab['visible'] and tab['expanded'] == 'true' and abs(tab['x'] - (panel['x'] + panel['width'] / 2)) < 2
+              and abs(tab['y'] - panel['y']) < 2, 'The pill turns into Hide controls, centered on the panel\'s top edge', tab=tab, panel=panel)
+        hiding = page.evaluate(GLIDE, '#hud-toggle'); page.wait_for_timeout(100)
+        check(page.evaluate(TOGGLE)['label'] == 'Show controls' and page.locator('#listening-hud').evaluate('el => el.inert')
+              and abs(page.locator('#deck').bounding_box()['width'] - deck_hidden['width']) < 1,
+              'Hide controls clears the panel away again for the fuller close-up')
+        rides = [abs(y - top) < 2 for *_, y, top in showing['samples'][-3:]] + [abs(y - rest['y']) < 2 for *_, y, _ in hiding['samples'][-3:]]
+        check(all(rides) and all(b[3] <= a[3] + .5 for a, b in zip(showing['samples'], showing['samples'][1:]))
+              and all(b[3] >= a[3] - .5 for a, b in zip(hiding['samples'], hiding['samples'][1:])),
+              'The pill rides up with the panel on Show and back down to rest on Hide, smoothly')
+        check(glides(showing, 0) and glides(hiding, 1) and abs(showing['done'] - hiding['done']) < 120,
+              'Show and Hide glide smoothly at the same speed', show=glide_summary(showing), hide=glide_summary(hiding))
+        check(min(len(set(showing['decks'])), len(set(hiding['decks']))) >= 5,
+              'The close-up frame grows and shrinks with the panel instead of jumping',
+              show=len(set(showing['decks'])), hide=len(set(hiding['decks'])))
+        page.locator('#hud-toggle').click(); page.wait_for_timeout(600)
         lid = page.evaluate("[turntable.state.coverClosed, studioView.snapshot({bounds:false}).visual.coverOpen]")
         check(lid == [False, 1], 'Close-up lifts the dust cover fully open', lid=lid)
         exit_button = page.locator('#studio-focus')

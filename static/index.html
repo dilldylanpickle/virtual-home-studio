@@ -197,7 +197,7 @@
     </section>
 
     <p id="notice" class="notice" role="status"></p>
-    <button id="hud-show" class="hud-show" type="button" aria-controls="listening-hud" hidden><span aria-hidden="true">▴</span> Show controls</button>
+    <button id="hud-toggle" class="hud-toggle" type="button" aria-controls="listening-hud" aria-expanded="true" aria-label="Hide controls"><span class="hud-toggle-arrow" aria-hidden="true">▾</span><span class="hud-toggle-labels" aria-hidden="true"><span class="hud-toggle-hide">Hide controls</span><span class="hud-toggle-show">Show controls</span></span></button>
     <section id="listening-hud" class="listening-hud" aria-label="Listening controls">
       <div class="hud-record">
         <span class="mini-record" id="mini-record" aria-hidden="true"></span>
@@ -259,7 +259,7 @@
         <div class="hud-actions" role="group" aria-label="Record actions"><button id="customize-open" class="record-action" aria-haspopup="dialog" aria-label="Customize turntable and record"><span>Customize</span></button><button id="load" class="record-action needs-record" aria-label="Choose a record" aria-haspopup="dialog" aria-controls="media-source"><span>Choose a record</span></button><button id="eject" class="record-action record-action-quiet" aria-label="Eject record" disabled><span>Eject</span></button></div>
         <input id="file-input" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" hidden>
       </div>
-      <div class="hud-footer"><details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button><label class="quality-setting" for="studio-quality">Graphics <select id="studio-quality"><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="cinematic" selected>Cinematic</option></select></label></span></div></details><button id="hud-hide" class="hud-hide" type="button" aria-controls="listening-hud">Hide controls <span aria-hidden="true">▾</span></button></div>
+      <div class="hud-footer"><details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button><label class="quality-setting" for="studio-quality">Graphics <select id="studio-quality"><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="cinematic" selected>Cinematic</option></select></label></span></div></details></div>
     </section>
   </main>
   <dialog id="media-source" aria-labelledby="media-source-title" aria-describedby="media-source-description">
