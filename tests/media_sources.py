@@ -292,7 +292,7 @@ def run():
         static.goto('http://127.0.0.1:42069/'); static.wait_for_function('window.turntable'); static.wait_for_timeout(300)
         static.locator('#load').click()
         option = static.locator('#source-youtube')
-        check(option.is_disabled() and 'on your computer' in option.inner_text().lower() and not static.locator('#youtube-form').is_visible(), 'A static host (no server API) keeps YouTube links visibly unavailable')
+        check(option.is_disabled() and 'run the studio yourself' in option.inner_text().lower() and not static.locator('#youtube-form').is_visible(), 'A static host (no server API) keeps YouTube links visibly unavailable')
         browser.close()
     (out / 'checks.json').write_text(json.dumps({'checks': checks, 'action_transitions': {'first_load': initial_load, 'replacement': replacement, 'eject': ejection, 'mobile_loading': mobile_loading}, 'action_geometry': layout_audit}, indent=2) + '\n')
     print(f'All {len(checks)} local media-source checks passed.', flush=True)
