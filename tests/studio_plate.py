@@ -53,7 +53,7 @@ GLIDE = r'''selector => new Promise(done => {
   const tick = now => {
     const p = pill.getBoundingClientRect();
     samples.push([now - start, away(), Math.round(deck.getBoundingClientRect().width * 10) / 10,
-                  p.top + p.height / 2, hud.getBoundingClientRect().top]);
+                  p.top + p.height / 2, hud.getBoundingClientRect().top, +getComputedStyle(pill).opacity]);
     if (now - start < 900) requestAnimationFrame(tick); else done({inert, moving, samples});
   };
   requestAnimationFrame(tick);
@@ -230,7 +230,7 @@ def run():
         check(entering['inert'] and entering['moving'] and glides(entering, 1), 'Clicking into the close-up slides the controls away at once, smoothly', **glide_summary(entering))
         # One pill rides the panel's top edge down and rests above the bottom of the screen;
         # it never jumps, and the panel never shows a second button.
-        pill_path = [round(y, 1) for *_, y, _ in entering['samples']]
+        pill_path = [round(sample[3], 1) for sample in entering['samples']]
         check(all(b >= a - .5 for a, b in zip(pill_path, pill_path[1:])) and abs(pill_path[0] - entering['samples'][0][4]) < 6
               and max(b - a for a, b in zip(pill_path, pill_path[1:])) < 40,
               'Entering, the one Hide/Show pill glides down with the panel without jumping', path=pill_path[:12])
@@ -239,6 +239,14 @@ def run():
         page.wait_for_timeout(300)
         deck_hidden = page.locator('#deck').bounding_box()
         rest = page.evaluate(TOGGLE)
+        # The close-up header keeps only its links, and the deck fills most of the screen below them.
+        header = page.evaluate("""(() => { const back = document.querySelector('#studio-focus').getBoundingClientRect();
+          return {brand: getComputedStyle(document.querySelector('.masthead .brand')).visibility, back: back.bottom,
+                  line: getComputedStyle(document.querySelector('.masthead')).borderBottomColor}; })()""")
+        check(header['brand'] == 'hidden' and header['line'] == 'rgba(0, 0, 0, 0)' and deck_hidden['y'] > header['back'] + 4
+              and deck_hidden['y'] + deck_hidden['height'] < rest['y'] - 17 - 4 and deck_hidden['height'] > .8 * page.viewport_size['height'],
+              'The close-up drops the brand row so the deck fills most of the screen between Back to studio and the pill',
+              header=header, deck=deck_hidden, pill=rest)
         check(rest['visible'] and rest['label'] == 'Show controls' and rest['expanded'] == 'false' and rest['count'] == 1
               and 12 <= rest['bottom'] <= 30 and abs(rest['x'] - page.viewport_size['width'] / 2) < 2
               and page.locator('#listening-hud').evaluate('el => el.inert')
@@ -259,7 +267,7 @@ def run():
         check(page.evaluate(TOGGLE)['label'] == 'Show controls' and page.locator('#listening-hud').evaluate('el => el.inert')
               and abs(page.locator('#deck').bounding_box()['width'] - deck_hidden['width']) < 1,
               'Hide controls clears the panel away again for the fuller close-up')
-        rides = [abs(y - top) < 2 for *_, y, top in showing['samples'][-3:]] + [abs(y - rest['y']) < 2 for *_, y, _ in hiding['samples'][-3:]]
+        rides = [abs(s[3] - s[4]) < 2 for s in showing['samples'][-3:]] + [abs(s[3] - rest['y']) < 2 for s in hiding['samples'][-3:]]
         check(all(rides) and all(b[3] <= a[3] + .5 for a, b in zip(showing['samples'], showing['samples'][1:]))
               and all(b[3] >= a[3] - .5 for a, b in zip(hiding['samples'], hiding['samples'][1:])),
               'The pill rides up with the panel on Show and back down to rest on Hide, smoothly')
@@ -287,7 +295,12 @@ def run():
         page.wait_for_function("document.querySelector('#studio').dataset.view==='turntable' && document.querySelector('#studio').dataset.moving==='false'")
         check('blur' in plate_style and page.evaluate("studioView.snapshot({bounds:false}).objects['glass-reflection'].visible") is False,
               'Close-up blurs the plate and retires the perspective-bound reflection', filter=plate_style)
-        page.locator('#studio-focus').click()
+        # Back to studio with the panel away: it glides straight back from the click while the
+        # camera is still travelling, and the pill fades out quickly instead of lingering.
+        leaving = page.evaluate(GLIDE, '#studio-focus')
+        faded = next((s[0] for s in leaving['samples'] if s[5] < .02), None)
+        check(leaving['moving'] and glides(leaving, 0) and faded is not None and faded < 250,
+              'Back to studio brings the controls straight back and the pill fades out quickly', faded_ms=faded, **glide_summary(leaving))
         page.wait_for_function("document.querySelector('#studio').dataset.view==='studio' && document.querySelector('#studio').dataset.moving==='false'")
         check(page.evaluate("getComputedStyle(document.getElementById('studio-plate')).filter") == 'none'
               and page.evaluate("JSON.stringify(turntable.state, ['filename','duration','position','pitch','quartzLock'])") == before,

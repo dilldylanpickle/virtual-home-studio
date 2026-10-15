@@ -105,11 +105,14 @@ export class StudioView {
     const plate = placePlate(width, height, wide);
     // Let the browser pick the derivative for the plate's real rendered width.
     $('studio-plate').sizes = `${Math.ceil(plate.width)}px`;
-    // Close-up frames with the panel shown and hidden; the slide moves between them. Narrower
+    // Close-up frames with the panel shown and hidden; the slide moves between them. The close-up
+    // header keeps only its links (centred in the row, the Back pill up to 42 px tall), so the deck
+    // starts just below them (the SVG fallback keeps the whole header); hidden, it ends just above
+    // the resting Show controls pill. Narrower
     // close-ups keep status messages in a row above a shown panel, not over the deck.
-    const closeTop = header.bottom + 14, noticeRow = width < 1180 && width >= 600 ? 44 : 0;
+    const closeTop = this.graphics ? (header.top + header.bottom) / 2 + 31 : header.bottom + 14, noticeRow = width < 1180 && width >= 600 ? 44 : 0;
     const close = bottom => rect(closeTop, Math.max(closeTop + 1, bottom), width < 600 ? 2 : gutter);
-    this.closeFrames = [close(Math.min(hudTop, height) - 12 - noticeRow), close(height - 76)];
+    this.closeFrames = [close(Math.min(hudTop, height) - 12 - noticeRow), close(height - 60)];
     this.framing = { width, height, wide, plate, settledPlate: plate, close: this.closeFrame() };
     this.placeShot();
   }
@@ -223,15 +226,15 @@ export class StudioView {
     this.slideControls();
   }
 
-  /** The panel slides away (entering the close-up, Hide) or back (Show) from the click over
-   * one smooth glide, the same speed both ways, and the close-up frame grows into the space
-   * it frees in step. A hidden panel heading back to the studio instead follows the camera
-   * (see slide) and the frame keeps its size, so returning never resizes it mid-travel. */
+  /** The panel slides away (entering the close-up, Hide) or back (Show, Back to studio) from
+   * the click over one smooth glide, the same speed both ways, and in the close-up the frame
+   * grows into the space it frees in step. Heading back to the studio the frame keeps its
+   * size, so returning never resizes it mid-travel. */
   slideControls() {
     if (!this.framing) return;
     this.slide();
     const close = this.target === 'turntable', hidden = this.hidesControls() ? 1 : 0;
-    const from = [this.away, this.share], to = close ? [hidden, hidden] : [this.away === 1 ? 1 : 0, this.share];
+    const from = [this.away, this.share], to = close ? [hidden, hidden] : [0, this.share];
     if (this.glide && to.every((value, i) => value === this.glide.to[i])) return;
     const span = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]));
     this.glide = span && !this.reduced.matches ? { from, to, start: performance.now(), duration: SLIDE * span } : null;
@@ -253,7 +256,7 @@ export class StudioView {
       const progress = this.reduced.matches ? 1 : Math.min(1, (performance.now() - glide.start) / glide.duration), x = smooth(0, 1, progress);
       [this.away, this.share] = progress === 1 ? glide.to : glide.from.map((from, i) => mix(from, glide.to[i], x));
       if (progress === 1) this.glide = null;
-    } else if (this.target === 'studio') this.away = Math.min(this.away, smooth(.1, .55, this.inspection));
+    }
     if (!this.graphics) this.away = this.share = 0;
     const close = this.closeFrame(), current = this.framing.close;
     if (['x', 'y', 'width', 'height'].some(key => close[key] !== current[key])) {

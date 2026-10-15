@@ -264,7 +264,7 @@ export class StudioRenderer {
     this.camera.lookAt(0, targetY, 0);
     this.camera.aspect = aspect;
     // The endpoint is orthographic so the SVG input mapping stays exact for raised parts.
-    const scale = Math.min(closeRect.width * (this.width < 600 ? .99 : .94) / 1024, closeRect.height * .96 / 828);
+    const scale = Math.min(closeRect.width * (this.width < 600 ? .99 : .94) / 1024, closeRect.height * .975 / 828);
     this.controlScale = scale;
     const orthoHeight = this.height / (scale * 1000), orthoWidth = orthoHeight * aspect;
     Object.assign(this.ortho, { left: -orthoWidth / 2, right: orthoWidth / 2, top: orthoHeight / 2, bottom: -orthoHeight / 2 });

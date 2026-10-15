@@ -6,7 +6,12 @@ body{background:#26333c}
 .room{position:relative;overflow:clip;max-width:none;min-height:100vh;min-height:100dvh;margin:0;padding:0 var(--gutter) max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
 .room>.masthead,.room>.intro,.room>.listening-hud{position:relative;z-index:2;width:100%;max-width:var(--column);margin-inline:auto}
 
-.masthead{height:84px;flex:none;border-bottom:1px solid #ffffff42;color:var(--on-scene)}
+.masthead{height:84px;flex:none;border-bottom:1px solid #ffffff42;color:var(--on-scene);transition:border-color var(--ui-motion-panel) var(--ui-ease)}
+/* The close-up keeps only the header's links: the brand and divider fade away so the deck can
+   use nearly the full height of the screen (StudioView frames it just below the links). */
+.masthead .brand{transition:opacity var(--ui-motion-panel) var(--ui-ease),visibility 0s}
+.room:has(#studio[data-renderer=webgl][data-target=turntable]) .masthead{border-bottom-color:transparent}
+.room:has(#studio[data-renderer=webgl][data-target=turntable]) .masthead .brand{opacity:0;visibility:hidden;transition:opacity var(--ui-motion-panel) var(--ui-ease),visibility 0s var(--ui-motion-panel)}
 .masthead .brand,.masthead .brand-mark{color:var(--on-scene)}
 .masthead .brand{text-shadow:var(--scene-shadow)}
 .masthead .brand-mark{filter:drop-shadow(0 1px 2px #0b16234d)}
@@ -109,8 +114,9 @@ body{background:#26333c}
 /* Close-up: one Hide/Show controls pill. It sits centered on the panel's top edge, glides
    down with the panel to rest just above the bottom of the screen when the panel slides away
    (and back up with it), and rolls its label in the same motion; StudioView drives
-   --hud-away and --hud-label frame by frame. It fades in and out with the close-up. */
-.room>.hud-toggle{position:absolute;z-index:4;left:50%;top:calc(var(--hud-offset,100vh) + var(--hud-away,0) * (var(--hud-floor,100vh) - max(18px,env(safe-area-inset-bottom)) - 17px - var(--hud-offset,100vh)));transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 16px;border:1px solid #ffffff59;border-radius:999px;background:rgb(12 22 32 / .72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 8px 24px #05101a59;cursor:pointer;opacity:0;visibility:hidden;transition:opacity var(--ui-motion-panel) var(--ui-ease),visibility 0s var(--ui-motion-panel)}
+   --hud-away and --hud-label frame by frame. It fades in with the close-up and out quickly
+   as the view heads back to the studio. */
+.room>.hud-toggle{position:absolute;z-index:4;left:50%;top:calc(var(--hud-offset,100vh) + var(--hud-away,0) * (var(--hud-floor,100vh) - max(18px,env(safe-area-inset-bottom)) - 17px - var(--hud-offset,100vh)));transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 16px;border:1px solid #ffffff59;border-radius:999px;background:rgb(12 22 32 / .72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 8px 24px #05101a59;cursor:pointer;opacity:0;visibility:hidden;transition:opacity var(--ui-motion-quick) var(--ui-ease),visibility 0s var(--ui-motion-quick)}
 .room:has(#studio[data-renderer=webgl][data-target=turntable])>.hud-toggle{opacity:1;visibility:visible;transition:opacity var(--ui-motion-panel) var(--ui-ease)}
 .hud-toggle-arrow{display:inline-block;transform:rotate(calc(var(--hud-label,0) * 180deg))}
 /* The label rolls with the slide: the old words move down out of a clipped line as the new ones come in from above. */

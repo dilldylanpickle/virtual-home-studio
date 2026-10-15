@@ -26,7 +26,8 @@ def run():
         page = browser.new_page(viewport={'width': 1440, 'height': 1600}, device_scale_factor=1)
         errors = []; page.on('pageerror', lambda error: errors.append(str(error)))
         open_native(page)
-        check(page.title() == 'Virtual Home Studio' and 'VIRTUAL HOME STUDIO' in page.locator('.brand').inner_text(),
+        # The close-up fades the header's brand row away, so read its text rather than its rendering.
+        check(page.title() == 'Virtual Home Studio' and 'virtual home studio' in page.locator('.brand').text_content().lower(),
               'Page title and header share the fictional studio identity')
         check(page.locator('#chassis-brand').get_attribute('aria-label') == 'Virtual Home Studio VHS-42069'
               and 'VHS-42069' in page.locator('#chassis-brand').text_content(),
