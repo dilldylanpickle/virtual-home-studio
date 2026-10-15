@@ -202,8 +202,14 @@ dialog h2{font-size:25px}
 .listening-hud{position:relative;z-index:4;margin:26px 8px 0;padding:24px 24px 0;display:grid;grid-template-columns:minmax(0,.9fr) minmax(240px,1fr) minmax(315px,1.1fr);gap:18px var(--hud-gap);background:var(--hud-panel);border:1px solid var(--hud-border);border-radius:var(--hud-radius);box-shadow:var(--hud-shadow);backdrop-filter:blur(var(--hud-blur));color:var(--hud-fg)}
 .hud-record{display:flex;align-items:center;gap:14px;min-width:0}
 .hud-record-copy{min-width:0}
-.hud-record .eyebrow{font-size:8px;letter-spacing:1.5px;margin:0 0 8px}
 .hud-record h2{font-size:13px;line-height:1.4}
+/* Long titles loop like a ticker (ui-motion marquee): a 1.4 s hold, then a seamless scroll. */
+.marquee-clip{min-width:0;overflow:hidden}
+.marquee-clip:has(.marquee){-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent)}
+.marquee-clip>.marquee{width:max-content;overflow:visible;text-overflow:clip;will-change:transform;animation:title-ticker var(--marquee-duration,10s) linear 1.4s infinite}
+.marquee-clip>.marquee::after{content:attr(data-loop);padding-left:var(--marquee-gap,48px)}
+@keyframes title-ticker{to{transform:translateX(calc(-1 * var(--marquee-distance)))}}
+@media(prefers-reduced-motion:reduce){.marquee-clip>.marquee{animation:none}}
 .hud-record #track-meta{font-size:10px;line-height:1.4;color:var(--hud-muted)}
 .hud-record .mini-record{width:54px;height:54px;flex-shrink:0;box-shadow:1px 3px 5px #26312624}
 .hud-record .mini-record:after{inset:18px;border-width:6px}
@@ -259,7 +265,6 @@ dialog h2{font-size:25px}
 .hud-record .mini-record{width:45px;height:45px}
 .hud-record .mini-record:after{inset:15px;border-width:5px}
 .hud-record h2{font-size:13px}
-.hud-record .eyebrow{font-size:7px}
 .hud-transport{width:100%;max-width:450px;justify-self:center}
 .hud-listening{flex-wrap:wrap;gap:16px;justify-content:center}
 .hud-volume{justify-content:center}
@@ -277,7 +282,6 @@ dialog h2{font-size:25px}
 .transport-button{height:44px;min-width:128px;font-size:13px}
 .transport-button:hover:not(:disabled){background:var(--accent-hover);filter:none}
 .hud-record #track-meta{font-size:11px}
-.hud-record .eyebrow{color:var(--text-secondary)}
 #transport-hint{font-size:10px;min-height:14px}
 #turntable-details{grid-column:1/-1;border-top:1px solid var(--border);font-size:11px;color:var(--text-secondary)}
 #turntable-details summary{cursor:pointer;width:fit-content;padding:12px 0;min-height:40px}
@@ -350,7 +354,6 @@ dialog{background:var(--dialog-background);backdrop-filter:blur(var(--panel-blur
 .record-action:active:not(:disabled){background:var(--hud-active)}
 
 .record-action:disabled{opacity:.4}
-.hud-record .eyebrow:empty{display:none}
 
 @media(max-width:1050px){.hud-actions{margin:0}
 }
@@ -435,16 +438,18 @@ dialog{background:var(--dialog-background);backdrop-filter:blur(var(--panel-blur
 .preset-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:8px 11px;border:1px solid var(--hud-border);border-radius:10px;background:var(--hud-control);color:var(--hud-fg);font-size:10px;text-align:left}
 .preset-toggle:hover:not(:disabled){background:var(--hud-hover)}
 .preset-caption{color:var(--hud-muted);font-size:9px;flex:none}
-#preset-name{flex:1;min-width:0;line-height:1.4}
+/* Long preset names scroll like the track title (ui-motion marquee). */
+.preset-name-clip{flex:1;min-width:0;text-align:left}
+#preset-name{display:block;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .preset-toggle svg{width:14px;height:14px;flex:none;fill:none;stroke:var(--hud-muted);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .preset-toggle[aria-expanded=true] svg{transform:rotate(180deg)}
-.preset-options{position:absolute;z-index:8;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:max(100%,280px);max-width:calc(100vw - 40px);max-height:60vh;overflow-y:auto;padding:6px;border:1px solid var(--hud-border);border-radius:12px;background:var(--dialog-background);box-shadow:0 10px 32px #17273326}
-.preset-options button{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;min-height:45px;padding:9px 28px 9px 10px;border:0;border-radius:7px;background:transparent;color:var(--hud-fg);font-size:11px;line-height:1.35;text-align:left}
-.preset-options button small{font:9px monospace;color:var(--hud-muted)}
-.preset-options button:hover,.preset-options button[aria-pressed=true]{background:var(--hud-control)}
-.preset-options button:after{content:'✓';position:absolute;right:10px;top:17px;color:var(--hud-accent);opacity:0}
-.preset-options button[aria-pressed=true]:after{opacity:1}
-.preset-options button:focus-visible{outline-offset:-2px}
+.preset-options{position:absolute;z-index:8;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:min(660px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:60vh;overflow-y:auto;padding:6px;display:grid;grid-template-columns:minmax(210px,.9fr) minmax(290px,1.2fr);align-items:start;gap:4px;border:1px solid var(--hud-border);border-radius:12px;background:var(--dialog-background);box-shadow:0 10px 32px #17273326}
+.preset-list button{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;min-height:45px;padding:9px 28px 9px 10px;border:0;border-radius:7px;background:transparent;color:var(--hud-fg);font-size:11px;line-height:1.35;text-align:left}
+.preset-list button small{font:9px monospace;color:var(--hud-muted)}
+.preset-list button:hover,.preset-list button[aria-pressed=true]{background:var(--hud-control)}
+.preset-list button:after{content:'✓';position:absolute;right:10px;top:17px;color:var(--hud-accent);opacity:0}
+.preset-list button[aria-pressed=true]:after{opacity:1}
+.preset-list button:focus-visible{outline-offset:-2px}
 
 /* A bright blue beacon draws attention to the empty deck’s record action. */
 /* The glow lights button surfaces; labels stay above the light layer. */
@@ -482,15 +487,15 @@ body.drag-over #load::after,body:has(#drop-zone.drag-over) #load::after{opacity:
 
 
 /* Software feedback shares one rhythm; the physical controls and timeline stay immediate. */
-.text-button,.record-action,.transport-button,.hud-icon,.preset-toggle,.preset-options button,.source-option,.dialog-close{
+.text-button,.record-action,.transport-button,.hud-icon,.preset-toggle,.preset-list button,.source-option,.dialog-close{
   transition:background-color var(--ui-motion-quick) var(--ui-ease),border-color var(--ui-motion-quick) var(--ui-ease),color var(--ui-motion-quick) var(--ui-ease),box-shadow var(--ui-motion-quick) var(--ui-ease),opacity var(--ui-motion-quick) var(--ui-ease),transform var(--ui-motion-quick) var(--ui-ease);
 }
 .record-action:active:not(:disabled),.hud-icon:active:not(:disabled),.source-option:active:not(:disabled),.dialog-close:active:not(:disabled){transform:translateY(1px)}
 .hud-icon:hover:not(:disabled),.dialog-close:hover:not(:disabled){background:var(--hud-hover);color:var(--hud-accent)}
 .hud-icon:disabled:hover{background:transparent;color:var(--hud-muted)}
-.source-option:active:not(:disabled),.preset-toggle:active:not(:disabled),.preset-options button:active:not(:disabled),.dialog-close:active:not(:disabled){background:var(--hud-active)}
+.source-option:active:not(:disabled),.preset-toggle:active:not(:disabled),.preset-list button:active:not(:disabled),.dialog-close:active:not(:disabled){background:var(--hud-active)}
 .preset-toggle svg{transition:transform var(--ui-motion-panel) var(--ui-ease),stroke var(--ui-motion-quick) var(--ui-ease)}
-.preset-options button:after{transition:opacity var(--ui-motion-quick) var(--ui-ease)}
+.preset-list button:after{transition:opacity var(--ui-motion-quick) var(--ui-ease)}
 .swatch:before{transition:box-shadow var(--ui-motion-quick) var(--ui-ease),transform var(--ui-motion-quick) var(--ui-ease)}
 .swatch:after{transition:opacity var(--ui-motion-quick) var(--ui-ease)}
 .swatch:hover:not(:disabled):before{transform:translate(-50%,-50%) scale(1.04)}
@@ -500,8 +505,82 @@ body.drag-over #load::after,body:has(#drop-zone.drag-over) #load::after{opacity:
 dialog::backdrop{transition:background-color var(--ui-motion-panel) var(--ui-ease),backdrop-filter var(--ui-motion-panel) var(--ui-ease)}
 dialog:is(#help,#customize,#media-source)[data-motion=closed]::backdrop{background:#1e2e3c00;backdrop-filter:blur(0)}
 @media(prefers-reduced-motion:reduce){
-  .text-button,.record-action,.transport-button,.hud-icon,.preset-toggle,.preset-options button,.source-option,.dialog-close,
-  .transport-button .play-symbol,.transport-button .pause-symbol,.preset-toggle svg,.preset-options button:after,.swatch:before,.swatch:after,.condition-option span,.hud-icon[data-tooltip]::after,dialog::backdrop{transition:none}
+  .text-button,.record-action,.transport-button,.hud-icon,.preset-toggle,.preset-list button,.source-option,.dialog-close,
+  .transport-button .play-symbol,.transport-button .pause-symbol,.preset-toggle svg,.preset-list button:after,.swatch:before,.swatch:after,.condition-option span,.hud-icon[data-tooltip]::after,dialog::backdrop{transition:none}
   .record-action:active:not(:disabled),.transport-button:active:not(:disabled),.hud-icon:active:not(:disabled),.source-option:active:not(:disabled),.dialog-close:active:not(:disabled){transform:none}
   .swatch:hover:not(:disabled):before,.swatch:active:not(:disabled):before{transform:translate(-50%,-50%)}
 }
+
+/* display:grid would override the hidden attribute: a closed popup must not render. */
+.preset-options[hidden]{display:none}
+/* Presets popup, right column: tempo detection and the Trance Gate. */
+.rhythm-panel{padding:8px 10px 10px 14px;border-left:1px solid var(--border);font-size:11px;color:var(--hud-fg)}
+.rhythm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 6px}
+.rhythm-head h3{margin:0;font-size:9px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--hud-muted)}
+.rhythm-section+.rhythm-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.tempo-main{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tempo-main .tempo-readout{margin:0}
+.tempo-source{margin:2px 0 6px;font-size:10px;color:var(--hud-muted)}
+.tempo-adjust summary{width:fit-content;cursor:pointer;font-size:10px;color:var(--hud-muted);padding:2px 0 6px}
+.tempo-adjust summary:hover{color:var(--hud-fg)}
+.tempo-adjust[open] summary{margin-bottom:4px}
+.tempo-manual{display:inline-flex;align-items:center;gap:6px}
+.tempo-manual .rhythm-label{min-width:0}
+.gate-step.unused{opacity:.25;cursor:default}
+#gate-style{min-height:30px;padding:0 6px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font-size:11px}
+.reverb-section{opacity:.6}
+.reverb-section .rhythm-head{margin-bottom:0}
+.coming-soon{padding:3px 8px;border-radius:999px;background:var(--hud-control);font-size:10px;color:var(--hud-muted)}
+.confidence{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--hud-muted)}
+.confidence::before{content:'';width:7px;height:7px;border-radius:50%;background:#aab4bd}
+.confidence[data-level=high]::before{background:#3f9d6b}.confidence[data-level=medium]::before{background:#d39b2a}.confidence[data-level=low]::before{background:#c8574b}.confidence[data-level=manual]::before{background:var(--hud-accent)}
+.tempo-readout{display:flex;align-items:baseline;gap:6px;margin:0 0 8px;color:var(--hud-muted)}
+.tempo-readout output{font:600 24px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--hud-fg);letter-spacing:-.5px}
+.rhythm-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}
+.rhythm-label{font-size:10px;color:var(--hud-muted);min-width:44px}
+.rhythm-button{min-height:30px;padding:0 9px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font-size:11px;cursor:pointer}
+.rhythm-button:hover:not(:disabled){background:var(--hud-hover)}
+.rhythm-button:disabled,.tempo-manual input:disabled{opacity:.45;cursor:default}
+.tempo-manual input{width:70px;min-height:30px;padding:0 7px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+.grid-row output{min-width:52px;text-align:center;font:11px ui-monospace,SFMono-Regular,Menlo,monospace}
+.gate-switch{display:inline-flex;align-items:center;gap:6px;font-size:11px;cursor:pointer}
+.gate-switch input{width:30px;height:17px;margin:0;accent-color:var(--hud-accent);cursor:pointer}
+.gate-steps{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:3px;margin:0 0 10px}
+.gate-step{height:26px;min-width:0;padding:0;border:1px solid var(--hud-border);border-radius:4px;background:var(--hud-control);cursor:pointer}
+.gate-step:nth-child(4n+1){border-color:#93a3b1}
+.gate-step[aria-pressed=true]{background:var(--hud-accent);border-color:var(--hud-accent)}
+.gate-step.now{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--hud-accent)}
+.rhythm-panel[data-gate=off] .gate-step[aria-pressed=true]{opacity:.55}
+.gate-rates{display:inline-flex;margin-left:auto;padding:2px;gap:2px;border:1px solid var(--hud-border);border-radius:8px;background:var(--hud-control)}
+.gate-rates label{position:relative;cursor:pointer}
+.gate-rates input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.gate-rates span{display:block;padding:5px 8px;border-radius:6px;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--hud-muted)}
+.gate-rates input:checked+span{background:var(--hud-accent);color:var(--hud-on-accent)}
+.gate-rates input:focus-visible+span{outline:2px solid var(--focus);outline-offset:1px}
+.rhythm-slider{display:block;margin:4px 0 6px;font-size:10px;color:var(--hud-muted)}
+.rhythm-slider>span{display:flex;justify-content:space-between}
+.rhythm-slider input{width:100%;margin:6px 0 2px;accent-color:var(--hud-accent)}
+/* Track line: format/length plus the BPM chip that opens the tempo and gate column. */
+/* Fixed height: the chip appearing after a load must not move the panel's actions. */
+.track-line{display:flex;align-items:center;gap:8px;min-width:0;height:20px}
+.track-line #track-meta{flex:none}
+.tempo-chip{display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 7px;border:1px solid var(--hud-border);border-radius:999px;background:transparent;color:var(--hud-muted);font:10px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;cursor:pointer}
+.tempo-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:#aab4bd}
+.tempo-chip[data-level=high]::before{background:#3f9d6b}.tempo-chip[data-level=medium]::before{background:#d39b2a}.tempo-chip[data-level=low]::before{background:#c8574b}.tempo-chip[data-level=manual]::before{background:var(--hud-accent)}
+.tempo-chip[data-gate=on]{border-color:var(--hud-accent);color:var(--hud-accent)}
+.tempo-chip:hover{background:var(--hud-hover)}
+.tempo-chip[hidden]{display:none}
+@media(max-width:640px){.preset-options{grid-template-columns:1fr}.rhythm-panel{border-left:0;border-top:1px solid var(--border);padding:10px 6px 6px}}
+
+/* Tempo, in plain language: tap coaching and the "Fix the beat" drawer. */
+.tap-button{min-height:34px;padding:0 12px;font-weight:600}
+.tap-button.pulse{animation:tap-pulse .25s var(--ui-ease)}
+@keyframes tap-pulse{from{background:var(--hud-accent);color:var(--hud-on-accent)}}
+.tap-status{margin:0 0 6px;font-size:10px;line-height:1.5;color:var(--hud-muted)}
+.adjust-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px;margin:2px 0 6px}
+.adjust-label{font-size:10px;line-height:1.35;color:var(--hud-muted)}
+.adjust-controls{display:inline-flex;align-items:center;gap:6px;justify-self:end}
+.adjust-controls output{min-width:46px;text-align:center;font:11px ui-monospace,SFMono-Regular,Menlo,monospace}
+.adjust-controls input{width:70px;min-height:30px;padding:0 7px;border:1px solid var(--hud-border);border-radius:7px;background:var(--hud-control);color:var(--hud-fg);font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+.tempo-reset{font-size:10px;padding:2px 0}
+@media(prefers-reduced-motion:reduce){.tap-button.pulse{animation:none}}

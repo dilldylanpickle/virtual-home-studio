@@ -8,6 +8,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from audio_assertions import wait_for_silence
 from acceptance import PROBE, ROOT, select_speed, arm_point, groove_angle
+from studio_helpers import enter_turntable, launch_browser
 
 checks = []
 def check(condition, message):
@@ -26,13 +27,14 @@ def run():
                 f.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
                 f.writeframes(b''.join(struct.pack('<h', int(8000 * math.sin(i * 2 * math.pi * 440 / 24000))) for i in range(24000 * 5)))
             paths.append(path)
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440, 'height':1250})
         page.add_init_script(PROBE)
         errors=[]
         page.on('pageerror', lambda e:errors.append(str(e)))
         page.goto('http://127.0.0.1:42069')
         page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state=lambda:page.evaluate('turntable.state')
         click=lambda id:page.locator('#'+id).click()
         phase=lambda value:page.wait_for_function('value=>turntable.state.recordPhase===value',arg=value)
@@ -59,7 +61,9 @@ def run():
         page.mouse.move(*arm_point(page,g,state()['tonearmAngle']));page.mouse.down()
         page.mouse.move(*arm_point(page,g,groove_angle(g,.003)),steps=8);page.mouse.up()
         check(state()['position']==0, 'Hand placement near the outer edge enters the run-in area')
-        click('cue');click('start-stop');page.wait_for_timeout(90)
+        click('cue')
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
+        click('start-stop');page.wait_for_timeout(90)
         check(0 < state()['motorActualRate'] < 1 and state()['motorRamping'], 'START accelerates through intermediate velocities')
         check(state()['grooveRegion']=='run-in' and state()['position']==0, 'Outer edge enters the virtual run-in before music')
         page.wait_for_timeout(260)
@@ -92,6 +96,8 @@ def run():
         page.evaluate('turntable.controls.customize("surface",false);turntable.controls.customize("contacts",false);turntable.controls.customize("cartridge",true)')
         check(not state()['surface'] and not state()['contacts'] and state()['cartridge'], 'Advanced feature flags remain independently controllable through the shared API')
         page.keyboard.press('Escape')
+        # Native modality intentionally remains until the 220 ms closing motion ends.
+        page.locator('#customize').wait_for(state='hidden')
         check(not page.locator('#customize').evaluate('el=>el.open'), 'Customization closes with Escape and restores the page')
         click('start-stop');page.wait_for_timeout(350)
         check(rms()>.01, 'Cartridge stage preserves source playback')
@@ -105,11 +111,11 @@ def run():
         click('cue');page.wait_for_timeout(250)
         wait_for_silence(page, 1e-6)
         check(rms()<.000001 and page.evaluate('turntable.audioDiagnostics.contactCount')==count+1, 'Actual stylus separation triggers one lift and then silence')
-        click('cue');page.wait_for_timeout(250)
+        click('cue');page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent');page.wait_for_timeout(250)  # Damped cue: contact at touchdown.
         check(page.evaluate('turntable.audioDiagnostics.contactCount')==count+2, 'Actual groove contact triggers one needle drop')
         click('arm-rest');page.wait_for_function('turntable.state.tonearmMotion===null && turntable.state.tonearmAngle===turntable.geometry.rest')
         count=page.evaluate('turntable.audioDiagnostics.contactCount')
-        click('cue');page.wait_for_timeout(250)
+        click('cue');page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent');page.wait_for_timeout(250)
         wait_for_silence(page, 1e-6)
         check(rms()<.000001 and page.evaluate('turntable.audioDiagnostics.contactCount')==count, 'Cueing over the arm rest creates no false contact or surface sound')
 

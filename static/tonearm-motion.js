@@ -15,7 +15,7 @@ export class TonearmMotion {
     this.resolve?.(false);
     this.resolve = null;
   }
-  moveTo(targetAngle, { kind = 'cueing', duration = 620, liftDelay = 150, settleDelay = 0 } = {}) {
+  moveTo(targetAngle, { kind = 'cueing', duration = 620, liftDelay = 320, settleDelay = 0 } = {}) {
     this.cancel();
     const d = this.deck, s = d.state;
     d.syncPosition();
@@ -28,7 +28,9 @@ export class TonearmMotion {
     const began = performance.now();
     const motion = { kind, phase: clearance ? 'lifting' : 'moving', startAngle, targetAngle, progress: 0 };
     s.tonearmMotion = { ...motion };
-    // The existing contact edge owns release sound and silence. Lift before any sweep.
+    // The existing contact edge owns release sound and silence. Lift before any sweep;
+    // a stylus still descending on the damped cue is caught and lifted too.
+    d.cancelCueDescent?.();
     d.change(s => { s.stylusRaised = true; });
     return new Promise(resolve => {
       this.resolve = resolve;
@@ -37,7 +39,8 @@ export class TonearmMotion {
         const elapsed = now - began;
         if (elapsed >= clearance) {
           const progress = travel ? Math.min(1, (elapsed - clearance) / travel) : 1;
-          const eased = progress * progress * (3 - 2 * progress);
+          // Weighted arm: gentle start, unhurried glide, soft arrival (smootherstep).
+          const eased = progress * progress * progress * (progress * (progress * 6 - 15) + 10);
           motion.phase = progress < 1 ? 'moving' : 'settling';
           motion.progress = progress;
           d.change(s => {

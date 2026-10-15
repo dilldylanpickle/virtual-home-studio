@@ -10,7 +10,7 @@ const scope = {sampleRate:rate, currentTime:0,
   AudioWorkletProcessor:class {constructor(){this.port={postMessage:m=>reports.push(m)}}},
   registerProcessor:(_,type)=>{Processor=type},
 };
-vm.runInNewContext(['condition-profiles.js','mechanics.js','vinyl-effects.js','vinyl-processor.js']
+vm.runInNewContext(['condition-profiles.js','mechanics.js','vinyl-effects.js','trance-gate.js','vinyl-processor.js']
   .map(file=>fs.readFileSync(new URL('../static/'+file,import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/^export /gm,''))
   .join('\n'),scope);
 const pcm=Float32Array.from({length:rate*duration},(_,i)=>.1+.6*i/(rate*duration));

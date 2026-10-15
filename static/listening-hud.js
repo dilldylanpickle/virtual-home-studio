@@ -1,14 +1,15 @@
 import { PLAYBACK_PRESETS, selectedPreset } from './playback-presets.js';
 import { ProgressControl } from './progress-control.js';
 import { playbackEnded } from './simulation-state.js';
-import { PopupMotion, setAnimatedText } from './ui-motion.js';
+import { PopupMotion, marquee, setAnimatedText } from './ui-motion.js';
+import { RhythmPanel } from './rhythm-ui.js';
 /** A replaceable presentation layer: every action delegates to the turntable. */
 const $ = id => document.getElementById(id);
 export class ListeningHUD {
   constructor(controls, formatTime) {
     this.controls = controls;
     this.formatTime = formatTime;
-    const chooser = $('playback-presets'), toggle = $('preset-toggle'), options = $('preset-options');
+    const chooser = $('playback-presets'), toggle = $('preset-toggle'), options = $('preset-options'), list = options.querySelector('.preset-list');
     const close = (restoreFocus = false) => {
       popup.close();
       toggle.setAttribute('aria-expanded', 'false');
@@ -23,13 +24,17 @@ export class ListeningHUD {
       options.dataset.placement = openAbove ? 'above' : 'below';
       options.style.bottom = openAbove ? 'calc(100% + 8px)' : 'auto';
       options.style.top = openAbove ? 'auto' : 'calc(100% + 8px)';
-      options.style.maxHeight = `${Math.max(80, Math.min(420, openAbove ? above : below))}px`;
+      options.style.maxHeight = `${Math.max(80, Math.min(520, openAbove ? above : below))}px`;
+      // Keep the two-column popup on screen; the opening animation owns the transform.
+      const box = chooser.getBoundingClientRect(), width = options.offsetWidth, left = box.left + box.width / 2 - width / 2;
+      options.style.marginLeft = `${Math.min(innerWidth - 12 - width - left, Math.max(12 - left, 0))}px`;
     };
     const popup = new PopupMotion(options, placeOptions);
     const open = () => {
       toggle.setAttribute('aria-expanded', 'true');
-      popup.open();
+      popup.open(); this.rhythm?.follow();
     };
+    this.openPresets = open;
     for (const preset of PLAYBACK_PRESETS) {
       const button = document.createElement('button');
       button.type = 'button'; button.dataset.preset = preset.id;
@@ -39,16 +44,17 @@ export class ListeningHUD {
       settings.textContent = `${preset.rpm === 100 / 3 ? '33⅓' : preset.rpm} RPM · ${preset.pitch > 0 ? '+' : preset.pitch < 0 ? '−' : ''}${Math.abs(preset.pitch)}%`;
       button.append(name, settings);
       button.addEventListener('click', () => { controls.applyPreset(preset.id); close(true); });
-      options.append(button);
+      list.append(button);
     }
     toggle.addEventListener('click', () => {
       if (popup.expanded) close(); else open();
     });
     chooser.addEventListener('keydown', event => {
       if (event.key === 'Escape' && popup.expanded) { event.preventDefault(); event.stopPropagation(); close(true); }
-      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      // Arrow keys browse presets, except inside the tempo/gate column's own controls.
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) && !(options.contains(event.target) && !list.contains(event.target))) {
         event.preventDefault(); open();
-        const buttons = [...options.querySelectorAll('button')], index = buttons.indexOf(document.activeElement);
+        const buttons = [...list.querySelectorAll('button')], index = buttons.indexOf(document.activeElement);
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
           : index < 0 ? (event.key === 'ArrowUp' ? buttons.length - 1 : 0)
           : (index + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) % buttons.length;
@@ -56,8 +62,11 @@ export class ListeningHUD {
         buttons[next].scrollIntoView({ block: 'nearest' });
       }
     });
-    document.addEventListener('pointerdown', event => { if (!chooser.contains(event.target)) close(); });
-    chooser.addEventListener('focusout', event => { if (!chooser.contains(event.relatedTarget)) close(); });
+    // The BPM chip toggles the popup itself, so it does not count as an outside click.
+    document.addEventListener('pointerdown', event => { if (!chooser.contains(event.target) && !event.target.closest?.('#tempo-chip')) close(); });
+    // Close when focus moves somewhere else. A null target means focus fell to the page
+    // (e.g. a control became disabled); window blur and outside clicks are handled apart.
+    chooser.addEventListener('focusout', event => { const to = event.relatedTarget; if (to && !chooser.contains(to) && to.id !== 'tempo-chip') close(); });
     window.addEventListener('blur', () => close());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { close(); popup.close({ immediate: true }); }
@@ -73,6 +82,12 @@ export class ListeningHUD {
     $('replay-toggle').addEventListener('click', () => controls.setReplayEnabled(!controls.getState().replayEnabled));
     this.progress = new ProgressControl($('groove-progress'), controls, formatTime);
     $('volume').addEventListener('input', e => controls.setVolume(Number(e.target.value)));
+    // Long preset names scroll like the track title; the right column holds tempo and gate.
+    marquee($('preset-name'));
+    this.rhythm = new RhythmPanel(controls, { open: () => {
+      if (popup.expanded) { close(); return; }
+      open(); $('tempo-bpm').closest('.rhythm-panel').querySelector('button:not(:disabled)')?.focus({ preventScroll: true });
+    } });
   }
   render(s) {
     this.progress?.sync(s);
@@ -80,7 +95,7 @@ export class ListeningHUD {
     setAnimatedText($('preset-name'), s.presetMotion ? `Applying ${s.presetMotion.name}…` : preset?.name ?? (s.rpm === null ? 'Choose a preset' : 'Custom'));
     $('preset-toggle').disabled = s.busy;
     if (s.busy) this.closePresets();
-    for (const button of $('preset-options').children) {
+    for (const button of $('preset-options').querySelector('.preset-list').children) {
       button.disabled = s.busy;
       button.setAttribute('aria-pressed', String(button.dataset.preset === (s.presetMotion?.id ?? preset?.id)));
     }

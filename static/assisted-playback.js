@@ -36,7 +36,7 @@ export class AssistedPlayback {
     if (generation !== this.generation) return;
     if (d.context?.state !== 'running' || !d.engine) { this.cancel(); return; }
     const fromPower = s.powerAngle;
-    if (restart) d.change(s => { s.stylusRaised = true; });
+    if (restart) { d.cancelCueDescent(); d.change(s => { s.stylusRaised = true; }); }
     let began = performance.now();
     const enter = (phase, now) => { s.assistPhase = phase; began = now; d.emit(); };
     enter('powering', began);
@@ -62,7 +62,7 @@ export class AssistedPlayback {
           break;
         case 'cueing': {
           this.frame = null;
-          void d.armMotion.moveTo(this.geometry.outerAngle, { kind: 'cueing', duration: 620, liftDelay: 0 })
+          void d.armMotion.moveTo(this.geometry.outerAngle, { kind: 'cueing', duration: 1250, liftDelay: 0 })
             .then(completed => {
               if (!completed || generation !== this.generation) return;
               d.change(s => { s.position = 0; }, true);
@@ -72,10 +72,13 @@ export class AssistedPlayback {
           return;
         }
         case 'lowering':
-          if (elapsed >= 180) {
-            d.change(s => { s.stylusRaised = false; }, restart);
-            enter('idle', now);
+          // A short pause over the lead-in, then the damped cue lowers; contact starts at touchdown.
+          if (elapsed >= 220) {
             this.frame = null;
+            void d.lowerStylus({ seek: restart }).then(landed => {
+              if (generation !== this.generation) return;
+              enter('idle', performance.now());
+            });
             return;
           }
           break;

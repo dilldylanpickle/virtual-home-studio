@@ -7,6 +7,7 @@ from playwright.sync_api import sync_playwright
 from audio_assertions import wait_for_silence
 from audio_fixtures import generated_long_record
 from acceptance import RAW, select_speed, PROBE, arm_point, deck_point, groove_angle
+from studio_helpers import enter_turntable, launch_browser
 
 ROOT = Path(__file__).resolve().parents[1]
 checks = []
@@ -21,7 +22,7 @@ def check(condition, message, **details):
 def run():
     (ROOT / "artifacts").mkdir(exist_ok=True)
     with generated_long_record() as long_record, sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         context = browser.new_context(viewport={"width": 1280, "height": 1100}, has_touch=True)
         page = context.new_page()
         page.add_init_script(PROBE)
@@ -30,6 +31,7 @@ def run():
         page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
         page.goto("http://127.0.0.1:42069")
         page.wait_for_function("window.turntable !== undefined")
+        enter_turntable(page)
         state = lambda: page.evaluate("turntable.state")
         click = lambda id: page.locator(f"#{id}").click()
 
@@ -93,7 +95,7 @@ def run():
                 click("start-stop")
             arm_seek(.5)
             click("cue")
-            page.wait_for_timeout(70)
+            page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
             check(not state()["stylusRaised"], "CUE lowers only when explicitly selected")
             # This is the user's requested behavior: no automatic lift on pointerdown/move/up.
             arm_seek(.48)
@@ -131,6 +133,7 @@ def run():
             page.mouse.up()
 
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         click("start-stop")
         grab()
         before, after, rates, levels = turn(170, -60)

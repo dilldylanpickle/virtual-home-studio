@@ -1,0 +1,193 @@
+/* Full-bleed studio: WebGL fills the viewport and the software UI floats above it.
+   The original SVG remains the input surface; #scene-frame marks the open area the
+   camera composes into, between the hero copy and the listening panel. */
+:root{--gutter:clamp(16px,5.6vw,112px);--column:1280px;--on-scene:#fff;--on-scene-muted:#f1f5f9;--scene-shadow:0 1px 2px #05101acc,0 2px 8px #05101a99,0 6px 28px #05101a8c}
+body{background:#26333c}
+.room{position:relative;overflow:clip;max-width:none;min-height:100vh;min-height:100dvh;margin:0;padding:0 var(--gutter) max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
+.room>.masthead,.room>.intro,.room>.listening-hud{position:relative;z-index:2;width:100%;max-width:var(--column);margin-inline:auto}
+
+.masthead{height:84px;flex:none;border-bottom:1px solid #ffffff42;color:var(--on-scene)}
+.masthead .brand,.masthead .brand-mark{color:var(--on-scene)}
+.masthead .brand{text-shadow:var(--scene-shadow)}
+.masthead .brand-mark{filter:drop-shadow(0 1px 2px #0b16234d)}
+.masthead-links{display:flex;align-items:center;gap:clamp(18px,2.6vw,40px)}
+.masthead .text-button{font-size:13px;font-weight:600;letter-spacing:.2px;color:var(--on-scene-muted);text-shadow:var(--scene-shadow);padding:10px 0}
+.masthead .text-button:hover:not(:disabled){color:#fff}
+.masthead .text-button:focus-visible{outline-color:#fff;outline-offset:4px}
+.masthead #studio-focus[hidden],.masthead #skyline-toggle[hidden]{display:none}
+/* Skyline: only in the studio view; while active it is the one header control, a Back pill. */
+.room:has(#studio[data-target=turntable]) .masthead #skyline-toggle{display:none}
+.masthead-links>*{transition:opacity var(--ui-motion-panel) var(--ui-ease)}
+.room[data-skyline] .masthead-links>:not(#skyline-toggle){opacity:0;visibility:hidden}
+.room[data-skyline] .masthead #skyline-toggle{order:1}
+.masthead #skyline-toggle{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:999px}
+.masthead #skyline-toggle span{font-size:16px;line-height:1}
+.masthead #skyline-toggle kbd{font:600 10px/1 Arial,sans-serif;padding:4px 6px;border:1px solid #ffffff59;border-radius:5px;color:#e6edf3}
+.room[data-skyline] .masthead #skyline-toggle{min-height:42px;padding:0 14px 0 12px;border-color:#ffffff59;background:rgb(12 22 32 / .72);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:14px;text-shadow:none;box-shadow:0 8px 24px #05101a59}
+/* Close-up: the header toggle becomes an unmissable Back to studio pill. */
+.masthead #studio-focus{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:999px;
+  transition:background-color var(--ui-motion-quick) var(--ui-ease),border-color var(--ui-motion-quick) var(--ui-ease),padding var(--ui-motion-quick) var(--ui-ease)}
+.masthead #studio-focus span{font-size:16px;line-height:1;padding:0}
+.masthead #studio-focus kbd{font:600 10px/1 Arial,sans-serif;padding:4px 6px;border:1px solid #ffffff59;border-radius:5px;color:#e6edf3}
+.room:has(#studio[data-target=turntable]) .masthead #studio-focus{min-height:42px;padding:0 14px 0 12px;border-color:#ffffff59;background:rgb(12 22 32 / .72);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:14px;text-shadow:none;box-shadow:0 8px 24px #05101a59}
+.room:has(#studio[data-target=turntable]) .masthead #studio-focus:hover{background:rgb(12 22 32 / .88)}
+
+/* StudioView sets --intro-away from camera progress, so the copy returns with the studio, not at the click. */
+.intro{flex:none;margin:clamp(22px,3.4vh,44px) 0 0;pointer-events:none;color:var(--on-scene);opacity:calc(1 - var(--intro-away,0))}
+/* Sized to the column so the full joke, punchline included, fits one desktop line. */
+.room .intro h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(22px,calc(min(100vw - 2 * var(--gutter), var(--column)) / 43),30px);line-height:1.18;letter-spacing:-.4px;color:var(--on-scene);text-shadow:var(--scene-shadow);max-width:none}
+/* The punchline: people read "$10" first; then a red line strikes it and the real price writes itself in. */
+.intro .price-old{position:relative;text-decoration:none;animation:price-fade .3s 3s both}
+.intro .price-old::after{content:'';position:absolute;left:-6%;right:-6%;top:54%;height:.1em;border-radius:2px;background:#ff1f1f;box-shadow:0 0 6px #ff1f1f99,0 1px 3px #05101a99;transform:scaleX(0);transform-origin:left;animation:price-strike .45s 2.6s cubic-bezier(.65,0,.35,1) forwards}
+.intro .price-new{display:inline-block;vertical-align:top;max-width:0;overflow:hidden;white-space:nowrap;animation:price-write .9s 3.2s steps(14,end) forwards}
+/* The gap before the punchline is a real, breakable space (zero-width until the punchline
+   writes in): when the headline wraps, it ends the line instead of indenting the next one. */
+.intro .price-gap{font-size:0;animation:price-gap 0s 3.2s forwards}
+@keyframes price-gap{to{font-size:1em}}
+@keyframes price-strike{to{transform:scaleX(1)}}
+@keyframes price-fade{to{opacity:.62}}
+@keyframes price-write{to{max-width:8.5em}}
+.room .intro .intro-note{font-weight:500;font-size:clamp(13px,.35vw + 9px,16px);line-height:1.6;margin:clamp(8px,1.2vh,14px) 0 0;color:var(--on-scene-muted);text-shadow:var(--scene-shadow)}
+
+.scene-frame{flex:1 1 auto;min-height:clamp(220px,34vh,520px)}
+
+/* 100vw: a classic scrollbar overlays the scene instead of resizing and reframing it. */
+#studio{position:fixed;inset:0 auto 0 0;width:100vw;z-index:0;isolation:isolate;overflow:clip;background:linear-gradient(#3b4a55,#2b2119 70%)}
+/* Photographic plate, positioned by StudioView from the shared calibration; only its
+   presentation (push-in, focus, exposure) changes during travel. */
+#studio-plate{position:absolute;z-index:0;max-width:none;display:block;user-select:none;pointer-events:none;will-change:transform,filter}
+/* Until StudioView has placed the plate and the camera (data-ready), the image would show
+   at its natural size and then jump: keep the scene hidden and fade it in once framed. */
+#studio-plate,#studio-canvas{opacity:0;transition:opacity 450ms var(--ui-ease)}
+#studio[data-ready=true] #studio-plate,#studio[data-ready=true] #studio-canvas{opacity:1}
+/* A soft sky-side scrim keeps the header and hero legible without a box. */
+#studio::before{content:'';position:absolute;z-index:3;inset:0 0 auto;height:min(46%,520px);pointer-events:none;background:linear-gradient(to bottom,#07111bcc 0%,#07111b99 30%,#07111b4d 62%,#07111b00 100%)}
+#studio-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+#studio-camera{visibility:hidden;pointer-events:none;position:absolute;inset:0;overflow:hidden;z-index:2}
+#studio[data-ready=true] #studio-camera{visibility:visible}
+#studio-world{position:absolute;left:50%;top:50%;width:0;height:0;transform-origin:0 0;transform-style:preserve-3d}
+.studio-equipment{position:absolute;inset:0;width:0;height:0;transform-style:preserve-3d}
+#studio #drop-zone{position:absolute;left:-512px;top:-414px;width:1024px;height:828px;max-width:none;margin:0;isolation:auto;line-height:0}
+#studio #drop-zone:after{display:none}
+#studio .deck-wrap{width:1024px;height:828px;opacity:0}
+#studio #deck{width:1024px;height:828px}
+#studio[data-renderer=fallback] .deck-wrap{opacity:1}
+#studio #drop-zone:not([inert]){pointer-events:auto}
+#studio-enter{pointer-events:auto;position:absolute;left:-500px;top:-384px;width:999px;height:783px;border:2px solid transparent;border-radius:8px;background:transparent;cursor:pointer;outline-offset:8px;transition:border-color 180ms}
+#studio-enter:hover,#studio-enter:focus-visible{border-color:#d4eaffb3}
+#studio-enter:disabled{opacity:1;pointer-events:none}
+#studio-enter[hidden]{display:none}
+#studio-control-focus{position:absolute;z-index:4;pointer-events:none;border:2px solid #85b7ec;border-radius:7px;box-shadow:0 0 0 2px #fff8}
+#studio[data-graphics=lost]::after{content:'Graphics interrupted. Audio controls remain available.';position:absolute;inset:45% 15% auto;padding:20px;background:#eff6fae6;color:#345064;border-radius:12px;text-align:center;z-index:4}
+
+/* Frosted listening panel over the scene. */
+.room>.listening-hud{flex:none;margin-top:0;--hud-panel:rgb(246 246 243 / .8);--hud-border:#ffffffb8;--hud-control:rgb(226 233 240 / .82);--hud-hover:rgb(211 223 233 / .92);
+  background:var(--hud-panel);border:1px solid var(--hud-border);border-radius:22px;
+  box-shadow:0 22px 60px #0b16233d,0 2px 8px #0b16231a,inset 0 1px 0 #ffffffb3;
+  -webkit-backdrop-filter:blur(22px) saturate(1.35);backdrop-filter:blur(22px) saturate(1.35);padding:26px 28px 0}
+/* Status messages float just above the panel, or in the top row during close-up, never over the deck. */
+.room>.notice{position:absolute;z-index:4;pointer-events:none;left:50%;top:calc(var(--hud-offset,100vh) - 12px);transform:translate(-50%,-100%);width:max-content;max-width:min(560px,calc(100% - 2 * var(--gutter)));margin:0;padding:8px 14px;border-radius:20px;background:rgb(247 247 244 / .86);border:1px solid #ffffffa8;box-shadow:0 6px 20px #0b162329;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);font-size:11px;line-height:1.5;text-align:center;color:var(--text-secondary)}
+.room>.notice:empty{display:none}
+/* Only alerts are visible; routine narration stays in the live region for screen readers. */
+.room>.notice:not(.alert){width:1px;height:1px;padding:0;border:0;overflow:hidden;white-space:nowrap;clip-path:inset(50%)}
+/* Narrower close-ups with the panel hidden show alerts just above Show controls (wide screens use the header row). */
+@media(max-width:1179px){.room[data-controls=hidden]:has(#studio[data-target=turntable])>.notice{top:auto;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 52px);transform:translateX(-50%)}}
+/* Close-up on wide screens: messages sit in the header row, between the brand and the links. */
+@media(min-width:1180px){.room:has(#studio[data-target=turntable])>.notice{top:42px;transform:translate(-50%,-50%);max-width:min(480px,calc(100% - 2 * (var(--gutter) + 330px)))}}
+
+/* Close-up: the panel can slide away for a full view of the deck. */
+/* The footer row holds Turntable details and, in close-up, Hide controls on the summary's line. */
+.hud-footer{grid-column:1/-1;display:flex;align-items:flex-start;gap:12px;border-top:1px solid var(--border)}
+.hud-footer #turntable-details{flex:1;min-width:0;border-top:0}
+.hud-hide{display:none}
+.room:has(#studio[data-target=turntable]) .hud-hide{display:inline-flex;flex:none;align-items:center;gap:6px;margin-top:4px;min-height:30px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--text-secondary);font-size:12px;font-weight:600}
+.room:has(#studio[data-renderer=fallback]) .hud-hide{display:none}
+.room:has(#studio[data-target=turntable]) .hud-hide:hover{background:var(--hud-hover);color:var(--accent-hover)}
+.room>.hud-show{position:absolute;z-index:4;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 18px;border:1px solid #ffffff59;border-radius:999px;background:rgb(12 22 32 / .72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:14px;font-weight:600;box-shadow:0 8px 24px #05101a59}
+.room>.hud-show[hidden]{display:none}
+.room>.hud-show:hover{background:rgb(12 22 32 / .88)}
+.room>.hud-show:focus-visible{outline:2px solid #fff;outline-offset:3px}
+/* --hud-away follows camera progress during travel and animates Hide/Show once settled. */
+.room>.listening-hud{transform:translateY(calc(var(--hud-away,0) * (100% + 40px)));opacity:calc(1 - max(var(--hud-away,0), var(--hud-fade,0)));transition:transform var(--ui-motion-panel) var(--ui-ease),opacity var(--ui-motion-panel) var(--ui-ease)}
+.room:has(#studio[data-moving=true])>.listening-hud{transition:none}
+.room[data-controls=hidden]>.listening-hud{pointer-events:none}
+
+/* Wide screens use one slim docked row in both views, so travel never resizes the panel.
+   Below 1440 px the row's controls collide, so both views keep the full panel. */
+@media(min-width:1440px){
+  .room:has(#studio)>.listening-hud{--hud-docked:1;grid-template-columns:minmax(150px,.75fr) minmax(0,2.4fr) auto;align-items:center;gap:6px 22px;padding:10px 18px 0}
+  .room:has(#studio) .hud-record .mini-record{width:40px;height:40px}
+  .room:has(#studio) .hud-record .mini-record:after{inset:13px;border-width:4px}
+  .room:has(#studio) .hud-transport{display:grid;grid-template-columns:auto minmax(150px,1fr) minmax(150px,220px);align-items:center;gap:16px}
+  .room:has(#studio) .transport-row{gap:8px}
+  /* Fixed width: label changes (Play / Starting… / Pause) must never shift the timeline beside it. */
+  .room:has(#studio) .transport-button{height:44px;width:128px;min-width:0}
+  .room:has(#studio) .groove-timeline,.room:has(#studio) .playback-presets{margin:0}
+  .room:has(#studio) .playback-presets{max-width:none}
+  .room:has(#studio) .preset-toggle{min-height:36px;padding:6px 10px}
+  .room:has(#studio) #transport-hint{display:none}
+  .room:has(#studio) .hud-listening{display:flex;align-items:center;gap:14px}
+  .room:has(#studio) .hud-volume input{width:78px}
+  .room:has(#studio) .hud-actions{margin:0;gap:6px}
+  .room:has(#studio) .hud-actions .record-action{padding:0 12px}
+  .room:has(#studio) #load{flex-basis:112px;width:112px}
+  .room:has(#studio) #turntable-details summary{min-height:34px;padding:8px 0}
+}
+.room>.listening-hud .record-action{background:rgb(232 238 244 / .85);border-color:#d6dee6}
+.room>.listening-hud .record-action:hover:not(:disabled){background:var(--hud-hover)}
+.room>.listening-hud .record-action-quiet,.room>.listening-hud .record-action-quiet:hover:not(:disabled){background:transparent;border-color:transparent}
+.room>.listening-hud .record-action-quiet:hover:not(:disabled){color:var(--accent-hover)}
+.room>.listening-hud #load.needs-record{background:var(--accent);border-color:#5b9fff}
+/* Turntable details: readable status text on the frosted panel. */
+.room>.listening-hud #turntable-details summary{font-size:13px;color:var(--text-primary)}
+.room>.listening-hud .hud-status,.room>.listening-hud .hud-status .status,.room>.listening-hud .hud-physical,.room>.listening-hud .actual-rpm,.room>.listening-hud .hud-physical .text-button{font-size:12px;color:#33404b}
+.room>.listening-hud .actual-rpm,.room>.listening-hud #speed-readout,.room>.listening-hud #pitch-readout{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0}
+.quality-setting{display:inline-flex;align-items:center;gap:8px;font:12px Arial,sans-serif;color:#33404b}
+.quality-setting select{font:12px Arial,sans-serif;color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:4px 6px;background:var(--hud-control)}
+
+@media(max-width:1050px){.room>.listening-hud{padding:22px 22px 0}}
+@media(max-width:600px){
+  /* Phones scroll a tall panel; the scene scrolls with the page so the panel never slides over the deck. */
+  #studio{position:absolute;top:0;bottom:auto;height:100vh;height:100svh}
+  .room{padding-inline:16px}
+  .masthead{height:60px}
+  .masthead .brand{font-size:9px;letter-spacing:1.3px;gap:8px;white-space:nowrap}
+  .masthead .brand-mark{width:24px;height:24px}
+  .masthead-links{gap:16px}
+  .masthead .text-button{font-size:11px}
+  .masthead .text-button span{display:none}
+  .room:has(#studio[data-target=turntable]) .masthead #studio-focus{min-height:36px;font-size:12px;padding:0 10px}
+  .masthead #studio-focus kbd,.masthead #skyline-toggle kbd{display:none}
+  .room[data-skyline] .masthead #skyline-toggle{min-height:36px;font-size:12px;padding:0 10px}
+  /* Three header links (or a Back pill) leave little room: the brand may wrap so every link stays on screen. */
+  .masthead .brand{white-space:normal;min-width:0;line-height:1.35}
+  .masthead-links{flex:none;gap:12px}
+  .intro{margin-top:18px}
+  .room .intro h1{font-size:24px;line-height:1.2}
+  .scene-frame{min-height:max(260px,40vh)}
+  .room>.listening-hud{padding:18px 16px 0;border-radius:18px}
+  .room>.notice{font-size:10px}
+  .room:has(#studio[data-target=turntable])>.notice{top:calc(var(--hud-offset,100vh) - 12px);transform:translate(-50%,-100%);max-width:calc(100% - 32px)}
+  /* With the panel hidden the close-up is one screen tall, so Show controls stays in view (the clipped panel keeps its layout offsets). */
+  .room[data-controls=hidden]:has(#studio[data-target=turntable]){min-height:0;height:100vh;height:100svh}
+  .pitch-control::-webkit-slider-thumb{height:21px}.pitch-control::-moz-range-thumb{height:20px}
+}
+/* Short landscape screens: keep the hero compact so it does not cover the set. */
+@media(max-height:520px) and (min-width:601px){
+  .masthead{height:52px}
+  .room:has(#studio[data-target=turntable]) .masthead #studio-focus{min-height:36px}
+  .intro{margin-top:10px}
+  .room .intro h1{font-size:clamp(18px,2.6vw,24px)}
+  .room .intro .intro-note{font-size:11px;margin-top:4px}
+}
+@media(max-width:380px){
+  .masthead .brand{white-space:normal;min-width:0;line-height:1.35;letter-spacing:1.1px}
+  .masthead-links{flex:none;gap:12px}
+  .masthead .text-button{font-size:10.5px}
+  .masthead .text-button span{padding-left:5px}
+}
+@media(prefers-reduced-motion:reduce){.intro .price-old,.intro .price-old::after,.intro .price-new,.intro .price-gap{animation-duration:0s;animation-delay:0s}}
+@media(prefers-reduced-motion:reduce){#studio-plate,#studio-canvas{transition:none}}
+@media(prefers-reduced-motion:reduce){#studio-enter,.masthead #studio-focus,.room>.listening-hud{transition:none}}

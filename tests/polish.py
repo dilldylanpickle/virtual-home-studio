@@ -2,6 +2,7 @@
 import json
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, RAW, arm_point
+from studio_helpers import enter_turntable, launch_browser
 
 checks = []
 def check(ok, message):
@@ -14,14 +15,17 @@ def run():
     artifacts = ROOT / 'artifacts'
     artifacts.mkdir(exist_ok=True)
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440,'height':1250})
         errors=[]
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.goto('http://127.0.0.1:42069')
         page.wait_for_function('window.turntable')
-        check(page.locator('h1').inner_text() == 'Why spend $449 on a turntable when you can vibe code one for $10?', 'Hero preserves the exact public turntable joke')
-        check(page.locator('.intro-note').inner_text()=='Drop in an MP3 or WAV and play it like a record.', 'Supporting copy stays concise')
+        enter_turntable(page)
+        check(page.locator('h1').evaluate("el => el.textContent.replace(/\\u00a0/g, ' ')") == 'Why spend $449 on a turntable when you can vibe code one for $10 $449 in tokens?'
+              and page.locator('h1 s.price-old').inner_text() == '$10',
+              'Hero keeps the turntable joke and strikes $10 for $449 in tokens')
+        check(page.locator('.intro-note').inner_text()=='Drop in a song or paste a link and play it like a record.', 'Supporting copy stays concise')
         check(page.evaluate("!document.querySelector('footer,.edition')"), 'Decorative edition and footer content stay removed')
         page.evaluate('''() => {
           window.dropData = new DataTransfer();
@@ -45,6 +49,7 @@ def run():
         page.evaluate("drag('dragenter')");page.keyboard.press('Escape')
         overlay.wait_for(state='hidden')
         check(not overlay.is_visible(), 'Escape cancels drag feedback')
+        check(page.locator('#studio').get_attribute('data-view') == 'turntable' and page.locator('#studio').get_attribute('data-moving') == 'false', 'Escape dismisses drop feedback without also moving the camera')
         page.evaluate("drag('dragenter');window.dispatchEvent(new Event('blur'))")
         overlay.wait_for(state='hidden')
         check(not overlay.is_visible(), 'Window blur clears drag feedback')

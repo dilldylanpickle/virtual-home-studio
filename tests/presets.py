@@ -2,6 +2,7 @@
 import json
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, RAW, PROBE
+from studio_helpers import enter_turntable, launch_browser
 
 PRESETS = [
     ('original', 'Original', 100/3, 0),
@@ -22,13 +23,14 @@ def check(ok, message):
 def run():
     out = ROOT / 'artifacts/presets'; out.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440,'height':1300})
         page.add_init_script(PROBE)
         errors=[]
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.on('console', lambda m: errors.append(m.text) if m.type=='error' else None)
         page.goto('http://127.0.0.1:42069');page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state=lambda:page.evaluate('turntable.state')
         toggle=page.locator('#preset-toggle');options=page.locator('#preset-options')
         def choose(id):
@@ -43,7 +45,7 @@ def run():
         check(state()['rpm'] is None and page.locator('#preset-name').inner_text()=='Choose a preset', 'Empty default does not falsely claim Original or select a speed')
         toggle.focus();page.keyboard.press('Space')
         check(options.is_visible() and not state()['platterRunning'], 'Space opens presets without triggering the deck motor shortcut')
-        check(page.locator('#preset-options button > span').all_text_contents()==[x[1] for x in PRESETS], 'All seven requested names and Original appear exactly as specified')
+        check(page.locator('#preset-options .preset-list button > span').all_text_contents()==[x[1] for x in PRESETS], 'All seven requested names and Original appear exactly as specified')
         page.keyboard.press('ArrowDown');page.keyboard.press('End');page.keyboard.press('Enter')
         check(state()['rpm']==78 and page.locator('#preset-name').inner_text()=='Chipmunk' and not state()['platterRunning'], 'Keyboard selection configures empty hardware without starting it')
         options.wait_for(state='hidden')
@@ -100,7 +102,9 @@ def run():
         for width,height,name in [(1440,1300,'desktop'),(900,1000,'tablet'),(390,844,'mobile')]:
             page.set_viewport_size({'width':width,'height':height});toggle.scroll_into_view_if_needed();toggle.click()
             a,b=toggle.bounding_box(),options.bounding_box();timeline=page.locator('.groove-timeline').bounding_box()
-            check(a['y']>=timeline['y']+timeline['height'] and b['x']>=0 and b['x']+b['width']<=width and b['y']>=0 and b['y']+b['height']<=height, f'{name}: visible chooser sits below the timeline and menu fits the viewport')
+            # Stacked layouts put the chooser below the timeline; the docked close-up row puts it beside.
+            clear = a['y']>=timeline['y']+timeline['height'] or a['x']>=timeline['x']+timeline['width']
+            check(clear and b['x']>=0 and b['x']+b['width']<=width and b['y']>=0 and b['y']+b['height']<=height, f'{name}: visible chooser clears the timeline and menu fits the viewport')
             check(page.evaluate('document.documentElement.scrollWidth<=innerWidth'),f'{name}: no horizontal overflow')
             page.screenshot(path=str(out/f'{name}.png'),full_page=True)
             page.locator('#listening-hud').screenshot(path=str(out/f'{name}-hud.png'))

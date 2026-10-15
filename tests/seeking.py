@@ -7,6 +7,7 @@ import wave
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, PROBE, groove_angle
+from studio_helpers import enter_turntable, launch_browser
 from audio_assertions import wait_for_silence
 
 checks = []
@@ -43,9 +44,10 @@ def run():
             wav.setparams((1,2,24000,0,'NONE','not compressed'))
             one=b''.join(struct.pack('<h',int(6500*math.sin(2*math.pi*173*i/24000)+3000*math.sin(2*math.pi*311*i/24000))) for i in range(24000))
             wav.writeframes(one*60)
-        browser=p.chromium.launch(); page=browser.new_page(viewport={'width':1440,'height':1500})
+        browser=launch_browser(p); page=browser.new_page(viewport={'width':1440,'height':1500})
         page.add_init_script(PROBE); errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
         page.goto('http://127.0.0.1:42069');page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state=lambda:page.evaluate('turntable.state')
         click=lambda id:page.locator('#'+id).click()
         page.locator('#file-input').set_input_files(path);page.wait_for_function("turntable.state.recordPhase==='ready'")

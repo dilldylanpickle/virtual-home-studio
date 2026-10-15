@@ -10,6 +10,7 @@ from playwright.sync_api import sync_playwright
 from audio_assertions import wait_for_silence
 
 from acceptance import PROBE, ROOT, deck_point, select_speed, set_power
+from studio_helpers import enter_turntable, launch_browser
 
 checks = []
 
@@ -27,7 +28,7 @@ def run():
         with wave.open(str(fixture), "wb") as wav:
             wav.setparams((1, 2, 24000, 0, "NONE", "not compressed"))
             wav.writeframes(b"".join(struct.pack("<h", int(12000 * math.sin(2 * math.pi * 440 * i / 24000))) for i in range(24000 * 12)))
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         context = browser.new_context(viewport={"width": 1440, "height": 1250}, has_touch=True)
         page = context.new_page()
         page.add_init_script(PROBE)
@@ -35,6 +36,7 @@ def run():
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto("http://127.0.0.1:42069")
         page.wait_for_function("window.turntable")
+        enter_turntable(page)
         state = lambda: page.evaluate("turntable.state")
         click = lambda name: page.locator(f"#{name}").click()
         rms = lambda: page.evaluate("""() => {
@@ -137,6 +139,7 @@ def run():
         page.keyboard.press("Home")
         page.keyboard.press("ArrowRight")
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         click("start-stop")
         page.wait_for_timeout(250)
         check(rms() > .01 and state()["position"] > .2, "Loaded record plays through the existing audio processor")

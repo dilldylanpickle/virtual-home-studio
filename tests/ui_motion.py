@@ -2,6 +2,7 @@
 import json
 
 from playwright.sync_api import sync_playwright
+from studio_helpers import launch_browser
 from acceptance import ROOT, RAW, PROBE
 
 checks = []
@@ -18,7 +19,7 @@ def run():
     out.mkdir(parents=True, exist_ok=True)
     traces = {}
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width': 1440, 'height': 1300})
         page.add_init_script(PROBE)
         errors = []
@@ -53,6 +54,11 @@ def run():
             page.evaluate('startUIMotionTrace', selector)
             action()
             page.wait_for_timeout(delay)
+            # A compositor animation may remain pending beyond its nominal
+            # duration on software-rendered browsers. Keep sampling until its
+            # real completion so the intermediate-frame assertions see it.
+            page.wait_for_function("selector => !document.querySelector(selector).getAnimations().some(a => a.playState === 'running' || a.playState === 'pending')", arg=selector, timeout=4000)
+            page.wait_for_timeout(30)
             result = page.evaluate('finishUIMotionTrace()')
             traces[name] = result
             (out / 'motion-samples.json').write_text(json.dumps(traces, indent=2))

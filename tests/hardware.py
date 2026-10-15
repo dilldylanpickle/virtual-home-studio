@@ -6,6 +6,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 from acceptance import arm_point, deck_point, select_speed, set_power
+from studio_helpers import enter_turntable, launch_browser
 
 ROOT = Path(__file__).resolve().parents[1]
 checks = []
@@ -20,13 +21,14 @@ def check(condition, message, **details):
 def run():
     (ROOT / "artifacts").mkdir(exist_ok=True)
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         context = browser.new_context(viewport={"width": 1440, "height": 1250}, has_touch=True)
         page = context.new_page()
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto("http://127.0.0.1:42069")
         page.wait_for_function("window.turntable !== undefined")
+        enter_turntable(page)
         state = lambda: page.evaluate("turntable.state")
         click = lambda name: page.locator(f"#{name}").click()
         pressed = lambda name: page.locator(f"#{name}").get_attribute("aria-pressed") == "true"
@@ -145,6 +147,7 @@ def run():
         set_power(page, True)
         check(state()["power"] and not state()["platterRunning"], "Power knob turns on without starting the motor")
         click("cue")
+        page.wait_for_function('!turntable.state.stylusRaised && !turntable.state.cueDescent')  # Damped cue: contact begins at touchdown.
         check(not state()["stylusRaised"] and pressed("cue"), "Physical cue lever lowers the stylus")
         click("cue")
         check(state()["stylusRaised"] and not pressed("cue"), "Physical cue lever raises the stylus")

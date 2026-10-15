@@ -3,6 +3,7 @@ import json
 import time
 from playwright.sync_api import sync_playwright
 from acceptance import ROOT, RAW, PROBE, select_speed, set_power, arm_point
+from studio_helpers import enter_turntable, launch_browser
 
 from audio_fixtures import generated_long_record
 
@@ -15,13 +16,14 @@ def check(ok, message):
 def run():
     (ROOT / "artifacts").mkdir(exist_ok=True)
     with generated_long_record() as long_record, sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = launch_browser(p)
         page = browser.new_page(viewport={'width':1440, 'height':1500})
         page.add_init_script(PROBE)
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.goto('http://127.0.0.1:42069')
         page.wait_for_function('window.turntable')
+        enter_turntable(page)
         state = lambda: page.evaluate('turntable.state')
         click = lambda id: page.locator('#'+id).click()
         def load(path):
@@ -52,7 +54,7 @@ def run():
         g=page.evaluate('turntable.geometry');s=state()
         check(g['rest']<s['tonearmAngle']<g['outerAngle'] and s['stylusRaised'], 'Assisted arm travels continuously around its pivot with the stylus raised')
         wait_play()
-        check(time.monotonic()-started<4, 'The easy path reaches music within a few seconds')
+        check(time.monotonic()-started<6, 'The easy path reaches music within a few seconds')
         page.wait_for_function('turntable.state.position>1.6')
         rms=page.evaluate('''()=>{const a=__probe.analyser,d=new Float32Array(a.fftSize);a.getFloatTimeDomainData(d);return Math.sqrt(d.reduce((s,x)=>s+x*x,0)/d.length)}''')
         check(rms>.001 and state()['stylusContact'], 'Short fixture produces real audio after automatic contact and run-in')

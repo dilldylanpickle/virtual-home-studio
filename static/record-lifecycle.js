@@ -19,7 +19,7 @@ export class RecordLifecycle {
       this.phase('ejecting');
       await this.view.park();
       await this.view.motion('eject');
-      this.deck.engine?.port.postMessage({ type: 'clear' });
+      this.deck.engine?.port.postMessage({ type: 'clear' }); this.view.cleared?.();
       this.deck.change((s) => {
         s.recordLoaded = false; s.recordPresent = false; s.filename = ''; s.pendingFilename = ''; s.duration = 0; s.position = 0;
         s.grooveRegion = 'music'; s.runInRemaining = 0;
@@ -59,10 +59,17 @@ export class RecordLifecycle {
       if (version !== this.generation) return;
       await this.view.park();
       if (version !== this.generation) return;
+      // The record appears only once a lifted dust cover is clear of it.
+      await this.view.clearance?.();
+      if (version !== this.generation) return;
       this.view.grooves(decoded);
       const channels = [];
       for (let c = 0; c < Math.min(2, decoded.numberOfChannels); c++) channels.push(decoded.getChannelData(c).slice());
       this.deck.engine.port.postMessage({ type: 'load', channels, sampleRate: decoded.sampleRate }, channels.map(pcm => pcm.buffer));
+      // Offline tempo analysis runs beside the insertion; stale results are discarded. It
+      // starts after 'load' (which resets the worklet's grid) so a cached grid, applied at
+      // once, is not wiped by the new PCM.
+      void this.view.analyze?.(file, decoded);
       this.deck.change((s) => {
         s.recordPresent = true; s.recordLoaded = false; s.recordPhase = 'inserting'; s.loading = true;
         s.pendingFilename = file.name; s.position = 0;
