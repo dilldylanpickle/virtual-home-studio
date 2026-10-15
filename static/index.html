@@ -210,7 +210,7 @@
           <button id="preset-toggle" class="preset-toggle" type="button" aria-expanded="false" aria-controls="preset-options"><span class="preset-caption">Presets</span><span class="preset-name-clip marquee-clip"><span id="preset-name">Choose a preset</span></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
           <div id="preset-options" class="preset-options" hidden>
             <div class="preset-list" role="group" aria-label="Playback presets"></div>
-            <section class="rhythm-panel" aria-label="Tempo and effects">
+            <section class="rhythm-panel" aria-label="Tempo, Trance Gate and Reverb">
               <div class="rhythm-section">
                 <div class="rhythm-head"><h3>Tempo</h3><span id="tempo-confidence" class="confidence" data-level="none">Waiting for a record</span></div>
                 <div class="tempo-main"><p class="tempo-readout"><output id="tempo-bpm" aria-live="polite">—</output> <span>BPM</span></p>
@@ -239,36 +239,6 @@
                 <div class="rhythm-row"><span class="rhythm-label">Rate</span><span class="gate-rates gate-rate-options" role="radiogroup" aria-label="Gate rate"></span></div>
                 <label class="rhythm-slider" for="gate-depth"><span>Depth <output id="gate-depth-value">50%</output></span><input id="gate-depth" type="range" min="0" max="1" step=".05" value=".5"></label>
                 <label class="rhythm-slider" for="gate-length"><span><span id="gate-length-label">Swell</span> <output id="gate-length-value">65%</output></span><input id="gate-length" type="range" min="0" max="1" step=".05" value=".65"></label>
-              </div>
-              <div class="rhythm-section">
-                <div class="rhythm-head"><h3>Hardstyle</h3><label class="gate-switch"><input id="kick-enabled" type="checkbox"><span>Off</span></label></div>
-                <p class="tempo-source">A hardstyle kit on the beat, tuned to the song: kick, clap, hats, crashes and drops.</p>
-                <div class="rhythm-row"><label class="rhythm-label" for="kick-sound">Sound</label><select id="kick-sound"></select>
-                  <label class="rhythm-label kick-tune-label" for="kick-tune">Tune</label><select id="kick-tune"></select></div>
-                <div class="rhythm-row"><label class="rhythm-label" for="kick-pattern">Pattern</label><select id="kick-pattern"></select></div>
-                <div class="rhythm-row kit-bar-row"><span id="kit-bars-label" class="rhythm-label">Bar</span><span id="kit-bars" class="kit-bars" role="group" aria-labelledby="kit-bars-label"></span>
-                  <button id="kit-copy" class="rhythm-button" type="button" aria-label="Copy this bar to all eight bars">Copy to all</button></div>
-                <div class="kit-lanes">
-                  <span class="lane-label">Kick</span><div id="kick-steps" class="gate-steps kit-lane" data-lane="kick" role="group" aria-label="Kick lane: sixteenths of the shown bar"></div>
-                  <span class="lane-label">Clap</span><div id="clap-steps" class="gate-steps kit-lane" data-lane="clap" role="group" aria-label="Clap lane: sixteenths of the shown bar"></div>
-                  <span class="lane-label">Hat</span><div id="hat-steps" class="gate-steps kit-lane" data-lane="hat" role="group" aria-label="Hat lane: sixteenths of the shown bar"></div>
-                </div>
-                <div class="rhythm-row"><span class="rhythm-label">Crash</span><span class="gate-rates crash-options" role="radiogroup" aria-label="Crash cymbal"></span></div>
-                <div class="rhythm-row drop-row"><button id="drop-now" class="rhythm-button drop-button" type="button" aria-describedby="drop-hint">Drop it!</button>
-                  <label class="gate-switch"><input id="kick-drops" type="checkbox"><span>Random drops</span></label>
-                  <label class="gate-switch"><input id="kick-horn" type="checkbox"><span>Air horn</span></label></div>
-                <p id="drop-hint" class="tap-status">Builds for a bar, pauses a beat, then slams back in (or press D).</p>
-                <label class="rhythm-slider" for="kick-volume"><span>Volume <output id="kick-volume-value">70%</output></span><input id="kick-volume" type="range" min="0" max="1" step=".05" value=".7"></label>
-                <label class="rhythm-slider" for="kick-drive"><span>Distortion <output id="kick-drive-value">60%</output></span><input id="kick-drive" type="range" min="0" max="1" step=".05" value=".6"></label>
-                <label class="rhythm-slider" for="kick-tail"><span>Tail <output id="kick-tail-value">50%</output></span><input id="kick-tail" type="range" min="0" max="1" step=".05" value=".5"></label>
-              </div>
-              <div class="rhythm-section">
-                <div class="rhythm-head"><h3>Pixel Cat</h3><label class="gate-switch"><input id="cat-enabled" type="checkbox"><span>Off</span></label></div>
-                <p class="tempo-source">Turns the song into an 8-bit remix: a chiptune band plays along in the song's chords while the record gets crunchy.</p>
-                <div class="rhythm-row"><label class="rhythm-label" for="cat-pattern">Melody</label><select id="cat-pattern"></select>
-                  <label class="gate-switch cat-meow"><input id="cat-meow" type="checkbox"><span>Nya vocals</span></label></div>
-                <label class="rhythm-slider" for="cat-volume"><span>Band <output id="cat-volume-value">60%</output></span><input id="cat-volume" type="range" min="0" max="1" step=".05" value=".6"></label>
-                <label class="rhythm-slider" for="cat-crunch"><span>8-bit crunch <output id="cat-crunch-value">50%</output></span><input id="cat-crunch" type="range" min="0" max="1" step=".05" value=".5"></label>
               </div>
               <div class="rhythm-section reverb-section" aria-disabled="true">
                 <div class="rhythm-head"><h3>Reverb</h3><span class="coming-soon">Coming soon</span></div>
@@ -367,7 +337,6 @@
         <div><dt><kbd>R</kbd></dt><dd>Lift &amp; park arm</dd></div>
         <div><dt><kbd>G</kbd></dt><dd>Trance Gate on / off</dd></div>
         <div><dt><kbd>T</kbd></dt><dd>Tap tempo</dd></div>
-        <div><dt><kbd>D</kbd></dt><dd>Hardstyle drop</dd></div>
       </dl>
       <details class="help-focus-keys">
         <summary>More keys for focused controls</summary>

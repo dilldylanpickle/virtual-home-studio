@@ -48,10 +48,10 @@ Paths below are relative to the repository root; module names are under `static/
 | `static/audio-chain.js` | Cartridge coloration, dry/wet routing, peak protection and master volume |
 | `static/vinyl-effects.js` | Procedural surface/contact sounds, wear, wow/flutter and centering |
 | `static/condition-profiles.js` | Shared condition coefficients, default and descriptions |
-| `static/tempo-analysis.js` / `static/tempo-worker.js` | Offline tempo and beat analysis (onsets, tempo, beat tracking, confidence, downbeat, key, chords), run once per file in a worker |
-| `static/tempo-grid.js` | Effective beat grid from analysis plus corrections (half/double, manual/tap, offset, bar), tap tempo, gate styles, kit and Pixel Cat patterns |
-| `static/rhythm.js` / `static/rhythm-ui.js` | Model-side tempo and effect commands, analysis cache and worklet sync / presets-popup tempo and effects column and BPM chip |
-| `static/trance-gate.js` / `static/hardstyle.js` / `static/pixel-cat.js` | Worklet Trance Gate clocked by the beat grid at the read head's song time / beat-synced hardstyle kit tuned to the song's key / Pixel Cat 8-bit remix (crunched record plus a chiptune band in the song's chords) |
+| `static/tempo-analysis.js` / `static/tempo-worker.js` | Offline tempo and beat analysis (onsets, tempo, beat tracking, confidence, downbeat), run once per file in a worker |
+| `static/tempo-grid.js` | Effective beat grid from analysis plus corrections (half/double, manual/tap, offset, bar), tap tempo, gate patterns |
+| `static/rhythm.js` / `static/rhythm-ui.js` | Model-side tempo/gate commands, analysis cache and worklet sync / presets-popup tempo and gate column and BPM chip |
+| `static/trance-gate.js` | Worklet Trance Gate clocked by the beat grid at the read head's song time |
 | `static/assisted-playback.js` | Cancellable Play preparation and auto-cue sequence |
 | `static/tonearm-motion.js` | Shared pivot sweep for auto-cue, Return Arm and lifecycle parking |
 | `static/playback-presets.js` | Physical speed/pitch presets, derived selection and cancellable fader motion |
@@ -163,16 +163,14 @@ Eject: ready → park / stop → lift / fade → clear PCM → empty
 - Full-file decoding uses memory proportional to duration/channels; processing uses at most two channels.
 - The cue is damped: `lowerStylus()` keeps `stylusRaised` true during a ~1.1 s descent (`cueDescent`, which the 3D arm follows) and contact/sound begins at touchdown; lifting breaks contact at once. Return Arm and assisted cueing are weighted, unhurried sweeps (~1–1.4 s) after a 320 ms lift.
 
-## Tempo and beat-synced effects
+## Tempo and Trance Gate
 
 - Analysis runs once per loaded file, offline in `tempo-worker.js` (main-thread fallback), never during playback. Results and the user's corrections are cached per file (name, size, modification time, duration, analysis version) in memory and `localStorage` (40 files).
-- Beats and chords are song (record) seconds. Steady tracks get one straight grid snapped to a whole BPM when within 0.1 BPM; changing tempos keep tracked beats. Confidence combines periodicity, regularity and impulsiveness. All tempos display and enter as whole BPM. Chords (`analyzeChords`: per-beat treble chroma against the 24 major/minor triads, a bass-root bonus, a small in-key prior and Viterbi smoothing with a cost per change) are approximate on full mixes; their mistakes are mostly the key's related chords.
-- `Rhythm` owns `state.tempo`, `state.gate`, `state.kick` and `state.cat` and sends the effective grid (`beats`), the detected chords (`chords`) and each effect's settings (`gate`, `kick`, `cat`) to the worklet whenever they change. Corrections never change speed, pitch or transport.
+- Beats are song (record) seconds. Steady tracks get one straight grid snapped to a whole BPM when within 0.1 BPM; changing tempos keep tracked beats. Confidence combines periodicity, regularity and impulsiveness. All tempos display and enter as whole BPM.
+- `Rhythm` owns `state.tempo` and `state.gate` and sends the effective grid (`beats`) and gate settings (`gate`) to the worklet whenever they change. Corrections never change speed, pitch or transport.
 - The gate must complement the music, not muffle it: pumps let the first 25 ms after each step through (kick attack), a ~180 Hz one-pole crossover ducks lows fully and highs by `highs`, and a bounded make-up gain (≤ +1.5 dB, `gateMakeup`) restores lost loudness. Depth and gate length/swell run 0–100%.
-- Hardstyle mode (`hardstyle.js`) is a synthesized kit on the gate's beat clock, with kick sounds by school (`KICK_SOUNDS`: Euphoric, Rawstyle with a pitch bend and ~900 Hz formant, Techno drive with a distorted sub rumble that swells between kicks, Gabber) and a kit bus (25 Hz high-pass and gentle tanh soft clip): kick (click and 2 kHz/220 Hz pitch drop into a tanh-saturated tail on the song's root, 41–78 Hz, `kickTune`), clap, open hat and crash, on kick/clap/hat lanes that are 8-bar phrases of sixteenths (`KIT_PATTERNS`, `KIT_STEPS`; presets repeat a main bar with fills in bars 4 and 8, counted from the grid's first downbeat), with the music ducked under the kick. The panel shows one bar at a time: a bar picker (the playing bar ringed, bars that differ from bar 1 dotted), steps that edit only the shown bar, and **Copy to all**; the shown bar is view state. A drop (manual `drop` message, D key, or random at 8-bar phrase ends) builds for one bar (kick roll rising an octave, clap roll, riser, music high-passed), pauses one beat, then lands with crash and kick (and the optional air horn). Hits fire only when the read head enters a step moving forward at playback speed (never stopped, scrubbing or seeking) and retune with the playback rate. The key is detected offline with the tempo (`analyzeKey`), shown as Auto, and can be overridden. Off leaves the output unchanged.
-- Pixel Cat (`pixel-cat.js`) is an 8-bit remix on the same clock: the record (after the gate, before the kit) is sample-and-held and bit-reduced by **8-bit crunch** (50% is 8-bit at 8 kHz, 100% is 4-bit at 4 kHz, 0 is untouched) and lowered slightly under a chiptune band playing the chord at the read head (the key chord without detected chords): a band-limited 25% pulse lead on two-bar melody patterns of chord tones (`CAT_PATTERNS`: Bounce, Sparkle, Hop) with a dotted-eighth echo, and a 4-bit triangle bass bouncing octaves. **Nya vocals** run the lead through a formant glide (nasal "n" into "ya") with a small scoop. Notes start only during forward playback and retune with the playback rate; off leaves the output unchanged. The name and melodies are original; do not copy an existing song's melody.
 - The worklet's `TranceGate` reads the beat grid at the read head's song time, so seeking, pausing, scratching, direct scrubbing and speed/pitch changes stay on the beat without resynchronization. It gates music only; surface noise and contact sounds pass through. Edges use a 1.5 ms attack and 9 ms release.
-- The presets popup has two columns: presets (left) and, on the right, Tempo, Trance Gate, Hardstyle, Pixel Cat, then a disabled **Reverb · Coming soon** placeholder. The BPM chip on the track line toggles it. Interacting with the right column keeps the popup open.
+- The presets popup has two columns: presets (left) and, on the right, Tempo above the Trance Gate above a disabled **Reverb · Coming soon** placeholder. The BPM chip on the track line toggles it. Interacting with the right column keeps the popup open.
 - Tempo shows the playing BPM (song BPM × `effectiveRate`, whole number), a confidence dot and plain-language origin ("Detected from the song", "From your taps"), with **Tap the beat** and live tap coaching. Corrections live in the closed **Fix the beat** drawer, phrased as questions: Half/Double, Exact BPM, Earlier/Later (±10 ms), Move by a beat, Reset to the detected beat. Keep product copy free of jargon. Speed changes never alter the song's beat grid.
 - Gate styles (`GATE_STYLES` in `tempo-grid.js`: Push, Pulse, Bounce, Breathe, Trance, Gallop) are voiced for full mixes: no total drop-outs, and `soft` edges (longer attack/release ramps). They set shape, rate, depth, length, softness and steps together; the selected style is derived (`styleName`), any later edit shows Custom. Rates are 1/2–1/32 plus 1/8T; triplet patterns cycle every bar (12 steps, `gateCycle`).
 
@@ -201,7 +199,7 @@ Each button toggles independently; the printed 78 bracket is inert. Tempo Range 
 
 | Scope | Existing bindings |
 | --- | --- |
-| Page/deck, outside dialogs and ordinary form controls | Space: platter START/STOP; C: cue; R: lift and return arm; G: Trance Gate on/off; T: tap tempo; D: hardstyle drop |
+| Page/deck, outside dialogs and ordinary form controls | Space: platter START/STOP; C: cue; R: lift and return arm; G: Trance Gate on/off; T: tap tempo |
 | Focused physical buttons | Enter/Space: activate; speed keys ignore repeats |
 | Focused POWER | Arrows: rotate; Home/End: off/on; Enter/Space: toggle endpoint |
 | Focused tonearm | Left/Down or Right/Up: −/+1% groove; Shift: 10%; Home/End: first/last |
@@ -209,7 +207,7 @@ Each button toggles independently; the printed 78 bracket is inert. Tempo Range 
 | Native controls | Tab: focus; range arrows/Home/End: adjust; Escape: dismiss dialog |
 | File-drop preview | Escape or window blur: clear preview |
 
-Space on the deck is a motor control, not HUD Play/Pause. Global C/R/G/T/D/Space are suppressed in dialogs, normal form controls, Ctrl/Alt/Meta combinations and repeated keydown events.
+Space on the deck is a motor control, not HUD Play/Pause. Global C/R/G/T/Space are suppressed in dialogs, normal form controls, Ctrl/Alt/Meta combinations and repeated keydown events.
 
 ## Tests
 
@@ -231,14 +229,14 @@ Use the same Python prefix or `node` with the relevant paths below. There is no 
 | Scratching, seeking and HUD input | `scratching.py`, `seeking.py`, `direct_scrub.py`, `timeline_hover.py` |
 | Media handling and appearance | `media_sources.py`, `record_paths.py`, `customization.py`, `branding.py`, `occlusion.py` |
 | Effects and UI polish | `realism.py`, `condition_audio.py`, `polish.py`, `ui_motion.py` |
-| Tempo detection, Trance Gate, Hardstyle and Pixel Cat | `trance_gate.py` |
+| Tempo detection and Trance Gate | `trance_gate.py` |
 
 | DSP coverage | Node files under `tests/` |
 | --- | --- |
 | PCM/motor and transport | `audio-engine.mjs`, `phase2-engine.mjs` |
 | Effects and conditions | `realism-engine.mjs`, `condition-engine.mjs` |
 | Scrub/seek quality and ownership | `seeking-engine.mjs`, `direct_scrub-engine.mjs`, `scrub-audio-comparison.mjs` |
-| Tempo, key and chord analysis, grid corrections, Trance Gate, Hardstyle and Pixel Cat | `tempo-engine.mjs` |
+| Tempo analysis, grid corrections and Trance Gate | `tempo-engine.mjs` |
 
 - Physical-control and top-down geometry suites use `studio_helpers.enter_turntable(page)` after navigation; HUD/media suites can exercise the default wide view. `studio_view.py` checks native camera continuity, aligned controls, focus and persistent model/worklet output; `studio_plate.py` checks plate placement and derivative selection, the calibrated vanishing point, deck spot/scale/visibility across aspect ratios, grounding pixels and print-texture sharpness settings. These checks do not establish a guaranteed frame rate or photographic fidelity.
 - Headless SwiftShader renders the full-viewport studio at only a few frames per second, below what `studio_view.py`'s camera-continuity sampling needs; run the studio suites with the GPU path where available.

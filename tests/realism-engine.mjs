@@ -7,7 +7,7 @@ const scope = { sampleRate: 48000, currentTime: 0,
   AudioWorkletProcessor: class { constructor() { this.port = { postMessage() {} }; } },
   registerProcessor: (_, implementation) => { Processor = implementation; },
 };
-const source = ['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'hardstyle.js', 'pixel-cat.js', 'vinyl-processor.js'].map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n');
+const source = ['condition-profiles.js', 'mechanics.js', 'vinyl-effects.js', 'trance-gate.js', 'vinyl-processor.js'].map(file => fs.readFileSync(new URL('../static/' + file, import.meta.url), 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '')).join('\n');
 vm.runInNewContext(source, scope);
 function fixture(settings = {}, silence = false) {
   const e = new Processor();

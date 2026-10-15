@@ -1,11 +1,9 @@
 import { PlatterMotor } from './mechanics.js';
 import { VinylImperfections } from './vinyl-effects.js';
 import { TranceGate } from './trance-gate.js';
-import { PixelCat } from './pixel-cat.js';
-import { HardstyleKick } from './hardstyle.js';
 
 // Reported to the page so it can detect a stale cached engine; keep in step with app.js.
-const ENGINE_VERSION = 11;
+const ENGINE_VERSION = 5;
 
 /** One PCM reader and one audio clock own motor, scratching and virtual grooves. */
 class VinylProcessor extends AudioWorkletProcessor {
@@ -19,7 +17,7 @@ class VinylProcessor extends AudioWorkletProcessor {
     this.directScrub = false; this.manualScrub = false; this.scrubReadPosition = 0; this.scrubVelocity = 0;
     this.scrubAge = Infinity; this.scrubWindow = .024; this.scrubGain = .9; this.pausedScrubRelease = false;
     this.travel = 0; this.targetTravel = 0; this.rate = 0;
-    this.motor = new PlatterMotor(); this.effects = new VinylImperfections(sampleRate); this.gate = new TranceGate(sampleRate); this.kick = new HardstyleKick(sampleRate); this.cat = new PixelCat(sampleRate);
+    this.motor = new PlatterMotor(); this.effects = new VinylImperfections(sampleRate); this.gate = new TranceGate(sampleRate);
     this.motorRate = 0; this.motorActualRate = 0; this.motorTravel = 0;
     this.rpm = null; this.enabled = false; this.contact = false; this.powered = true;
     this.holding = false; this.revision = 0; this.rampRemaining = 0;
@@ -34,16 +32,12 @@ class VinylProcessor extends AudioWorkletProcessor {
     if (data.type === 'settings') this.effects.configure(data.settings);
     // Rhythmic effects follow the beat grid in song time; they never touch the transport.
     if (data.type === 'gate') this.gate.configure(data.settings);
-    if (data.type === 'kick') this.kick.configure(data.settings);
-    if (data.type === 'drop') this.kick.requestDrop();
-    if (data.type === 'cat') this.cat.configure(data.settings);
-    if (data.type === 'chords') this.cat.setChords(data.times, data.roots, data.minors);
     if (data.type === 'beats') this.gate.setGrid(data.beats, data.downbeat);
     if (data.type === 'load') {
       this.channels = data.channels; this.length = this.channels[0]?.length ?? 0;
       this.fileRate = data.sampleRate; this.position = 0; this.seek = null;
       this.clearScrub();
-      this.gain = 0; this.last.fill(0); this.blendRemaining = 0; this.effects.clear(); this.gate.setGrid([]); this.cat.setChords();
+      this.gain = 0; this.last.fill(0); this.blendRemaining = 0; this.effects.clear(); this.gate.setGrid([]);
     }
     if (data.type === 'clear') {
       this.channels = []; this.length = 0; this.position = 0; this.seek = null;
@@ -196,16 +190,10 @@ class VinylProcessor extends AudioWorkletProcessor {
       const index = Math.max(0, Math.min(this.length - 1, Math.floor(readPosition)));
       const fraction = readPosition - Math.floor(readPosition);
       const gated = this.gate.step(readPosition / this.fileRate);
-      // Hardstyle kicks share the gate's beat clock and fire only during forward playback
-      // (never while scrubbing or seeking); their tuning follows the playback rate.
-      const forwardRate = this.directScrub || this.manualScrub || this.seek ? 0 : this.rate;
-      this.kick.step(this.gate.beat, this.gate.downbeat, forwardRate);
-      this.cat.step(readPosition / this.fileRate, this.gate.beat, this.gate.downbeat, forwardRate, this.gate.interval);
       const noise = this.effects.sample(this.contact && this.length > 0, Math.abs(this.rate) > .0001 && !this.pausedScrubRelease, this.powered, this.region, this.rate);
       for (let c = 0; c < output.length; c++) {
         const pcm = this.channels[Math.min(c, this.channels.length - 1)];
-        // Music → Trance Gate → Pixel Cat (8-bit crunch + band) → hardstyle kit (and its duck).
-        let value = this.kick.apply(this.cat.apply(this.gate.apply(pcm && this.gain > 0 ? (pcm[index] + ((pcm[index + 1] ?? pcm[index]) - pcm[index]) * fraction) * this.gain : 0, c, gated), c), c);
+        let value = this.gate.apply(pcm && this.gain > 0 ? (pcm[index] + ((pcm[index + 1] ?? pcm[index]) - pcm[index]) * fraction) * this.gain : 0, c, gated);
         if (this.blendRemaining > 0) {
           const mix = 1 - this.blendRemaining / this.fadeFrames;
           value = (this.blendFrom[c] ?? 0) * (1 - mix) + value * mix;
@@ -258,8 +246,6 @@ class VinylProcessor extends AudioWorkletProcessor {
         grooveRegion: this.region, runInRemaining: Math.max(0, -this.position / this.fileRate),
         contactCount: this.effects.contacts, popCount: this.effects.pops, crackleCount: this.effects.crackles,
         engine: ENGINE_VERSION, gate: { enabled: this.gate.enabled, beats: this.gate.beats.length, gain: this.gate.gain },
-        kick: { enabled: this.kick.enabled, fired: this.kick.fired, claps: this.kick.claps, hats: this.kick.hats, crashes: this.kick.crashes, drops: this.kick.drops, horns: this.kick.horns },
-        cat: { enabled: this.cat.enabled, notes: this.cat.notes, bassNotes: this.cat.bassNotes, meows: this.cat.meows, chords: this.cat.times.length },
       });
     }
     return true;

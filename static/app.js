@@ -14,7 +14,7 @@ import { COVER_SWING_MS } from './studio-turntable-3d.js';
 
 const CUE_DESCENT_MS = 1100;
 // Must match vinyl-processor.js; bump both when the engine's messages change.
-const ENGINE_VERSION = 11;
+const ENGINE_VERSION = 5;
 import { RecordLifecycle } from './record-lifecycle.js';
 import { Rhythm } from './rhythm.js';
 import { setupCustomization, renderMaterial, VINYL, LABELS, FINISHES } from './record-customization.js';
@@ -552,7 +552,7 @@ const controls = Object.freeze({
   customize: (key, value) => turntable.customize(key, value),
   returnArm: () => turntable.returnArm(),
   eject: () => turntable.eject(), load: file => turntable.load(file),
-  setGate: patch => turntable.rhythm.setGate(patch), setKick: patch => turntable.rhythm.setKick(patch), setCat: patch => turntable.rhythm.setCat(patch), dropNow: () => turntable.rhythm.dropNow(), setManualBpm: bpm => turntable.rhythm.setManualBpm(bpm),
+  setGate: patch => turntable.rhythm.setGate(patch), setManualBpm: bpm => turntable.rhythm.setManualBpm(bpm),
   useDetectedTempo: () => turntable.rhythm.useDetected(), scaleTempo: factor => turntable.rhythm.scaleTempo(factor),
   nudgeGrid: ms => turntable.rhythm.nudge(ms), shiftBar: () => turntable.rhythm.shiftBar(), tapTempo: () => turntable.rhythm.tap(),
   beatGrid: () => turntable.rhythm.grid,
@@ -568,7 +568,7 @@ window.turntable = Object.freeze({
   get outputLevel() {
     return turntable.output?.gain.value ?? 0;
   },
-  get audioDiagnostics() { return { contactCount: turntable.report?.contactCount ?? 0, popCount: turntable.report?.popCount ?? 0, crackleCount: turntable.report?.crackleCount ?? 0, engine: turntable.report?.engine ?? null, gate: turntable.report?.gate ?? null, kick: turntable.report?.kick ?? null, cat: turntable.report?.cat ?? null }; },
+  get audioDiagnostics() { return { contactCount: turntable.report?.contactCount ?? 0, popCount: turntable.report?.popCount ?? 0, crackleCount: turntable.report?.crackleCount ?? 0, engine: turntable.report?.engine ?? null, gate: turntable.report?.gate ?? null }; },
   // Effective beat grid (song seconds) and how many analyses ran, for tests and debugging.
   get rhythm() { const { beats, downbeat, bpm } = turntable.rhythm.grid; return { beats: Array.from(beats), downbeat, bpm, analyses: turntable.rhythm.analyses }; },
   powerKnob: POWER_KNOB,
@@ -857,7 +857,6 @@ document.addEventListener('keydown', (event) => {
   // G toggles the Trance Gate; T taps tempo (and, while playing, the beat phase).
   else if (event.key.toLowerCase() === 'g') { event.preventDefault(); turntable.rhythm.setGate({ enabled: !turntable.state.gate.enabled }); }
   else if (event.key.toLowerCase() === 't') { event.preventDefault(); turntable.rhythm.tap(); }
-  else if (event.key.toLowerCase() === 'd') { event.preventDefault(); turntable.rhythm.dropNow(); }
 });
 
 let recordPointer = null;

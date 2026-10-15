@@ -64,12 +64,8 @@ The musical preview `artifacts/condition-ab.wav` contains Mint → Poor → Mint
 
 The browser report also records audio-node routing, live playback continuity, and one playback engine/one PCM upload. Sample-level checks independently verify profile progression, harmonic restraint, stereo behavior, nonperiodic defects, and rapid parameter ramps.
 
-## Tempo analysis and beat-synced effects
+## Tempo analysis and Trance Gate
 
 Tempo analysis is offline (once per file, in a worker): log-magnitude spectral flux at ~86 frames/s for timing, a linear low-band flux for kick weighting, autocorrelation tempo with a log-tempo prior, 8 s local tempo windows for changing tempos, dynamic-programming beat tracking on the kick-weighted pulse, a quarter-beat phase check against kick energy, and for steady tracks a whole-BPM grid placed on the attacks. On synthetic grooves (70–174 BPM, offbeat hats and offbeat bass, 44.1 and 48 kHz) `tests/tempo-engine.mjs` measures beats within about 1 ms; a 120→136 BPM ramp is tracked within 3 ms; noise and irregular hits report near-zero confidence.
 
-The same offline pass estimates the key (chroma against key profiles) and chords along the beat grid: per-beat treble chroma (180–2000 Hz, 11 kHz analysis rate, 4096-point frames) correlated with the 24 major/minor triads, plus a bonus when the 40–180 Hz bass sits on the root and a small prior for chords in the key, decoded with Viterbi at a fixed cost per change. Synthetic progressions are recovered on ≥90% of beats; on dense electronic mixes it often holds one in-key chord for long stretches, which still fits.
-
 The gate multiplies only the music sample (before wear and width) by a smoothed 16-step envelope. Its clock is the beat grid evaluated at the read head's song time, not wall time, which is why seeks, pauses, scratches and 45/78 RPM stay on the beat in the same test.
-
-Per sample the music runs Trance Gate → Pixel Cat → hardstyle kit, before cartridge coloration, wear and width; surface noise and contact sounds bypass all three. Pixel Cat's crunch is a per-channel sample-and-hold (16 kHz × 0.25^crunch) followed by quantization to 12 − 8 × crunch bits; its band (band-limited 25% pulse lead with a dotted-eighth echo, 4-bit stepped triangle bass) is soft-clipped and scaled by the Band level, and the record under it is lowered by a quarter of that level. On a dense 126 BPM electronic master at the default 60% Band the band measures about 4–6 dB below the song. The hardstyle kit lanes are 8-bar phrases indexed by the absolute sixteenth since the grid's first downbeat.

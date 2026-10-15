@@ -37,8 +37,10 @@ export class TranceGate {
     return i + (t - beats[i]) / this.interval;
   }
   /** Target gain (before smoothing) at song time `t`. */
-  target(t, beat = this.beatAt(t)) {
-    if (!this.enabled || beat === null) return 1;
+  target(t) {
+    if (!this.enabled) return 1;
+    const beat = this.beatAt(t);
+    if (beat === null) return 1;
     const position = (beat - this.downbeat) * this.stepsPerBeat, step = Math.floor(position);
     const index = ((step % this.cycle) + this.cycle) % this.cycle;
     if (!this.steps[index]) return 1 - this.depth;
@@ -54,9 +56,7 @@ export class TranceGate {
   }
   /** Smoothed gain for one sample. */
   step(t) {
-    // The beat position is kept for other beat-synced effects (hardstyle kicks) too.
-    this.beat = this.beatAt(t);
-    const target = this.target(t, this.beat);
+    const target = this.target(t);
     this.gain += (target - this.gain) * (target > this.gain ? this.attack : this.release);
     this.makeupGain += ((this.enabled ? this.makeup : 1) - this.makeupGain) * this.makeupCoefficient;
     return this.gain;
