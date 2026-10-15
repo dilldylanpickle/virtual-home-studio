@@ -113,7 +113,9 @@ def run():
               'Tempo shows just the BPM and Tap; fixes sit in Adjust; Reverb is marked coming soon')
 
         # Styles set the whole gate; editing one setting makes it Custom; triplets use 12 steps.
-        check(state()['gate']['rate'] == '1/16' and page.locator('#gate-style').input_value() == 'Trance', 'The gate starts on the classic Trance style')
+        order = page.locator('#gate-style option').evaluate_all('options => options.map(option => option.value)')
+        check(state()['gate']['rate'] == '1/16' and page.locator('#gate-style').input_value() == 'Bounce' and order[:3] == ['Breathe', 'Bounce', 'Push'],
+              'The gate starts on Bounce; styles run Breathe, Bounce, Push, then the rest', order=order)
         page.locator('#gate-style').select_option('Gallop')
         gate = state()['gate']
         check(gate['rate'] == '1/8T' and gate['decay'] == 60 and gate['mix'] == .9 and page.locator('.gate-step.unused').count() == 4,

@@ -23,13 +23,13 @@ export const envelopeSlider = (key, ms) => { const [low, high] = GATE_ENVELOPE[k
  * plugin's presets work. Mix below 100% keeps some of the dry record under the gate. Any
  * later change makes the gate "Custom". */
 export const GATE_STYLES = Object.freeze({
+  Breathe: { rate: '1/2', pattern: 'xxxxxxxxxxxxxxxx', attack: 320, decay: 250, sustain: .6, release: 200, mix: .65 }, // slow half-note swell
+  Bounce: { rate: '1/16', pattern: 'x-.x-.x-x-.x-.x.', attack: 2, decay: 90, sustain: .6, release: 40, mix: 1 },    // tied steps: long-short bounce
+  Push: { rate: '1/4', pattern: 'xxxxxxxxxxxxxxxx', attack: 180, decay: 1, sustain: 1, release: 1, mix: .55 },      // sidechain swell on every beat
   Trance: { rate: '1/16', pattern: 'xx.xx.x.xx.xx.x.', attack: 1, decay: 70, sustain: .3, release: 25, mix: .9 },    // the classic 3-3-2 sixteenth chop
   Pluck: { rate: '1/8', pattern: 'xxxxxxxxxxxxxxxx', attack: 1, decay: 140, sustain: .1, release: 40, mix: .9 },    // every eighth plucked short
   Stutter: { rate: '1/32', pattern: 'xxxxxxxxxxxxxxxx', attack: .5, decay: 22, sustain: 0, release: 6, mix: .85 },  // machine-gun thirty-seconds
-  Bounce: { rate: '1/16', pattern: 'x-.x-.x-x-.x-.x.', attack: 2, decay: 90, sustain: .6, release: 40, mix: 1 },    // tied steps: long-short bounce
   Gallop: { rate: '1/8T', pattern: 'xx.xx.xx.xx.xxxx', attack: 2, decay: 60, sustain: .5, release: 30, mix: .9 },   // triplet gallop
-  Push: { rate: '1/4', pattern: 'xxxxxxxxxxxxxxxx', attack: 180, decay: 1, sustain: 1, release: 1, mix: .55 },      // sidechain swell on every beat
-  Breathe: { rate: '1/2', pattern: 'xxxxxxxxxxxxxxxx', attack: 320, decay: 250, sustain: .6, release: 200, mix: .65 }, // slow half-note swell
 });
 export const parseSteps = text => [...text].map(step => step === 'x' ? STEP_ON : step === '-' ? STEP_TIE : STEP_OFF);
 export const stepsText = steps => steps.map(step => step === STEP_TIE ? '-' : step ? 'x' : '.').join('');
@@ -53,7 +53,7 @@ export function styleName(gate) {
 }
 /** Steps in one pattern cycle: 16, or one bar (12) for triplets. */
 export const gateCycle = rate => GATE_RATES[rate] === 3 ? 12 : GATE_STEPS;
-export const DEFAULT_GATE = Object.freeze({ enabled: false, ...styleSettings('Trance') });
+export const DEFAULT_GATE = Object.freeze({ enabled: false, ...styleSettings('Bounce') });
 
 export const DEFAULT_TEMPO = Object.freeze({ source: 'auto', manualBpm: null, anchor: null, multiplier: 1, offsetMs: 0, barShift: 0 });
 export const BPM_RANGE = Object.freeze([40, 250]);

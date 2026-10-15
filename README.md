@@ -70,7 +70,7 @@ The **BPM chip** next to the track name shows the tempo as it plays, with a conf
 | --- | --- |
 | **Tap the beat** | Tap along to set the tempo yourself when detection gets it wrong |
 | **Fix the beat** | Half or double time, an exact BPM, nudge earlier or later, or move the pattern by a beat |
-| **Trance Gate** | Pick a style: Trance (the classic chop), Pluck, Stutter, Bounce (held notes), Gallop (triplets), Push (sidechain swell) or Breathe. Then shape it like a trance gate plugin: click steps on or off and drag across steps to hold one note, choose the rate (1/2 to 1/32, triplets), set Attack, Decay, Sustain and Release for every note, and Mix in the dry song. The display above the steps shows the gate's shape with a playhead |
+| **Trance Gate** | Pick a style: Breathe (slow swell), Bounce (held notes, the default), Push (sidechain swell), Trance (the classic chop), Pluck, Stutter or Gallop (triplets). Then shape it like a trance gate plugin: click steps on or off and drag across steps to hold one note, choose the rate (1/2 to 1/32, triplets), set Attack, Decay, Sustain and Release for every note, and Mix in the dry song. The display above the steps shows the gate's shape with a playhead |
 
 The gate never changes the record's speed or pitch. Reverb is coming soon.
 
