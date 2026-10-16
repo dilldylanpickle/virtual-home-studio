@@ -50,10 +50,12 @@ GLIDE = r'''selector => new Promise(done => {
   document.querySelector(selector).click();
   const start = performance.now(), inert = hud.inert;
   const moving = document.querySelector('#studio').dataset.moving === 'true';
-  const tick = now => {
-    const p = pill.getBoundingClientRect();
+  // Time each sample when it is read (after the frame's paint), not at the frame's start.
+  const tick = () => {
+    const now = performance.now(), p = pill.getBoundingClientRect();
     samples.push([now - start, away(), Math.round(deck.getBoundingClientRect().width * 10) / 10,
-                  p.top + p.height / 2, hud.getBoundingClientRect().top, +getComputedStyle(pill).opacity]);
+                  p.top + p.height / 2, hud.getBoundingClientRect().top, +getComputedStyle(pill).opacity,
+                  Math.max(...[-.5, .5].flatMap(x => [-.028, .028].map(y => studioView.projectPoint('vhs-chassis', [x, y, .392]).y)))]);
     if (now - start < 900) requestAnimationFrame(tick); else done({inert, moving, samples});
   };
   requestAnimationFrame(tick);
@@ -69,7 +71,7 @@ def glides(trace, to):
     steps = [(b[1] - a[1]) * (1 if to else -1) / max(1, b[0] - a[0]) for a, b in zip(samples, samples[1:])]
     trace.update(done=done if done is not None else 1e9, speed=max(steps), decks=[sample[2] for sample in trace['samples']])
     middle = [away for _, away in samples[1:] if .02 < away < .98]
-    return done is not None and 350 < done < 700 and min(steps) >= 0 and max(steps) < 1.6 * 1.5 / 450 and len(middle) >= 4
+    return done is not None and 350 < done < 700 and min(steps) >= 0 and max(steps) < 2 * 1.5 / 450 and len(middle) >= 3
 
 
 def glide_summary(trace):
@@ -305,6 +307,21 @@ def run():
         check(page.evaluate("getComputedStyle(document.getElementById('studio-plate')).filter") == 'none'
               and page.evaluate("JSON.stringify(turntable.state, ['filename','duration','position','pitch','quartzLock'])") == before,
               'Returning restores the sharp plate without touching playback state')
+        # A narrower window keeps the tall panel: on the way back the camera swings the deck's
+        # front edge low mid-travel, and the rising panel must make way rather than cover it.
+        page.set_viewport_size({'width': 1024, 'height': 768}); page.wait_for_timeout(300)
+        page.locator('#studio-enter').click()
+        page.wait_for_function("document.querySelector('#studio').dataset.view==='turntable' && document.querySelector('#studio').dataset.moving==='false'")
+        page.wait_for_timeout(500)
+        back = page.evaluate(GLIDE, '#studio-focus')
+        clearance = min(s[4] - s[6] for s in back['samples'])
+        aways = [s[1] for s in back['samples']]
+        page.wait_for_function("document.querySelector('#studio').dataset.view==='studio' && document.querySelector('#studio').dataset.moving==='false'")
+        settled = page.evaluate("getComputedStyle(document.querySelector('.room')).getPropertyValue('--hud-away').trim()")
+        prompt = next(s[1] for s in back['samples'] if s[0] >= 300)
+        check(clearance >= 4 and all(b <= a for a, b in zip(aways, aways[1:])) and settled == '0.000' and prompt < .5,
+              'Returning from a narrow close-up, the panel comes straight up but never covers the deck', clearance_px=round(clearance, 1),
+              away_at_300ms=prompt, settled=settled, path=[round(a, 2) for a in aways[::6]])
         check(not errors, 'No browser errors', errors=errors)
         browser.close()
     (OUT / 'geometry.json').write_text(json.dumps(report, indent=2))

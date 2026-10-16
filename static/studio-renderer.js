@@ -335,6 +335,17 @@ export class StudioRenderer {
     if (scale !== state.scale) { state.scale = scale; this.resize(); }
   }
 
+  /** The deck's lowest point on screen (stage px): the chassis's front corners, top and bottom. */
+  deckBottom() {
+    const chassis = this.scene.getObjectByName('vhs-chassis'); if (!chassis) return null;
+    const point = new THREE.Vector3(); let bottom = -Infinity;
+    for (const x of [-.5, .5]) for (const y of [-.028, .028]) {
+      chassis.localToWorld(point.set(x, y, .392)).project(this.camera);
+      bottom = Math.max(bottom, (1 - point.y) * this.height / 2);
+    }
+    return bottom;
+  }
+
   projectPoint(name, local = [0, 0, 0]) {
     const object = this.scene.getObjectByName(name); if (!object) return null;
     const world = object.localToWorld(new THREE.Vector3(...local)), projected = world.clone().project(this.camera);

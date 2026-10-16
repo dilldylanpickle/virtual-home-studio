@@ -15,7 +15,7 @@ export class StudioView {
     this.deck = $('drop-zone'); this.beforeMove = beforeMove; this.onTarget = onTarget;
     this.target = 'studio'; this.view = 'studio'; this.inspection = 0; this.motion = null; this.frame = null;
     // The panel's slide (0 shown, 1 away) and the close-up frame's share of it.
-    this.away = 0; this.share = 0; this.glide = null; this.glideFrame = null;
+    this.away = 0; this.share = 0; this.glide = null; this.glideFrame = null; this.clearance = null;
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)');
     try {
       this.graphics = new StudioRenderer(this.stage, { onFailure: error => this.useFallback(error) }); this.stage.dataset.renderer = 'webgl';
@@ -94,7 +94,7 @@ export class StudioView {
     room.style.setProperty('--hud-floor', `${height - roomTop}px`);
     // Docking depends on width only, never on the view, so the panel keeps its size during travel.
     const hudTop = roomTop + hud.offsetTop;
-    room.style.setProperty('--hud-offset', `${hud.offsetTop}px`);
+    room.style.setProperty('--hud-offset', `${hud.offsetTop}px`); this.hudBox = { top: hudTop, height: hud.offsetHeight };
     const gutter = Math.min(24, width * .04), panel = Math.min(hudTop, height) - 12;
 
     const scene = y($('scene-frame')), header = y(document.querySelector('.masthead'));
@@ -158,9 +158,7 @@ export class StudioView {
     // Skyline view fades the hero and panel as the view tilts up.
     const sky = this.sky ?? 0;
     room.setProperty('--intro-away', Math.max(smooth(0, .3, t), smooth(0, .5, sky)).toFixed(3));
-    room.setProperty('--hud-away', this.away.toFixed(3));
-    // The pill reads Show controls from the moment the camera heads in, then follows the slide.
-    room.setProperty('--hud-label', (this.target === 'turntable' && this.view === 'studio' ? 1 : this.away).toFixed(3));
+    this.paintControls();
     // Skyline only fades the panel in place; it never slides.
     room.setProperty('--hud-fade', smooth(0, .6, sky).toFixed(3));
     plateStyle.transformOrigin = `${PLATE.anchor[0] * plate.width}px ${PLATE.anchor[1] * plate.height}px`;
@@ -227,17 +225,19 @@ export class StudioView {
   }
 
   /** The panel slides away (entering the close-up, Hide) or back (Show, Back to studio) from
-   * the click over one smooth glide, the same speed both ways, and in the close-up the frame
-   * grows into the space it frees in step. Heading back to the studio the frame keeps its
-   * size, so returning never resizes it mid-travel. */
+   * the click over one smooth glide, the same speed both ways, and the close-up frame grows
+   * into the space it frees or shrinks to make room in step, so the panel never covers the
+   * deck. Back to studio is a Show while the camera pulls away (see clear). */
   slideControls() {
     if (!this.framing) return;
     this.slide();
-    const close = this.target === 'turntable', hidden = this.hidesControls() ? 1 : 0;
-    const from = [this.away, this.share], to = close ? [hidden, hidden] : [0, this.share];
-    if (this.glide && to.every((value, i) => value === this.glide.to[i])) return;
+    const close = this.target === 'turntable', hidden = close && this.hidesControls() ? 1 : 0;
+    const from = [this.away, this.share], to = [hidden, hidden];
+    if (this.glide && to.every((value, i) => value === this.glide.goal[i])) return;
     const span = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]));
-    this.glide = span && !this.reduced.matches ? { from, to, start: performance.now(), duration: SLIDE * span } : null;
+    this.glide = span && !this.reduced.matches ? { from, to: [...to], goal: to, start: performance.now(), duration: SLIDE * span } : null;
+    // Heading back with the panel away, its rise is planned around the deck once the camera moves.
+    this.clearance = this.glide && !close && from[0] > 0 ? 'pending' : null;
     if (!span) return;
     if (!this.glide) { [this.away, this.share] = to; this.paint(); this.present(); return; }
     // Camera travel paints every frame itself; otherwise the glide drives its own frames.
@@ -251,17 +251,53 @@ export class StudioView {
 
   /** Advance the glide to now and frame the close-up to match. */
   slide() {
+    const now = performance.now();
+    if (this.clearance === 'pending' && this.motion && this.glide && this.graphics) this.graphics.guard(() => this.clear());
     const glide = this.glide;
     if (glide) {
-      const progress = this.reduced.matches ? 1 : Math.min(1, (performance.now() - glide.start) / glide.duration), x = smooth(0, 1, progress);
+      const progress = this.reduced.matches ? 1 : Math.min(1, (now - glide.start) / glide.duration), x = smooth(0, 1, progress);
       [this.away, this.share] = progress === 1 ? glide.to : glide.from.map((from, i) => mix(from, glide.to[i], x));
       if (progress === 1) this.glide = null;
+    }
+    if (Array.isArray(this.clearance)) {
+      const samples = this.clearance, next = samples.findIndex(([time]) => time > now);
+      const need = next < 0 ? 0 : next === 0 ? samples[0][1] : mix(samples[next - 1][1], samples[next][1], (now - samples[next - 1][0]) / (samples[next][0] - samples[next - 1][0]));
+      this.away = this.glide ? Math.max(this.away, need) : need;
+      if (next < 0) this.clearance = null;
     }
     if (!this.graphics) this.away = this.share = 0;
     const close = this.closeFrame(), current = this.framing.close;
     if (['x', 'y', 'width', 'height'].some(key => close[key] !== current[key])) {
       this.framing.close = close; this.graphics?.guard(() => this.graphics.setFraming(this.framing));
     }
+  }
+
+  /** Heading back from the close-up, the camera can swing the deck's front edge below the
+   * panel's spot mid-travel. Sample the rest of the trip once (with the panel's frame) and keep
+   * only as much of the panel away as the deck will still need, never moving back down: the
+   * Show glide stops just short of that, and the last of the rise follows the clearing deck. */
+  clear() {
+    const { from, to, start, duration } = this.motion, framing = this.framing, close = framing.close, { top, height } = this.hudBox;
+    framing.close = this.closeFrames[0];
+    const samples = [];
+    for (let k = 0; k <= 48; k++) {
+      const progress = k / 48; this.graphics.updateCamera(mix(from, to, ease(progress)));
+      const bottom = this.graphics.deckBottom();
+      samples.push([start + progress * duration, bottom === null ? 0 : Math.min(1, Math.max(0, (bottom + 10 - top) / (height + 40)))]);
+    }
+    framing.close = close; this.graphics.updateCamera(this.inspection);
+    for (let k = samples.length - 2; k >= 0; k--) samples[k][1] = Math.max(samples[k][1], samples[k + 1][1]);
+    // The glide ends where the deck still needs the panel, at rest; later the need takes over.
+    const end = this.glide.start + this.glide.duration, at = samples.find(([time]) => time >= end);
+    this.glide.to[0] = Math.min(this.glide.from[0], at ? at[1] : 0);
+    this.clearance = samples.some(([, need]) => need > 0) ? samples : null;
+  }
+
+  paintControls() {
+    const room = document.querySelector('.room').style;
+    room.setProperty('--hud-away', this.away.toFixed(3));
+    // The pill reads Show controls from the moment the camera heads in, then follows the slide.
+    room.setProperty('--hud-label', (this.target === 'turntable' && this.view === 'studio' ? 1 : this.away).toFixed(3));
   }
 
   closeFrame() {
