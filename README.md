@@ -14,7 +14,7 @@ Drop an MP3 or WAV onto the page and the VHS-42069, a fictional direct-drive tur
 
 - **A room, not a widget.** A live 3D turntable rendered into a photoreal studio. Click the deck (or **Close-up**) and the camera glides in while the dust cover swings open; **Back to studio** closes it again. **Skyline** fades the controls and tilts the view up to the city while the music keeps playing.
 - **Plays like the real thing.** 33⅓, 45 and 78 RPM, a pitch fader with ±8% / ±16% range and Quartz lock, a damped cue lever, a tonearm you can drag to any groove, motor spin-up and coast, and scratching with your mouse or finger.
-- **Hears the beat.** Every record gets its tempo detected when it loads. The **Trance Gate** pumps or chops the music in time with it, and stays locked through seeks, pauses, scratches and speed changes.
+- **Hears the beat.** Every record gets its tempo detected when it loads. The **Trance Gate** chops, plucks and swells the music in time with it, shaped like a trance gate plugin (step pattern, held notes, attack/decay/sustain/release, mix), and stays locked through seeks, pauses, scratches and speed changes.
 - **Make it yours.** 8 turntable finishes, 18 vinyl colors (clear and smoke included), 19 label colors, and a record condition from Mint to Poor that you can hear: wear, crackle, pops, wow and flutter.
 - **Your music stays yours.** Files are decoded and played entirely in your browser. Nothing is uploaded.
 - **YouTube links, when you run it yourself.** Paste a link and your own computer fetches the audio; the record then plays like any file, scratching and Trance Gate included.
@@ -37,7 +37,7 @@ Drop an MP3 or WAV onto the page and the VHS-42069, a fictional direct-drive tur
 | --- | --- |
 | Click the deck / **Close-up** | Move in for a top-down view with every control in reach. **← Back to studio** or Escape takes you back |
 | **Skyline** | Fade the controls and look out over the city; music keeps playing |
-| **Hide controls** | In close-up, slide the listening bar away for a clean view of the deck |
+| **Hide controls** / **Show controls** | Clicking into the close-up clears the controls away for a full view of the deck. One pill brings them back and sends them away again: it rides the panel's top edge and glides to the bottom of the screen with it |
 | **Graphics** | In **Turntable details**: Cinematic (default), Balanced or Performance |
 
 ### Playing records
@@ -70,7 +70,7 @@ The **BPM chip** next to the track name shows the tempo as it plays, with a conf
 | --- | --- |
 | **Tap the beat** | Tap along to set the tempo yourself when detection gets it wrong |
 | **Fix the beat** | Half or double time, an exact BPM, nudge earlier or later, or move the pattern by a beat |
-| **Trance Gate** | Pick a style: Push (sidechain pump), Pulse (a chopped throb), Bounce, Breathe, Trance (16th shimmer) or Gallop (triplets), then tweak the steps, rate (1/2 to 1/32, triplets), depth and swell |
+| **Trance Gate** | Pick a style: Breathe (slow swell), Bounce (held notes, the default), Push (sidechain swell), Trance (the classic chop), Pluck, Stutter or Gallop (triplets). Then shape it like a trance gate plugin: click steps on or off and drag across steps to hold one note, choose the rate (1/2 to 1/32, triplets), set Attack, Decay, Sustain and Release for every note, and Mix in the dry song. The display above the steps shows the gate's shape with a playhead |
 
 The gate never changes the record's speed or pitch. Reverb is coming soon.
 

@@ -5,6 +5,8 @@ const $ = id => document.getElementById(id);
 const mix = (a, b, t) => a + (b - a) * t;
 const ease = t => t * t * t * (t * (t * 6 - 15) + 10);
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// Hide and Show slide the panel at this one speed both ways (ms for the full slide).
+const SLIDE = 450;
 
 /** Camera navigation and the canonical control surface, with no playback state. */
 export class StudioView {
@@ -12,6 +14,8 @@ export class StudioView {
     this.stage = $('studio'); this.world = $('studio-world'); this.viewport = $('studio-camera');
     this.deck = $('drop-zone'); this.beforeMove = beforeMove; this.onTarget = onTarget;
     this.target = 'studio'; this.view = 'studio'; this.inspection = 0; this.motion = null; this.frame = null;
+    // The panel's slide (0 shown, 1 away) and the close-up frame's share of it.
+    this.away = 0; this.share = 0; this.glide = null; this.glideFrame = null; this.clearance = null;
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)');
     try {
       this.graphics = new StudioRenderer(this.stage, { onFailure: error => this.useFallback(error) }); this.stage.dataset.renderer = 'webgl';
@@ -20,11 +24,10 @@ export class StudioView {
     }
     this.measure(); this.paint(); this.settle(); this.stage.dataset.ready = 'true'; this.onTarget(this.target);
     $('studio-enter').addEventListener('click', () => this.goTo('turntable'));
-    // Close-up docks the listening panel into a slim row; Hide/Show controls trades it for a
-    // full view of the deck, persists for later close-ups this session, and the studio always shows it.
+    // Close-up opens with the listening panel cleared away; one pill on its top edge shows
+    // and hides it again. The studio always shows it.
     this.controlsHidden = false;
-    $('hud-hide').addEventListener('click', () => this.setControlsHidden(true));
-    $('hud-show').addEventListener('click', () => this.setControlsHidden(false));
+    $('hud-toggle').addEventListener('click', () => { if (this.target === 'turntable') this.setControlsHidden(!this.controlsHidden); });
     // One header toggle replaces the former Studio/Turntable pair.
     $('studio-focus').addEventListener('click', () => this.goTo(this.target === 'turntable' ? 'studio' : 'turntable'));
     $('studio-quality').addEventListener('change', event => this.graphics?.guard(() => this.graphics.setQuality(event.target.value)));
@@ -59,6 +62,9 @@ export class StudioView {
     if (!this.graphics || !['studio', 'turntable'].includes(target) || this.target === target) return;
     if (this.skylineTarget) this.setSkyline(false, true);
     this.beforeMove(); const previous = this.target; this.target = target; this.onTarget(target);
+    // Every trip into the close-up clears the controls away from the click for a full view
+    // of the deck; Show controls brings them back. The studio view always shows them.
+    if (target === 'turntable') { this.controlsHidden = true; this.syncControls(); }
     cancelAnimationFrame(this.frame);
     const active = document.activeElement, moveFocus = this.deck.contains(active) || active === $('studio-enter');
     this.deck.inert = true; $('studio-enter').disabled = true;
@@ -84,13 +90,12 @@ export class StudioView {
     const y = node => { const r = node.getBoundingClientRect(); return { top: r.top + offset - stage.top, bottom: r.bottom + offset - stage.top }; };
     // Layout positions, not transformed ones: the panel slides away with a transform.
     const room = document.querySelector('.room'), hud = $('listening-hud'), roomTop = y(room).top;
+    // The Hide/Show pill rests just above the bottom of the screen while the panel is away.
+    room.style.setProperty('--hud-floor', `${height - roomTop}px`);
     // Docking depends on width only, never on the view, so the panel keeps its size during travel.
     const hudTop = roomTop + hud.offsetTop;
-    room.style.setProperty('--hud-offset', `${hud.offsetTop}px`);
+    room.style.setProperty('--hud-offset', `${hud.offsetTop}px`); this.hudBox = { top: hudTop, height: hud.offsetHeight };
     const gutter = Math.min(24, width * .04), panel = Math.min(hudTop, height) - 12;
-    // The close-up frame follows the preference, not the target, so returning never resizes it mid-travel.
-    const hidden = this.hidesControls();
-    const closeBottom = hidden ? height - 76 : Math.min(hudTop, height) - 12;
 
     const scene = y($('scene-frame')), header = y(document.querySelector('.masthead'));
     const rect = (top, bottom, side = gutter) => ({ x: side, y: top, width: Math.max(1, width - side * 2), height: Math.max(1, bottom - top) });
@@ -100,9 +105,15 @@ export class StudioView {
     const plate = placePlate(width, height, wide);
     // Let the browser pick the derivative for the plate's real rendered width.
     $('studio-plate').sizes = `${Math.ceil(plate.width)}px`;
-    // Narrower close-ups keep status messages in a row above the panel, not over the deck.
-    const closeTop = header.bottom + 14, noticeRow = this.target === 'turntable' && !hidden && width < 1180 && width >= 600 ? 44 : 0;
-    this.framing = { width, height, wide, plate, settledPlate: plate, close: rect(closeTop, Math.max(closeTop + 1, closeBottom - noticeRow), width < 600 ? 2 : gutter) };
+    // Close-up frames with the panel shown and hidden; the slide moves between them. The close-up
+    // header keeps only its links (centred in the row, the Back pill up to 42 px tall), so the deck
+    // starts just below them (the SVG fallback keeps the whole header); hidden, it ends just above
+    // the resting Show controls pill. Narrower
+    // close-ups keep status messages in a row above a shown panel, not over the deck.
+    const closeTop = this.graphics ? (header.top + header.bottom) / 2 + 31 : header.bottom + 14, noticeRow = width < 1180 && width >= 600 ? 44 : 0;
+    const close = bottom => rect(closeTop, Math.max(closeTop + 1, bottom), width < 600 ? 2 : gutter);
+    this.closeFrames = [close(Math.min(hudTop, height) - 12 - noticeRow), close(height - 60)];
+    this.framing = { width, height, wide, plate, settledPlate: plate, close: this.closeFrame() };
     this.placeShot();
   }
 
@@ -139,14 +150,15 @@ export class StudioView {
   paint() {
     // The plate is a photograph from the wide camera: as the camera leaves it, the plate
     // pushes in around the table spot and falls out of focus behind the close-up.
+    this.slide();
     const t = this.inspection, plateStyle = $('studio-plate').style, { plate } = this.framing;
-    // Hero copy and a hidden panel follow the camera, not the target: they leave early on
-    // the way in and return only as the studio view settles.
+    // Hero copy follows the camera, not the target: it leaves early on the way in and
+    // returns only as the studio view settles.
     const room = document.querySelector('.room').style;
     // Skyline view fades the hero and panel as the view tilts up.
     const sky = this.sky ?? 0;
     room.setProperty('--intro-away', Math.max(smooth(0, .3, t), smooth(0, .5, sky)).toFixed(3));
-    room.setProperty('--hud-away', (this.hidesControls() ? smooth(.1, .55, t) : 0).toFixed(3));
+    this.paintControls();
     // Skyline only fades the panel in place; it never slides.
     room.setProperty('--hud-fade', smooth(0, .6, sky).toFixed(3));
     plateStyle.transformOrigin = `${PLATE.anchor[0] * plate.width}px ${PLATE.anchor[1] * plate.height}px`;
@@ -197,19 +209,100 @@ export class StudioView {
     const hud = $('listening-hud'), hadFocus = hud.contains(document.activeElement);
     if (hidden) this.beforeMove();
     this.controlsHidden = hidden; this.syncControls();
-    if (hidden && hadFocus) $('hud-show').focus({ preventScroll: true });
-    if (!hidden && (document.activeElement === document.body || document.activeElement === $('hud-show'))) $('hud-hide').focus({ preventScroll: true });
+    if (hidden && hadFocus) $('hud-toggle').focus({ preventScroll: true });
   }
 
   hidesControls() { return this.controlsHidden && !!this.graphics; }
 
   syncControls() {
-    const hidden = this.hidesControls() && this.target === 'turntable', hud = $('listening-hud');
+    const hidden = this.hidesControls() && this.target === 'turntable', hud = $('listening-hud'), toggle = $('hud-toggle');
     document.querySelector('.room').dataset.controls = hidden ? 'hidden' : 'shown';
-    if (hidden && hud.contains(document.activeElement)) $('hud-show').focus({ preventScroll: true });
-    hud.inert = hidden; $('hud-show').hidden = !hidden;
-    // A hidden panel frees the bottom of the close-up; reframe whenever that changes.
-    if (this.framing && this.appliedHidden !== this.hidesControls()) { this.appliedHidden = this.hidesControls(); this.measure(); this.paint(); }
+    toggle.inert = !this.graphics || this.target !== 'turntable';
+    toggle.setAttribute('aria-expanded', String(!hidden)); toggle.setAttribute('aria-label', hidden ? 'Show controls' : 'Hide controls');
+    if (hidden && hud.contains(document.activeElement)) toggle.focus({ preventScroll: true });
+    hud.inert = hidden;
+    this.slideControls();
+  }
+
+  /** The panel slides away (entering the close-up, Hide) or back (Show, Back to studio) from
+   * the click over one smooth glide, the same speed both ways, and the close-up frame grows
+   * into the space it frees or shrinks to make room in step, so the panel never covers the
+   * deck. Back to studio is a Show while the camera pulls away (see clear). */
+  slideControls() {
+    if (!this.framing) return;
+    this.slide();
+    const close = this.target === 'turntable', hidden = close && this.hidesControls() ? 1 : 0;
+    const from = [this.away, this.share], to = [hidden, hidden];
+    if (this.glide && to.every((value, i) => value === this.glide.goal[i])) return;
+    const span = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]));
+    this.glide = span && !this.reduced.matches ? { from, to: [...to], goal: to, start: performance.now(), duration: SLIDE * span } : null;
+    // Heading back with the panel away, its rise is planned around the deck once the camera moves.
+    this.clearance = this.glide && !close && from[0] > 0 ? 'pending' : null;
+    if (!span) return;
+    if (!this.glide) { [this.away, this.share] = to; this.paint(); this.present(); return; }
+    // Camera travel paints every frame itself; otherwise the glide drives its own frames.
+    const step = () => {
+      this.glideFrame = null;
+      if (!this.motion) { this.paint(); this.present(); }
+      if (this.glide) this.glideFrame = requestAnimationFrame(step);
+    };
+    if (!this.glideFrame) this.glideFrame = requestAnimationFrame(step);
+  }
+
+  /** Advance the glide to now and frame the close-up to match. */
+  slide() {
+    const now = performance.now();
+    if (this.clearance === 'pending' && this.motion && this.glide && this.graphics) this.graphics.guard(() => this.clear());
+    const glide = this.glide;
+    if (glide) {
+      const progress = this.reduced.matches ? 1 : Math.min(1, (now - glide.start) / glide.duration), x = smooth(0, 1, progress);
+      [this.away, this.share] = progress === 1 ? glide.to : glide.from.map((from, i) => mix(from, glide.to[i], x));
+      if (progress === 1) this.glide = null;
+    }
+    if (Array.isArray(this.clearance)) {
+      const samples = this.clearance, next = samples.findIndex(([time]) => time > now);
+      const need = next < 0 ? 0 : next === 0 ? samples[0][1] : mix(samples[next - 1][1], samples[next][1], (now - samples[next - 1][0]) / (samples[next][0] - samples[next - 1][0]));
+      this.away = this.glide ? Math.max(this.away, need) : need;
+      if (next < 0) this.clearance = null;
+    }
+    if (!this.graphics) this.away = this.share = 0;
+    const close = this.closeFrame(), current = this.framing.close;
+    if (['x', 'y', 'width', 'height'].some(key => close[key] !== current[key])) {
+      this.framing.close = close; this.graphics?.guard(() => this.graphics.setFraming(this.framing));
+    }
+  }
+
+  /** Heading back from the close-up, the camera can swing the deck's front edge below the
+   * panel's spot mid-travel. Sample the rest of the trip once (with the panel's frame) and keep
+   * only as much of the panel away as the deck will still need, never moving back down: the
+   * Show glide stops just short of that, and the last of the rise follows the clearing deck. */
+  clear() {
+    const { from, to, start, duration } = this.motion, framing = this.framing, close = framing.close, { top, height } = this.hudBox;
+    framing.close = this.closeFrames[0];
+    const samples = [];
+    for (let k = 0; k <= 48; k++) {
+      const progress = k / 48; this.graphics.updateCamera(mix(from, to, ease(progress)));
+      const bottom = this.graphics.deckBottom();
+      samples.push([start + progress * duration, bottom === null ? 0 : Math.min(1, Math.max(0, (bottom + 10 - top) / (height + 40)))]);
+    }
+    framing.close = close; this.graphics.updateCamera(this.inspection);
+    for (let k = samples.length - 2; k >= 0; k--) samples[k][1] = Math.max(samples[k][1], samples[k + 1][1]);
+    // The glide ends where the deck still needs the panel, at rest; later the need takes over.
+    const end = this.glide.start + this.glide.duration, at = samples.find(([time]) => time >= end);
+    this.glide.to[0] = Math.min(this.glide.from[0], at ? at[1] : 0);
+    this.clearance = samples.some(([, need]) => need > 0) ? samples : null;
+  }
+
+  paintControls() {
+    const room = document.querySelector('.room').style;
+    room.setProperty('--hud-away', this.away.toFixed(3));
+    // The pill reads Show controls from the moment the camera heads in, then follows the slide.
+    room.setProperty('--hud-label', (this.target === 'turntable' && this.view === 'studio' ? 1 : this.away).toFixed(3));
+  }
+
+  closeFrame() {
+    const [shown, hidden] = this.closeFrames, t = this.share;
+    return t <= 0 ? shown : t >= 1 ? hidden : { x: mix(shown.x, hidden.x, t), y: mix(shown.y, hidden.y, t), width: mix(shown.width, hidden.width, t), height: mix(shown.height, hidden.height, t) };
   }
 
   label() {

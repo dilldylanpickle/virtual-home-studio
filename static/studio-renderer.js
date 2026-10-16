@@ -264,7 +264,7 @@ export class StudioRenderer {
     this.camera.lookAt(0, targetY, 0);
     this.camera.aspect = aspect;
     // The endpoint is orthographic so the SVG input mapping stays exact for raised parts.
-    const scale = Math.min(closeRect.width * (this.width < 600 ? .99 : .94) / 1024, closeRect.height * .96 / 828);
+    const scale = Math.min(closeRect.width * (this.width < 600 ? .99 : .94) / 1024, closeRect.height * .975 / 828);
     this.controlScale = scale;
     const orthoHeight = this.height / (scale * 1000), orthoWidth = orthoHeight * aspect;
     Object.assign(this.ortho, { left: -orthoWidth / 2, right: orthoWidth / 2, top: orthoHeight / 2, bottom: -orthoHeight / 2 });
@@ -333,6 +333,17 @@ export class StudioRenderer {
     if (slow > .5 && scale > floor) scale = Math.max(floor, scale * .85);
     else if (state.calm >= 4 && scale < 1) { scale = Math.min(1, scale * 1.1); state.calm = 0; }
     if (scale !== state.scale) { state.scale = scale; this.resize(); }
+  }
+
+  /** The deck's lowest point on screen (stage px): the chassis's front corners, top and bottom. */
+  deckBottom() {
+    const chassis = this.scene.getObjectByName('vhs-chassis'); if (!chassis) return null;
+    const point = new THREE.Vector3(); let bottom = -Infinity;
+    for (const x of [-.5, .5]) for (const y of [-.028, .028]) {
+      chassis.localToWorld(point.set(x, y, .392)).project(this.camera);
+      bottom = Math.max(bottom, (1 - point.y) * this.height / 2);
+    }
+    return bottom;
   }
 
   projectPoint(name, local = [0, 0, 0]) {

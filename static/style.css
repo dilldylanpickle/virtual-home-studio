@@ -560,6 +560,15 @@ dialog:is(#help,#customize,#media-source)[data-motion=closed]::backdrop{backgrou
 .gate-step:nth-child(4n+1){border-color:#93a3b1}
 .gate-step[aria-pressed=true]{background:var(--hud-accent);border-color:var(--hud-accent)}
 .gate-step.now{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--hud-accent)}
+/* Tied steps read as one held note: the tie reaches back over the gap to the step before. */
+.gate-steps{touch-action:none}
+.gate-step.held{border-top-right-radius:0;border-bottom-right-radius:0}
+.gate-step.tie{margin-left:-3px;border-left-color:transparent;border-top-left-radius:0;border-bottom-left-radius:0}
+.gate-step.tie-preview{background:color-mix(in srgb,var(--hud-accent) 50%,var(--hud-control));border-color:var(--hud-accent)}
+/* The gate's envelope over one pattern cycle, with the playhead while it runs. */
+.gate-scope{display:block;width:100%;height:46px;margin:0 0 6px;border:1px solid var(--hud-border);border-radius:6px;background:var(--hud-control)}
+.gate-envelope{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+#gate-steps-hint{margin:-4px 0 8px}
 .rhythm-panel[data-gate=off] .gate-step[aria-pressed=true]{opacity:.55}
 .gate-rates{display:inline-flex;margin-left:auto;padding:2px;gap:2px;border:1px solid var(--hud-border);border-radius:8px;background:var(--hud-control)}
 .gate-rates label{position:relative;cursor:pointer}

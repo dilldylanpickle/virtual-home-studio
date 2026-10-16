@@ -98,7 +98,9 @@ const control = patch => { controls = { ...controls, ...patch }; engine.command(
 const render = seconds => { const out = []; for (let left = Math.round(seconds * rate); left > 0; left -= 128) { const n = Math.min(128, left), o = [new Float32Array(n), new Float32Array(n)]; engine.process([], [o]); out.push(...o[0]); } return out; };
 const period = 60 / 120, beats = Float64Array.from({ length: 40 }, (_, i) => .2 + i * period);
 engine.command({ type: 'beats', beats, downbeat: 0 });
-engine.command({ type: 'gate', settings: { enabled: true, depth: 1, stepsPerBeat: 4, length: .5, steps: Array(16).fill(true) } });
+// A hard 16th chop: thirty-second notes on, then off (no attack, decay or release to speak of).
+const ALTERNATE = Array.from({ length: 16 }, (_, i) => i % 2 ? 0 : 1);
+engine.command({ type: 'gate', settings: { enabled: true, stepsPerBeat: 8, steps: ALTERNATE, attackMs: .5, decayMs: 1, sustain: 1, releaseMs: 1, mix: 1 } });
 control({ position: 4 / 20 }); render(.05);
 // Song time of each output sample is the engine's own read position; compare the level
 // in the open and closed halves of each 16th step.
@@ -127,9 +129,9 @@ level = gateAlignment(1);
 assert.ok(level.open > .45 && level.closed > .45, `disabling the gate restores the dry signal (${JSON.stringify(level)})`);
 console.log('PASS Trance Gate: 16ths locked to the grid through seek, pause/resume and 45 RPM; off restores the signal');
 
-// Pump: on each quarter note the music ducks at the beat and swells back (sidechain push).
+// Pump: a slow attack on every quarter note swells the music back in after each beat.
 {
-  engine.command({ type: 'gate', settings: { enabled: true, depth: 1, stepsPerBeat: 1, length: .8, shape: 'pump', steps: Array(16).fill(true) } });
+  engine.command({ type: 'gate', settings: { enabled: true, stepsPerBeat: 1, steps: Array(16).fill(1), attackMs: 400, decayMs: 1, sustain: 1, releaseMs: 1, mix: 1 } });
   control({ motorRate: 1, rpm: 100 / 3, position: 6 / 20 }); render(.05);
   const phases = [[], [], [], []];
   for (let i = 0; i < rate * 2; i += 128) {
@@ -137,9 +139,9 @@ console.log('PASS Trance Gate: 16ths locked to the grid through seek, pause/resu
     phases[Math.min(3, Math.floor(phase * 4))].push(Math.abs(block[block.length - 1]));
   }
   const mean = values => values.reduce((a, b) => a + b, 0) / values.length, levels = phases.map(mean);
-  assert.ok(levels[0] < levels[1] && levels[1] < levels[2] && levels[3] > .45 && levels[0] < .2, `pump ducks on the beat and swells back (${levels.map(v => v.toFixed(3))})`);
+  assert.ok(levels[0] < levels[1] && levels[1] < levels[2] && levels[3] > .45 && levels[0] < .2, `a slow attack swells each beat back in (${levels.map(v => v.toFixed(3))})`);
 }
-console.log('PASS Trance Gate pump: ducks on each beat and swells back to full level');
+console.log('PASS Trance Gate pump: a slow attack retriggers on each beat and swells back to full level');
 
 // The gate shapes music only: surface noise continues through closed steps.
 {
@@ -147,35 +149,34 @@ console.log('PASS Trance Gate pump: ducks on each beat and swells back to full l
   noisy.command({ type: 'settings', settings: { surface: true, contacts: false, condition: 'Poor' } });
   noisy.command({ type: 'load', channels: [new Float32Array(rate * 6)], sampleRate: rate });
   noisy.command({ type: 'beats', beats, downbeat: 0 });
-  noisy.command({ type: 'gate', settings: { enabled: true, depth: 1, stepsPerBeat: 4, length: .1, steps: Array(16).fill(false) } });
+  noisy.command({ type: 'gate', settings: { enabled: true, stepsPerBeat: 4, steps: Array(16).fill(0), mix: 1 } });
   noisy.command({ type: 'control', revision: 1, enabled: true, contact: true, motorRate: 1, holding: false, immediate: true, position: .2 });
   let energy = 0; for (let b = 0; b < 400; b++) { const o = [new Float32Array(128), new Float32Array(128)]; noisy.process([], [o]); for (const v of o[0]) energy += v * v; }
   assert.ok(energy > 1e-6, 'closed gate steps leave the vinyl surface noise audible');
 }
 console.log('PASS Trance Gate gates music only; vinyl surface noise passes through');
 
-// Not muffled: lows take the full duck, highs only `highs` of it; a pump lets the kick's
-// attack (first 25 ms after the beat) through; make-up gain is bounded.
+// The ADSR envelope per step: notes start on their step, ties hold, releases run into off
+// steps, consecutive notes retrigger, Mix keeps the dry share; it is a pure function of song
+// time (any order of reads gives the same answer), and styles round-trip.
 {
   const { TranceGate } = await import('../static/trance-gate.js');
-  const level = (frequency, highs) => {
-    const gate = new TranceGate(rate); gate.setGrid(beats, 0);
-    gate.configure({ enabled: true, depth: 1, stepsPerBeat: 4, length: .5, shape: 'chop', steps: Array(16).fill(true), highs, makeup: 1 });
-    let open = 0, closed = 0;
-    for (let i = 0; i < rate * 2; i++) {
-      const t = 1 + i / rate, g = gate.step(t), y = Math.abs(gate.apply(Math.sin(2 * Math.PI * frequency * i / rate), 0, g));
-      const phase = (((t - .2) / (period / 4)) % 1 + 1) % 1;
-      if (phase > .2 && phase < .4) open = Math.max(open, y); else if (phase > .7 && phase < .9) closed = Math.max(closed, y);
-    }
-    return closed / open;
-  };
-  assert.ok(level(60, .5) < .2, `bass is ducked fully (${level(60, .5).toFixed(2)})`);
-  near(level(4000, .5), .5, .12, 'highs take half of the duck with highs .5');
-  const gate = new TranceGate(rate); gate.setGrid(beats, 0);
-  gate.configure({ enabled: true, depth: .8, stepsPerBeat: 1, length: .6, shape: 'pump', steps: Array(16).fill(true), punchMs: 25 });
-  const beat = beats[10];
-  near(gate.target(beat + .01), 1, 1e-9, 'pump leaves the kick attack open'); assert.ok(gate.target(beat + .04) < .3, 'pump ducks right after the attack');
-  const { gateMakeup, styleSettings } = await import('../static/tempo-grid.js');
-  for (const name of ['Push', 'Pulse', 'Bounce', 'Breathe', 'Trance', 'Gallop']) { const m = gateMakeup(styleSettings(name)); assert.ok(m >= 1 && m <= 1.19, `${name} make-up gain within +1.5 dB`); }
+  const { GATE_STYLES, normalizeSteps, parseSteps, styleName, styleSettings, stepsText } = await import('../static/tempo-grid.js');
+  const gate = new TranceGate(rate), step = period / 4;   // 16ths of 125 ms at 120 BPM
+  gate.setGrid(beats, 0);
+  gate.configure({ enabled: true, stepsPerBeat: 4, steps: parseSteps('x-.xx...........'), attackMs: 10, decayMs: 40, sustain: .5, releaseMs: 30, mix: 1 });
+  const at = (k, ms) => gate.envelope(beats[8] + k * step + ms / 1000);   // step k of a bar, ms into it
+  near(at(0, 5), .5, .02, 'attack: halfway up 5 ms into a 10 ms attack');
+  near(at(0, 10), 1, .02, 'attack peaks at full level');
+  near(at(0, 50), .5, .02, 'decay settles on the sustain level');
+  near(at(1, 30), .5, .02, 'a tied step holds the note without retriggering');
+  near(at(2, 15), .5 * .25, .03, 'the release falls (convex) into the off step after the note');
+  assert.ok(at(2, 40) < 1e-9, 'the release finishes within its time');
+  assert.ok(at(3, 50) > .45 && at(4, .2) < .05 && near(at(4, 10), 1, .02) === undefined, 'back-to-back notes retrigger at the step start');
+  const later = at(9, 3), earlier = at(0, 5); assert.equal(at(9, 3), later); assert.equal(at(0, 5), earlier);
+  gate.configure({ enabled: true, stepsPerBeat: 4, steps: parseSteps('x...............'), attackMs: 1, decayMs: 1, sustain: 1, releaseMs: 1, mix: .4 });
+  near(gate.target(beats[8] + 3 * step), .6, 1e-9, 'Mix keeps the dry share when the gate is closed');
+  assert.equal(stepsText(normalizeSteps(parseSteps('-.-x'), 4)), '-.xx', 'a tie after an off step starts a note');
+  for (const name of Object.keys(GATE_STYLES)) assert.equal(styleName(styleSettings(name)), name, `${name} style round-trips`);
 }
-console.log('PASS Trance Gate stays bright: full duck for lows, partial for highs, kick attack kept, bounded make-up gain');
+console.log('PASS Trance Gate envelope: ADSR per step, ties hold, releases, retriggers, mix, stateless reads, styles round-trip');

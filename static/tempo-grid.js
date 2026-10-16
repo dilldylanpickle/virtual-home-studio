@@ -1,67 +1,68 @@
-/** Beat-grid corrections and Trance Gate patterns. Pure functions shared by the model,
+/** Beat-grid corrections and Trance Gate patterns, styles and envelope ranges. Pure functions shared by the model,
  * the UI and Node tests; the analysis itself lives in tempo-analysis.js. Grid times are
  * song (record) seconds, so playback speed and pitch never change beat positions. */
 
 // Steps per beat. 1/8T is eighth-note triplets (three per beat); triplet patterns repeat
 // every bar (12 steps) so they stay bar-aligned.
 export const GATE_RATES = Object.freeze({ '1/2': .5, '1/4': 1, '1/8': 2, '1/8T': 3, '1/16': 4, '1/32': 8 });
-export const GATE_SHAPES = Object.freeze(['chop', 'pump']);
 export const GATE_STEPS = 16;
+/** Step states: off, on (starts a note) and tie (holds the note before it). Patterns are
+ * written 'x' on, '-' tie, '.' off. */
+export const STEP_OFF = 0, STEP_ON = 1, STEP_TIE = 2;
 export const GATE_PATTERNS = Object.freeze({
   Straight: 'xxxxxxxxxxxxxxxx',
-  Trance: 'x.xxx.xxx.xxx.xx',
+  Alternate: 'x.x.x.x.x.x.x.x.',
+  Trance: 'xx.xx.x.xx.xx.x.',
   Offbeat: '..x...x...x...x.',
-  Stutter: 'xx.xxx.xxx.x.xx.',
 });
-// Full depth by default: a classic trance gate chops to silence, which reads clearly on dense mixes.
-/** Gate styles: complete settings voiced for full songs, the way a producer would use a
- * gate on a whole mix. Less is more: no total drop-outs, softened edges (`soft`, 0–1),
- * pumps that let the kick's attack through, and `highs` (0–1) = how much of the duck the
- * highs take, so vocals and air stay present while the low end pumps. Any later change
- * makes the gate "Custom". */
-const ALL = 'xxxxxxxxxxxxxxxx';
+/** Envelope ranges (ms) for the Attack, Decay and Release sliders, which move on a log scale. */
+export const GATE_ENVELOPE = Object.freeze({ attack: [.5, 400], decay: [1, 1000], release: [1, 1000] });
+export const envelopeMs = (key, x) => { const [low, high] = GATE_ENVELOPE[key]; return Math.round(low * (high / low) ** Math.max(0, Math.min(1, x)) * 10) / 10; };
+export const envelopeSlider = (key, ms) => { const [low, high] = GATE_ENVELOPE[key]; return Math.log(Math.max(low, Math.min(high, ms)) / low) / Math.log(high / low); };
+/** Gate styles: complete settings (rate, pattern, ADSR envelope, mix), the way a trance gate
+ * plugin's presets work. Mix below 100% keeps some of the dry record under the gate. Any
+ * later change makes the gate "Custom". */
 export const GATE_STYLES = Object.freeze({
-  Push: { shape: 'pump', rate: '1/4', depth: .5, length: .65, soft: .3, highs: .55, pattern: ALL },      // sidechain "woah" on every beat
-  Pulse: { shape: 'chop', rate: '1/4', depth: .5, length: .65, soft: .45, highs: .55, pattern: ALL },    // Push's settings, chopped: a steady on-off throb
-  Bounce: { shape: 'pump', rate: '1/8', depth: .4, length: .6, soft: .3, highs: .5, pattern: ALL },       // lighter double-time pump
-  Breathe: { shape: 'pump', rate: '1/2', depth: .55, length: .9, soft: .5, highs: .6, pattern: ALL },     // slow half-note swell
-  Trance: { shape: 'chop', rate: '1/16', depth: .6, length: .7, soft: .6, highs: .8, pattern: 'xxxxx.xxxxx.xx.x' }, // 16th shimmer
-  Gallop: { shape: 'chop', rate: '1/8T', depth: .5, length: .65, soft: .7, highs: .8, pattern: 'xx.xx.xx.xx.xxxx' }, // gentle triplet lilt
+  Breathe: { rate: '1/2', pattern: 'xxxxxxxxxxxxxxxx', attack: 320, decay: 250, sustain: .6, release: 200, mix: .65 }, // slow half-note swell
+  Bounce: { rate: '1/16', pattern: 'x-.x-.x-x-.x-.x.', attack: 2, decay: 90, sustain: .6, release: 40, mix: 1 },    // tied steps: long-short bounce
+  Push: { rate: '1/4', pattern: 'xxxxxxxxxxxxxxxx', attack: 180, decay: 1, sustain: 1, release: 1, mix: .55 },      // sidechain swell on every beat
+  Trance: { rate: '1/16', pattern: 'xx.xx.x.xx.xx.x.', attack: 1, decay: 70, sustain: .3, release: 25, mix: .9 },    // the classic 3-3-2 sixteenth chop
+  Pluck: { rate: '1/8', pattern: 'xxxxxxxxxxxxxxxx', attack: 1, decay: 140, sustain: .1, release: 40, mix: .9 },    // every eighth plucked short
+  Stutter: { rate: '1/32', pattern: 'xxxxxxxxxxxxxxxx', attack: .5, decay: 22, sustain: 0, release: 6, mix: .85 },  // machine-gun thirty-seconds
+  Gallop: { rate: '1/8T', pattern: 'xx.xx.xx.xx.xxxx', attack: 2, decay: 60, sustain: .5, release: 30, mix: .9 },   // triplet gallop
 });
+export const parseSteps = text => [...text].map(step => step === 'x' ? STEP_ON : step === '-' ? STEP_TIE : STEP_OFF);
+export const stepsText = steps => steps.map(step => step === STEP_TIE ? '-' : step ? 'x' : '.').join('');
+/** A tie must follow a note: a tie after an off step (within the cycle) starts a note. */
+export function normalizeSteps(steps, cycle = steps.length) {
+  const out = steps.map(step => step === true ? STEP_ON : step === STEP_TIE ? STEP_TIE : step ? STEP_ON : STEP_OFF), used = out.slice(0, cycle);
+  if (!used.includes(STEP_ON) && used.includes(STEP_TIE)) out[used.indexOf(STEP_TIE)] = STEP_ON;
+  for (let i = 0; i < cycle; i++) if (out[i] === STEP_TIE && out[(i - 1 + cycle) % cycle] === STEP_OFF) out[i] = STEP_ON;
+  return out;
+}
 export function styleSettings(name) {
   const style = GATE_STYLES[name]; if (!style) return null;
-  return { shape: style.shape, rate: style.rate, depth: style.depth, length: style.length, soft: style.soft, highs: style.highs, steps: [...style.pattern].map(step => step === 'x') };
+  return { rate: style.rate, steps: normalizeSteps(parseSteps(style.pattern), gateCycle(style.rate)), attack: style.attack, decay: style.decay, sustain: style.sustain, release: style.release, mix: style.mix };
 }
 export function styleName(gate) {
+  const close = (a, b) => Math.abs(a - b) < 1e-6;
   return Object.keys(GATE_STYLES).find(name => {
     const style = styleSettings(name);
-    return style.shape === gate.shape && style.rate === gate.rate && Math.abs(style.depth - gate.depth) < 1e-6 && Math.abs(style.soft - (gate.soft ?? 0)) < 1e-6 && Math.abs(style.highs - (gate.highs ?? 1)) < 1e-6
-      && Math.abs(style.length - gate.length) < 1e-6 && style.steps.every((on, i) => on === gate.steps[i]);
+    return style.rate === gate.rate && ['attack', 'decay', 'sustain', 'release', 'mix'].every(key => close(style[key], gate[key])) && stepsText(style.steps) === stepsText(gate.steps);
   }) ?? 'Custom';
 }
 /** Steps in one pattern cycle: 16, or one bar (12) for triplets. */
 export const gateCycle = rate => GATE_RATES[rate] === 3 ? 12 : GATE_STEPS;
-export const DEFAULT_GATE = Object.freeze({ enabled: false, ...styleSettings('Push') });
+export const DEFAULT_GATE = Object.freeze({ enabled: false, ...styleSettings('Bounce') });
 
-/** Small make-up gain (≤ +1.5 dB) for the loudness a gate removes, from its average gain;
- * lows count fully, highs by their share of the duck. */
-export function gateMakeup(gate) {
-  const cycle = gateCycle(gate.rate), on = gate.steps.slice(0, cycle).filter(Boolean).length / cycle, d = gate.depth, l = gate.length;
-  const onMean = gate.shape === 'pump' ? l * (1 - d * 2 / 3) + (1 - l) : l + (1 - l) * (1 - d);
-  const mean = on * onMean + (1 - on) * (1 - d), effective = 1 - (1 - mean) * (.4 + .6 * (gate.highs ?? 1));
-  return Math.max(1, Math.min(1.19, 1 / Math.max(.1, effective)));
-}
 export const DEFAULT_TEMPO = Object.freeze({ source: 'auto', manualBpm: null, anchor: null, multiplier: 1, offsetMs: 0, barShift: 0 });
 export const BPM_RANGE = Object.freeze([40, 250]);
 // Without a usable detected beat (a sustained tone, ambient audio) the gate still needs a
 // steady clock: a straight grid from the start of the song until the user taps or types one.
 export const FALLBACK_BPM = 120, MIN_CONFIDENCE = .15;
 
-export function patternSteps(name) { return [...(GATE_PATTERNS[name] ?? GATE_PATTERNS.Straight)].map(step => step === 'x'); }
-export function patternName(steps) {
-  const text = steps.map(on => on ? 'x' : '.').join('');
-  return Object.keys(GATE_PATTERNS).find(name => GATE_PATTERNS[name] === text) ?? 'Custom';
-}
+export function patternSteps(name) { return parseSteps(GATE_PATTERNS[name] ?? GATE_PATTERNS.Straight); }
+export function patternName(steps) { return Object.keys(GATE_PATTERNS).find(name => GATE_PATTERNS[name] === stepsText(steps)) ?? 'Custom'; }
 
 /** The beat grid the gate follows: detected beats (optionally halved or doubled) or a
  * constant manual/tap grid anchored on a beat, then shifted by the user's offset. */

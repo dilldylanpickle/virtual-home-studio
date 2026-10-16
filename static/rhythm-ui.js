@@ -1,23 +1,45 @@
 import { TranceGate } from './trance-gate.js';
-import { GATE_RATES, GATE_SHAPES, GATE_STEPS, GATE_STYLES, confidenceLabel, gateCycle, styleName } from './tempo-grid.js';
+import { GATE_RATES, GATE_STEPS, GATE_STYLES, STEP_OFF, STEP_ON, STEP_TIE, confidenceLabel, envelopeMs, envelopeSlider, gateCycle, styleName } from './tempo-grid.js';
 
 const $ = id => document.getElementById(id);
 const percent = value => `${Math.round(value * 100)}%`;
+const milliseconds = value => `${value < 10 ? Math.round(value * 10) / 10 : Math.round(value)} ms`;
 
 /** Tempo and Trance Gate column of the presets popup, plus the BPM chip on the track
  * line. Presentation only: every action delegates to the model through `controls`. */
 export class RhythmPanel {
   constructor(controls, { open }) {
-    this.controls = controls; this.clock = new TranceGate(1); this.frame = null; this.gridBeats = null;
+    this.controls = controls; this.clock = new TranceGate(1); this.scope = new TranceGate(1); this.frame = null; this.gridBeats = null;
     const steps = $('gate-steps');
     for (let i = 0; i < GATE_STEPS; i++) {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'gate-step'; button.dataset.step = i;
       button.setAttribute('aria-label', `Step ${i + 1}`); button.setAttribute('aria-pressed', 'false');
-      button.addEventListener('click', () => controls.setGate({ toggleStep: i }));
+      // Click toggles a step; Shift-click holds the note before it through this step.
+      button.addEventListener('click', event => controls.setGate(event.shiftKey && i > 0 ? { tie: [i - 1, i] } : { toggleStep: i }));
       steps.append(button);
     }
-    // Styles set shape, rate, depth, length and steps together; edits make it Custom.
+    // Drag across steps: one note from the first step, tied through the last (like the step
+    // editor of a trance gate plugin). The release outside the row still counts.
+    const stepAt = event => document.elementFromPoint(event.clientX, event.clientY)?.closest?.('#gate-steps .gate-step:not(:disabled)');
+    const preview = (from, to) => { for (const button of steps.children) { const i = Number(button.dataset.step); button.classList.toggle('tie-preview', to > from && i >= from && i <= to); } };
+    steps.addEventListener('pointerdown', event => {
+      const button = event.target.closest('.gate-step'); if (!button || button.disabled || event.button > 0) return;
+      this.drag = { from: Number(button.dataset.step), to: Number(button.dataset.step) };
+    });
+    addEventListener('pointermove', event => {
+      if (!this.drag) return;
+      const button = stepAt(event); if (!button) return;
+      this.drag.to = Math.max(this.drag.from, Number(button.dataset.step)); preview(this.drag.from, this.drag.to);
+    });
+    const finish = commit => {
+      if (!this.drag) return;
+      const { from, to } = this.drag; this.drag = null; preview(0, 0);
+      if (commit && to > from) controls.setGate({ tie: [from, to] });
+    };
+    addEventListener('pointerup', () => finish(true));
+    for (const type of ['pointercancel', 'blur']) addEventListener(type, () => finish(false));
+    // Styles set rate, pattern, envelope and mix together; edits make it Custom.
     const style = $('gate-style');
     for (const name of [...Object.keys(GATE_STYLES), 'Custom']) {
       const option = document.createElement('option'); option.value = name; option.textContent = name; option.disabled = name === 'Custom';
@@ -33,11 +55,10 @@ export class RhythmPanel {
       }
     };
     segment(document.querySelector('.gate-rate-options'), 'gate-rate', Object.keys(GATE_RATES), rate => rate, rate => controls.setGate({ rate }));
-    // Chop: hard 16th stutter. Pump: duck-and-swell on each step, the sidechain "push".
-    segment(document.querySelector('.gate-shapes'), 'gate-shape', GATE_SHAPES, shape => shape[0].toUpperCase() + shape.slice(1), shape => controls.setGate({ shape }));
     $('gate-enabled').addEventListener('change', event => controls.setGate({ enabled: event.target.checked }));
-    $('gate-depth').addEventListener('input', event => controls.setGate({ depth: Number(event.target.value) }));
-    $('gate-length').addEventListener('input', event => controls.setGate({ length: Number(event.target.value) }));
+    // Attack, Decay and Release move on a log scale (fine control of short times); Sustain and Mix are linear.
+    for (const key of ['attack', 'decay', 'release']) $(`gate-${key}`).addEventListener('input', event => controls.setGate({ [key]: envelopeMs(key, Number(event.target.value)) }));
+    for (const key of ['sustain', 'mix']) $(`gate-${key}`).addEventListener('input', event => controls.setGate({ [key]: Number(event.target.value) }));
     $('tempo-half').addEventListener('click', () => controls.scaleTempo(.5));
     $('tempo-double').addEventListener('click', () => controls.scaleTempo(2));
     $('tempo-auto').addEventListener('click', () => controls.useDetectedTempo());
@@ -90,17 +111,17 @@ export class RhythmPanel {
     document.querySelector('.rhythm-panel').dataset.gate = gate.enabled ? 'on' : 'off';
     const cycle = gateCycle(gate.rate);
     for (const button of $('gate-steps').children) {
-      const step = Number(button.dataset.step);
-      button.setAttribute('aria-pressed', String(gate.steps[step]));
+      const step = Number(button.dataset.step), state = gate.steps[step], next = gate.steps[(step + 1) % cycle];
+      button.setAttribute('aria-pressed', String(state !== STEP_OFF));
+      button.classList.toggle('tie', state === STEP_TIE); button.classList.toggle('held', state !== STEP_OFF && next === STEP_TIE && step + 1 < cycle);
+      button.setAttribute('aria-label', `Step ${step + 1}: ${state === STEP_TIE ? 'held from the step before' : state === STEP_ON ? 'on' : 'off'}`);
       // Triplets repeat 12 steps per bar; the last four cells sit out.
       button.disabled = step >= cycle; button.classList.toggle('unused', step >= cycle);
     }
     $('gate-style').value = styleName(gate);
     for (const input of document.querySelectorAll('input[name=gate-rate]')) input.checked = input.value === gate.rate;
-    for (const input of document.querySelectorAll('input[name=gate-shape]')) input.checked = input.value === gate.shape;
-    $('gate-length-label').textContent = gate.shape === 'pump' ? 'Swell' : 'Gate length';
-    $('gate-depth').value = gate.depth; $('gate-depth-value').textContent = percent(gate.depth);
-    $('gate-length').value = gate.length; $('gate-length-value').textContent = percent(gate.length);
+    for (const key of ['attack', 'decay', 'release']) { $(`gate-${key}`).value = envelopeSlider(key, gate[key]); $(`gate-${key}-value`).textContent = milliseconds(gate[key]); }
+    for (const key of ['sustain', 'mix']) { $(`gate-${key}`).value = gate[key]; $(`gate-${key}-value`).textContent = percent(gate[key]); }
 
     // BPM chip on the track line: tempo, confidence and whether the gate is running.
     const chip = $('tempo-chip');
@@ -112,26 +133,68 @@ export class RhythmPanel {
     this.follow();
   }
 
-  /** While the popup is open and the gate runs, light the step under the read head. */
+  /** While the popup is open, draw the gate's envelope; while the gate runs, light the step
+   * under the read head and move a playhead across the envelope. */
   follow() {
     const open = !$('preset-options').hidden, s = this.state;
-    if (!open || !s?.gate.enabled || s.tempo.status === 'empty') {
-      cancelAnimationFrame(this.frame); this.frame = null;
-      for (const button of $('gate-steps').children) button.classList.remove('now');
-      return;
-    }
+    const clear = () => { for (const button of $('gate-steps').children) button.classList.remove('now'); };
+    if (!open || !s) { cancelAnimationFrame(this.frame); this.frame = null; clear(); return; }
+    if (!s.gate.enabled || s.tempo.status === 'empty') { cancelAnimationFrame(this.frame); this.frame = null; clear(); this.drawScope(s, null); return; }
     if (this.frame) return;
     const tick = () => {
       this.frame = null;
-      const state = this.controls.getState(), grid = this.controls.beatGrid();
+      const state = this.controls.getState(), grid = this.controls.beatGrid(), cycle = gateCycle(state.gate.rate);
       if (grid.beats !== this.gridBeats) { this.gridBeats = grid.beats; this.clock.setGrid(grid.beats, grid.downbeat); }
       this.clock.downbeat = grid.downbeat;
-      const beat = this.clock.beatAt(state.position), current = beat === null ? -1
-        : ((Math.floor((beat - grid.downbeat) * GATE_RATES[state.gate.rate]) % gateCycle(state.gate.rate)) + gateCycle(state.gate.rate)) % gateCycle(state.gate.rate);
+      const beat = this.clock.beatAt(state.position), position = beat === null ? null : (beat - grid.downbeat) * GATE_RATES[state.gate.rate];
+      const current = position === null ? -1 : ((Math.floor(position) % cycle) + cycle) % cycle;
       for (const button of $('gate-steps').children) button.classList.toggle('now', Number(button.dataset.step) === current);
+      this.drawScope(state, position === null ? null : (((position % cycle) + cycle) % cycle) / cycle);
       if (!$('preset-options').hidden && state.gate.enabled) this.frame = requestAnimationFrame(tick);
-      else for (const button of $('gate-steps').children) button.classList.remove('now');
+      else { clear(); this.drawScope(state, null); }
     };
     this.frame = requestAnimationFrame(tick);
+  }
+
+  /** The gate's gain over one pattern cycle, computed by the same envelope the audio engine
+   * runs (on a steady grid at the song's tempo), with a playhead at `playhead` (0–1). */
+  drawScope(state, playhead) {
+    const canvas = $('gate-scope'), width = canvas.clientWidth, height = canvas.clientHeight;
+    if (!width || !height) return;
+    const ratio = Math.min(2, devicePixelRatio || 1);
+    if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) { canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio); this.scopeKey = null; }
+    const gate = state.gate, bpm = state.tempo.bpm || 120, cycle = gateCycle(gate.rate), stepsPerBeat = GATE_RATES[gate.rate];
+    const key = JSON.stringify([gate.rate, gate.steps, gate.attack, gate.decay, gate.sustain, gate.release, gate.mix, Math.round(bpm), width]);
+    if (key !== this.scopeKey) {
+      this.scopeKey = key;
+      const span = cycle / stepsPerBeat, beats = Float64Array.from({ length: Math.ceil(span * 3) + 4 }, (_, i) => i * 60 / bpm);
+      this.scope.setGrid(beats, 0);
+      this.scope.configure({ enabled: true, stepsPerBeat, steps: gate.steps, cycle, attackMs: gate.attack, decayMs: gate.decay, sustain: gate.sustain, releaseMs: gate.release, mix: gate.mix });
+      // The second cycle, so releases ringing over from the end of the pattern show at its start.
+      const samples = Math.max(64, Math.round(width));
+      this.scopePoints = Float32Array.from({ length: samples + 1 }, (_, i) => this.scope.target((span + span * i / samples) * 60 / bpm));
+    }
+    const context = canvas.getContext('2d'), style = getComputedStyle(canvas), accent = style.getPropertyValue('--hud-accent').trim() || '#4c6a85';
+    const muted = style.getPropertyValue('--hud-border').trim() || '#c8d0d6', points = this.scopePoints;
+    context.setTransform(ratio, 0, 0, ratio, 0, 0); context.clearRect(0, 0, width, height);
+    // Beat lines (strong) and step lines (faint).
+    for (let step = 1; step < cycle; step++) {
+      const x = Math.round(width * step / cycle) + .5, beatLine = (step / stepsPerBeat) % 1 < 1e-6;
+      context.strokeStyle = muted; context.globalAlpha = beatLine ? .9 : .35; context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke();
+    }
+    context.globalAlpha = gate.enabled ? 1 : .45;
+    const y = value => 2 + (1 - value) * (height - 4);
+    context.beginPath(); context.moveTo(0, height);
+    points.forEach((value, i) => context.lineTo(width * i / (points.length - 1), y(value)));
+    context.lineTo(width, height); context.closePath();
+    context.fillStyle = accent; context.globalAlpha *= .22; context.fill();
+    context.globalAlpha = gate.enabled ? 1 : .45; context.beginPath();
+    points.forEach((value, i) => (i ? context.lineTo : context.moveTo).call(context, width * i / (points.length - 1), y(value)));
+    context.strokeStyle = accent; context.lineWidth = 1.5; context.stroke();
+    if (playhead !== null) {
+      const x = playhead * width; context.globalAlpha = 1; context.strokeStyle = accent; context.lineWidth = 2;
+      context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke();
+    }
+    context.globalAlpha = 1;
   }
 }

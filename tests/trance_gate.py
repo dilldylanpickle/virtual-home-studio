@@ -113,14 +113,37 @@ def run():
               'Tempo shows just the BPM and Tap; fixes sit in Adjust; Reverb is marked coming soon')
 
         # Styles set the whole gate; editing one setting makes it Custom; triplets use 12 steps.
+        order = page.locator('#gate-style option').evaluate_all('options => options.map(option => option.value)')
+        check(state()['gate']['rate'] == '1/16' and page.locator('#gate-style').input_value() == 'Bounce' and order[:3] == ['Breathe', 'Bounce', 'Push'],
+              'The gate starts on Bounce; styles run Breathe, Bounce, Push, then the rest', order=order)
         page.locator('#gate-style').select_option('Gallop')
         gate = state()['gate']
-        check(gate['rate'] == '1/8T' and gate['shape'] == 'chop' and page.locator('.gate-step.unused').count() == 4,
-              'A gate style sets shape, rate, depth, length and steps together (Gallop: 1/8 triplets, 12 steps)')
+        check(gate['rate'] == '1/8T' and gate['decay'] == 60 and gate['mix'] == .9 and page.locator('.gate-step.unused').count() == 4,
+              'A gate style sets rate, pattern, envelope and mix together (Gallop: 1/8 triplets, 12 steps)')
         page.locator('#gate-style').select_option('Push')
-        page.evaluate("turntable.controls.setGate({ depth: .4 })")
+        page.evaluate("turntable.controls.setGate({ mix: .4 })")
         check(page.locator('#gate-style').input_value() == 'Custom', 'Changing a setting after a style makes it Custom')
-        page.locator('#gate-style').select_option('Push')
+        # Step editor: click toggles; drag across steps holds one note (a tie); Shift-click ties too.
+        page.locator('#gate-style').select_option('Trance')
+        steps = page.locator('#gate-steps .gate-step')
+        a, b = steps.nth(0).bounding_box(), steps.nth(3).bounding_box()
+        page.mouse.move(a['x'] + a['width'] / 2, a['y'] + a['height'] / 2); page.mouse.down()
+        page.mouse.move(b['x'] + b['width'] / 2, b['y'] + b['height'] / 2, steps=6); page.mouse.up()
+        gate = state()['gate']
+        check(gate['steps'][:5] == [1, 2, 2, 2, 1] and steps.nth(1).get_attribute('class').count('tie') == 1 and 'held' in steps.nth(0).get_attribute('class'),
+              'Dragging across steps holds one note through them (tied steps)', steps=gate['steps'][:6])
+        steps.nth(2).click()
+        check(state()['gate']['steps'][:4] == [1, 2, 0, 1], 'Clicking a held step turns it off; the next step starts its own note', steps=state()['gate']['steps'][:5])
+        steps.nth(2).click(modifiers=['Shift'])
+        check(state()['gate']['steps'][:4] == [1, 2, 2, 1], 'Shift-click holds the note before through a step')
+        # Envelope: log-scaled time sliders, linear sustain and mix; the scope draws the gate's shape.
+        page.locator('#gate-attack').fill('0.5'); page.locator('#gate-sustain').fill('0.75'); page.locator('#gate-mix').fill('0.6')
+        gate = state()['gate']
+        check(14 <= gate['attack'] <= 15 and gate['sustain'] == .75 and gate['mix'] == .6 and page.locator('#gate-attack-value').inner_text() == f"{round(gate['attack'])} ms"
+              and page.locator('#gate-mix-value').inner_text() == '60%', 'Attack, Sustain and Mix sliders set the envelope and show their values', gate=gate)
+        drawn = page.evaluate("(() => { const c = document.getElementById('gate-scope'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n / (d.length / 4); })()")
+        check(drawn > .1, 'The scope draws the gate envelope over one pattern', coverage=drawn)
+        page.locator('#gate-style').select_option('Trance')
 
         page.locator('#tempo-adjust summary').click()
         page.locator('#tempo-half').click()
@@ -170,7 +193,8 @@ def run():
         page.keyboard.press('g'); page.wait_for_timeout(150)
         check(state()['gate']['enabled'], 'G toggles the Trance Gate')
         defaults = spread(page.evaluate(LEVELS, 1500)); print('default gate levels', defaults, 'dry', dry, flush=True)
-        page.evaluate("turntable.controls.setGate({ shape: 'chop', pattern: 'Straight', depth: 1, length: .5, rate: '1/16', highs: 1 })")
+        # A hard 16th chop: thirty-second notes on, then off.
+        page.evaluate("turntable.controls.setGate({ pattern: 'Alternate', rate: '1/32', attack: .5, decay: 1, sustain: 1, release: 1, mix: 1 })")
         gated = spread(page.evaluate(LEVELS, 1500))
         check(gated[0] < dry[0] * .35 and gated[1] > dry[1] * .5,
               'With the gate on the music pulses on and off; off it stays steady', dry=dry, gated=gated)
@@ -199,15 +223,13 @@ def run():
         page.evaluate('turntable.controls.play()')
         page.wait_for_function('turntable.state.stylusContact && !turntable.state.stylusRaised && turntable.state.position > 1.5', timeout=20000)
         cached_dry = spread(page.evaluate(LEVELS, 1200))
-        page.evaluate("turntable.controls.setGate({ enabled: true, shape: 'chop', pattern: 'Straight', depth: 1, length: .5, rate: '1/16', highs: 1 })")
+        page.evaluate("turntable.controls.setGate({ enabled: true, pattern: 'Alternate', rate: '1/32', attack: .5, decay: 1, sustain: 1, release: 1, mix: 1 })")
         cached_gated = spread(page.evaluate(LEVELS, 1200))
         check(cached_gated[0] < cached_dry[0] * .35, 'The gate is audible on a cached (repeat) load too', dry=cached_dry, gated=cached_gated)
-        # 1/8 pump: the offbeat ducks fall on the sustained chord (the on-beat ones under the kick).
-        page.evaluate("turntable.controls.setGate({ shape: 'pump', rate: '1/8', length: .8 })")
+        # A slow attack on every eighth swells each note in: the sidechain pump.
+        page.evaluate("turntable.controls.setGate({ pattern: 'Straight', rate: '1/8', attack: 180, decay: 1, sustain: 1, release: 1, mix: 1 })")
         pumped = spread(page.evaluate(LEVELS, 2000))
-        # Pumps keep the kick attack and add make-up gain, so they dip less deeply than a chop.
-        check(pumped[0] < cached_dry[0] * .6 and page.locator('#gate-length-label').inner_text() == 'Swell',
-              'Pump shape ducks and swells on the beat', levels=pumped)
+        check(pumped[0] < cached_dry[0] * .6, 'A slow attack swells every step in (pump)', levels=pumped)
         check(not errors, 'No browser errors', errors=errors)
         browser.close()
     (OUT / 'checks.json').write_text(json.dumps({'total': len(checks), 'checks': checks}, indent=2) + '\n')

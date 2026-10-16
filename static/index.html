@@ -197,7 +197,7 @@
     </section>
 
     <p id="notice" class="notice" role="status"></p>
-    <button id="hud-show" class="hud-show" type="button" aria-controls="listening-hud" hidden><span aria-hidden="true">▴</span> Show controls</button>
+    <button id="hud-toggle" class="hud-toggle" type="button" aria-controls="listening-hud" aria-expanded="true" aria-label="Hide controls"><span class="hud-toggle-arrow" aria-hidden="true">▾</span><span class="hud-toggle-labels" aria-hidden="true"><span class="hud-toggle-hide">Hide controls</span><span class="hud-toggle-show">Show controls</span></span></button>
     <section id="listening-hud" class="listening-hud" aria-label="Listening controls">
       <div class="hud-record">
         <span class="mini-record" id="mini-record" aria-hidden="true"></span>
@@ -233,12 +233,18 @@
               </div>
               <div class="rhythm-section">
                 <div class="rhythm-head"><h3>Trance gate</h3><label class="gate-switch"><input id="gate-enabled" type="checkbox"><span>Off</span></label></div>
-                <div class="rhythm-row"><label class="rhythm-label" for="gate-style">Style</label><select id="gate-style"></select>
-                  <span class="gate-rates gate-shapes" role="radiogroup" aria-label="Gate shape"></span></div>
-                <div id="gate-steps" class="gate-steps" role="group" aria-label="Gate pattern steps"></div>
+                <div class="rhythm-row"><label class="rhythm-label" for="gate-style">Style</label><select id="gate-style"></select></div>
+                <canvas id="gate-scope" class="gate-scope" aria-hidden="true"></canvas>
+                <div id="gate-steps" class="gate-steps" role="group" aria-label="Gate pattern steps" aria-describedby="gate-steps-hint"></div>
+                <p id="gate-steps-hint" class="tap-status">Click a step to turn it on or off. Drag across steps (or Shift-click) to hold one note.</p>
                 <div class="rhythm-row"><span class="rhythm-label">Rate</span><span class="gate-rates gate-rate-options" role="radiogroup" aria-label="Gate rate"></span></div>
-                <label class="rhythm-slider" for="gate-depth"><span>Depth <output id="gate-depth-value">50%</output></span><input id="gate-depth" type="range" min="0" max="1" step=".05" value=".5"></label>
-                <label class="rhythm-slider" for="gate-length"><span><span id="gate-length-label">Swell</span> <output id="gate-length-value">65%</output></span><input id="gate-length" type="range" min="0" max="1" step=".05" value=".65"></label>
+                <div class="gate-envelope">
+                  <label class="rhythm-slider" for="gate-attack"><span>Attack <output id="gate-attack-value">1 ms</output></span><input id="gate-attack" type="range" min="0" max="1" step=".01"></label>
+                  <label class="rhythm-slider" for="gate-decay"><span>Decay <output id="gate-decay-value">70 ms</output></span><input id="gate-decay" type="range" min="0" max="1" step=".01"></label>
+                  <label class="rhythm-slider" for="gate-sustain"><span>Sustain <output id="gate-sustain-value">30%</output></span><input id="gate-sustain" type="range" min="0" max="1" step=".05"></label>
+                  <label class="rhythm-slider" for="gate-release"><span>Release <output id="gate-release-value">25 ms</output></span><input id="gate-release" type="range" min="0" max="1" step=".01"></label>
+                </div>
+                <label class="rhythm-slider" for="gate-mix"><span>Mix <output id="gate-mix-value">100%</output></span><input id="gate-mix" type="range" min="0" max="1" step=".05"></label>
               </div>
               <div class="rhythm-section reverb-section" aria-disabled="true">
                 <div class="rhythm-head"><h3>Reverb</h3><span class="coming-soon">Coming soon</span></div>
@@ -253,7 +259,7 @@
         <div class="hud-actions" role="group" aria-label="Record actions"><button id="customize-open" class="record-action" aria-haspopup="dialog" aria-label="Customize turntable and record"><span>Customize</span></button><button id="load" class="record-action needs-record" aria-label="Choose a record" aria-haspopup="dialog" aria-controls="media-source"><span>Choose a record</span></button><button id="eject" class="record-action record-action-quiet" aria-label="Eject record" disabled><span>Eject</span></button></div>
         <input id="file-input" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" hidden>
       </div>
-      <div class="hud-footer"><details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button><label class="quality-setting" for="studio-quality">Graphics <select id="studio-quality"><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="cinematic" selected>Cinematic</option></select></label></span></div></details><button id="hud-hide" class="hud-hide" type="button" aria-controls="listening-hud">Hide controls <span aria-hidden="true">▾</span></button></div>
+      <div class="hud-footer"><details id="turntable-details"><summary>Turntable details</summary><div class="hud-status"><span id="physical-rpm" class="actual-rpm">Actual: 0.0 RPM</span><span class="status"><span id="status-dot"></span><span id="status" role="status">Ready when you are</span></span><span class="hud-physical"><span id="speed-readout">NO SPEED SELECTED</span><span id="pitch-readout">QUARTZ LOCKED</span><button id="cover-toggle" class="text-button" aria-pressed="false">Cover open</button><label class="quality-setting" for="studio-quality">Graphics <select id="studio-quality"><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="cinematic" selected>Cinematic</option></select></label></span></div></details></div>
     </section>
   </main>
   <dialog id="media-source" aria-labelledby="media-source-title" aria-describedby="media-source-description">

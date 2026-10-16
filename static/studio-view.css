@@ -6,7 +6,12 @@ body{background:#26333c}
 .room{position:relative;overflow:clip;max-width:none;min-height:100vh;min-height:100dvh;margin:0;padding:0 var(--gutter) max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
 .room>.masthead,.room>.intro,.room>.listening-hud{position:relative;z-index:2;width:100%;max-width:var(--column);margin-inline:auto}
 
-.masthead{height:84px;flex:none;border-bottom:1px solid #ffffff42;color:var(--on-scene)}
+.masthead{height:84px;flex:none;border-bottom:1px solid #ffffff42;color:var(--on-scene);transition:border-color var(--ui-motion-panel) var(--ui-ease)}
+/* The close-up keeps only the header's links: the brand and divider fade away so the deck can
+   use nearly the full height of the screen (StudioView frames it just below the links). */
+.masthead .brand{transition:opacity var(--ui-motion-panel) var(--ui-ease),visibility 0s}
+.room:has(#studio[data-renderer=webgl][data-target=turntable]) .masthead{border-bottom-color:transparent}
+.room:has(#studio[data-renderer=webgl][data-target=turntable]) .masthead .brand{opacity:0;visibility:hidden;transition:opacity var(--ui-motion-panel) var(--ui-ease),visibility 0s var(--ui-motion-panel)}
 .masthead .brand,.masthead .brand-mark{color:var(--on-scene)}
 .masthead .brand{text-shadow:var(--scene-shadow)}
 .masthead .brand-mark{filter:drop-shadow(0 1px 2px #0b16234d)}
@@ -103,20 +108,27 @@ body{background:#26333c}
 @media(min-width:1180px){.room:has(#studio[data-target=turntable])>.notice{top:42px;transform:translate(-50%,-50%);max-width:min(480px,calc(100% - 2 * (var(--gutter) + 330px)))}}
 
 /* Close-up: the panel can slide away for a full view of the deck. */
-/* The footer row holds Turntable details and, in close-up, Hide controls on the summary's line. */
+/* The footer row holds Turntable details. */
 .hud-footer{grid-column:1/-1;display:flex;align-items:flex-start;gap:12px;border-top:1px solid var(--border)}
 .hud-footer #turntable-details{flex:1;min-width:0;border-top:0}
-.hud-hide{display:none}
-.room:has(#studio[data-target=turntable]) .hud-hide{display:inline-flex;flex:none;align-items:center;gap:6px;margin-top:4px;min-height:30px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--text-secondary);font-size:12px;font-weight:600}
-.room:has(#studio[data-renderer=fallback]) .hud-hide{display:none}
-.room:has(#studio[data-target=turntable]) .hud-hide:hover{background:var(--hud-hover);color:var(--accent-hover)}
-.room>.hud-show{position:absolute;z-index:4;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 18px;border:1px solid #ffffff59;border-radius:999px;background:rgb(12 22 32 / .72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:14px;font-weight:600;box-shadow:0 8px 24px #05101a59}
-.room>.hud-show[hidden]{display:none}
-.room>.hud-show:hover{background:rgb(12 22 32 / .88)}
-.room>.hud-show:focus-visible{outline:2px solid #fff;outline-offset:3px}
-/* --hud-away follows camera progress during travel and animates Hide/Show once settled. */
-.room>.listening-hud{transform:translateY(calc(var(--hud-away,0) * (100% + 40px)));opacity:calc(1 - max(var(--hud-away,0), var(--hud-fade,0)));transition:transform var(--ui-motion-panel) var(--ui-ease),opacity var(--ui-motion-panel) var(--ui-ease)}
-.room:has(#studio[data-moving=true])>.listening-hud{transition:none}
+/* Close-up: one Hide/Show controls pill. It sits centered on the panel's top edge, glides
+   down with the panel to rest just above the bottom of the screen when the panel slides away
+   (and back up with it), and rolls its label in the same motion; StudioView drives
+   --hud-away and --hud-label frame by frame. It fades in with the close-up and out quickly
+   as the view heads back to the studio. */
+.room>.hud-toggle{position:absolute;z-index:4;left:50%;top:calc(var(--hud-offset,100vh) + var(--hud-away,0) * (var(--hud-floor,100vh) - max(18px,env(safe-area-inset-bottom)) - 17px - var(--hud-offset,100vh)));transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 16px;border:1px solid #ffffff59;border-radius:999px;background:rgb(12 22 32 / .72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 8px 24px #05101a59;cursor:pointer;opacity:0;visibility:hidden;transition:opacity var(--ui-motion-quick) var(--ui-ease),visibility 0s var(--ui-motion-quick)}
+.room:has(#studio[data-renderer=webgl][data-target=turntable])>.hud-toggle{opacity:1;visibility:visible;transition:opacity var(--ui-motion-panel) var(--ui-ease)}
+.hud-toggle-arrow{display:inline-block;transform:rotate(calc(var(--hud-label,0) * 180deg))}
+/* The label rolls with the slide: the old words move down out of a clipped line as the new ones come in from above. */
+.hud-toggle-labels{display:grid;overflow:hidden}
+.hud-toggle-labels>span{grid-area:1/1;text-align:center}
+.hud-toggle-hide{opacity:calc(1 - var(--hud-label,0));transform:translateY(calc(var(--hud-label,0) * 100%))}
+.hud-toggle-show{opacity:var(--hud-label,0);transform:translateY(calc((var(--hud-label,0) - 1) * 100%))}
+.room>.hud-toggle:hover{background:rgb(12 22 32 / .88)}
+.room>.hud-toggle:focus-visible{outline:2px solid #fff;outline-offset:3px}
+/* StudioView drives --hud-away frame by frame (the Hide/Show glide, or the camera on the way
+   back), in step with the close-up framing, so the panel takes no CSS transition. */
+.room>.listening-hud{transform:translateY(calc(var(--hud-away,0) * (100% + 40px)));opacity:calc(1 - max(var(--hud-away,0), var(--hud-fade,0)))}
 .room[data-controls=hidden]>.listening-hud{pointer-events:none}
 
 /* Wide screens use one slim docked row in both views, so travel never resizes the panel.
@@ -195,4 +207,4 @@ body{background:#26333c}
 }
 @media(prefers-reduced-motion:reduce){.intro .price-old,.intro .price-old::after,.intro .price-new,.intro .price-gap,.intro .price-cry{animation-duration:0s;animation-delay:0s}}
 @media(prefers-reduced-motion:reduce){#studio-plate,#studio-canvas{transition:none}}
-@media(prefers-reduced-motion:reduce){#studio-enter,.masthead #studio-focus,.room>.listening-hud{transition:none}}
+@media(prefers-reduced-motion:reduce){#studio-enter,.masthead #studio-focus,.room>.hud-toggle{transition:none}}

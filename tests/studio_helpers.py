@@ -9,7 +9,7 @@ def enter_turntable(page, show_controls=True):
     from coordinate helpers or alter reduced-motion preferences: those shortcuts
     can conceal camera/focus regressions and test a different UI from visitors.
     Close-up opens with the listening panel hidden; by default this then presses the
-    visible Show controls button, as a visitor would, so suites can reach the HUD.
+    Show controls pill, as a visitor would, so suites can reach the HUD.
     """
     page.wait_for_function('window.turntable && document.querySelector("#studio")')
     page.wait_for_function('document.querySelector("#studio").dataset.moving !== "true"')
@@ -19,10 +19,10 @@ def enter_turntable(page, show_controls=True):
       const studio = document.querySelector('#studio');
       return studio.dataset.view === 'turntable' && studio.dataset.moving !== 'true';
     }''', timeout=7000)
-    if show_controls and page.locator('#hud-show').is_visible():
-        page.locator('#hud-show').click()
-        page.wait_for_function("!document.querySelector('#listening-hud').inert")
-        page.wait_for_timeout(260)  # Let the 220 ms panel slide settle before measuring.
+    if show_controls and page.locator('.room').get_attribute('data-controls') == 'hidden':
+        page.locator('#hud-toggle').click()
+        # Let the panel's glide finish before measuring.
+        page.wait_for_function("getComputedStyle(document.querySelector('.room')).getPropertyValue('--hud-away').trim() === '0.000'")
 
 
 def _tuck_away(page):
