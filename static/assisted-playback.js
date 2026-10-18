@@ -1,5 +1,10 @@
 import { playbackEnded } from './simulation-state.js';
 
+// Play is brisk but continuous: the arm sweeps while the platter spins up, hovers briefly
+// over the lead-in, then takes a quicker damped descent than the manual cue lever. The
+// descent outlasts the motor's longest start ramp (450 ms), so touchdown meets full speed.
+const SWEEP_MS = 420, SWEEP_SPAN_MS = 700, HOVER_MS = 120, DESCENT_MS = 650;
+
 /** Cancellable physical setup. No audio source, cursor, or motor lives here. */
 export class AssistedPlayback {
   constructor(deck, geometry) {
@@ -48,21 +53,19 @@ export class AssistedPlayback {
           const progress = Math.min(1, elapsed / 180);
           d.setPowerAngle(fromPower + (0 - fromPower) * (progress * progress * (3 - 2 * progress)));
           if (progress < 1 && fromPower !== 0) break;
-          const needsStart = !s.platterRunning || s.transportPaused;
           d.change(s => {
             if (s.rpm === null) s.speed33Pressed = true;
             s.transportPaused = false;
             s.platterRunning = true;
           });
-          enter(needsStart ? 'starting' : restart ? 'cueing' : 'lowering', now);
+          enter(restart ? 'cueing' : 'lowering', now);
           break;
         }
-        case 'starting':
-          if (elapsed >= 280 && !s.motorRamping) enter(restart ? 'cueing' : 'lowering', now);
-          break;
         case 'cueing': {
           this.frame = null;
-          void d.armMotion.moveTo(this.geometry.outerAngle, { kind: 'cueing', duration: 1250, liftDelay: 0 })
+          const { outerAngle, rest, innerAngle } = this.geometry;
+          const distance = Math.min(1, Math.abs(outerAngle - s.tonearmAngle) / (innerAngle - rest));
+          void d.armMotion.moveTo(outerAngle, { kind: 'cueing', duration: SWEEP_MS + SWEEP_SPAN_MS * distance, liftDelay: 0 })
             .then(completed => {
               if (!completed || generation !== this.generation) return;
               d.change(s => { s.position = 0; }, true);
@@ -73,9 +76,9 @@ export class AssistedPlayback {
         }
         case 'lowering':
           // A short pause over the lead-in, then the damped cue lowers; contact starts at touchdown.
-          if (elapsed >= 220) {
+          if (elapsed >= HOVER_MS) {
             this.frame = null;
-            void d.lowerStylus({ seek: restart }).then(landed => {
+            void d.lowerStylus({ seek: restart, duration: DESCENT_MS }).then(landed => {
               if (generation !== this.generation) return;
               enter('idle', performance.now());
             });

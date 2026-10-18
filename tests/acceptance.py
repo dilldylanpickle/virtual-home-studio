@@ -205,7 +205,8 @@ def run():
         check(not state()["recordLoaded"] and state()["stylusRaised"] and state()["position"] == 0, "Eject clears record and returns raised arm")
         load(RAW)
         check(state()["recordLoaded"], "Same record can be loaded again")
-        # Test completion independently of UI polling.
+        # Test completion independently of UI polling. Repeat is on by default; check the plain end of side.
+        page.evaluate('turntable.controls.setReplayEnabled(false)')
         click("start-stop")
         seek(.94)
         click("cue")

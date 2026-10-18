@@ -65,7 +65,7 @@ class Turntable extends EventTarget {
     super();
     this.state = {
       power: true, powerAngle: 0, powerDragging: false, powerSettling: false,
-      platterRunning: false, speed33Pressed: false, speed45Pressed: false, transportPaused: false, replayEnabled: false, assistPhase: 'idle',
+      platterRunning: false, speed33Pressed: false, speed45Pressed: false, transportPaused: false, replayEnabled: true, assistPhase: 'idle',
       pitchRange: 8, pitch: 0, quartzLock: true, presetMotion: null,
       recordLoaded: false, recordPresent: false, recordPhase: 'empty', grooveRegion: 'music', runInRemaining: 0, filename: '', pendingFilename: '', duration: 0, position: 0,
       tonearmAngle: geometry.rest, stylusRaised: true, cueDescent: null, tonearmMotion: null,
@@ -94,7 +94,7 @@ class Turntable extends EventTarget {
     // Tempo analysis, beat grid and Trance Gate: state.tempo / state.gate, worklet-applied.
     this.rhythm = new Rhythm(this);
     this.armMotion = new TonearmMotion(this, { progressAtAngle });
-    this.assist = new AssistedPlayback(this, { inGroove, progressAtAngle, outerAngle: OUTER_ANGLE });
+    this.assist = new AssistedPlayback(this, { inGroove, progressAtAngle, rest: geometry.rest, outerAngle: OUTER_ANGLE, innerAngle: INNER_ANGLE });
     this.metrics = { sourcesCreated: 0, activeSources: 0, maxActiveSources: 0 };
   }
   audioContext() {
@@ -381,10 +381,11 @@ class Turntable extends EventTarget {
   }
   // Damped cue: lowering is a ~1.1 s descent and contact (sound) begins at touchdown;
   // lifting breaks contact at once. cueDescent is model-owned timing the 3D arm follows.
-  lowerStylus({ seek = false } = {}) {
+  lowerStylus({ seek = false, duration = CUE_DESCENT_MS } = {}) {
     if (!this.state.stylusRaised) return Promise.resolve(true);
     if (this.cueLowering) return this.cueLowering;
-    const generation = ++this.cueGeneration, duration = reducedMotion() ? 0 : CUE_DESCENT_MS;
+    const generation = ++this.cueGeneration;
+    if (reducedMotion()) duration = 0;
     this.change(s => { s.cueDescent = { started: performance.now(), duration }; });
     this.cueLowering = new Promise(resolve => {
       const land = () => {
