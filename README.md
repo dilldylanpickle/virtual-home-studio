@@ -17,7 +17,7 @@ Drop an MP3 or WAV onto the page and the VHS-42069, a fictional direct-drive tur
 - **Hears the beat.** Every record gets its tempo detected when it loads. The **Trance Gate** chops, plucks and swells the music in time with it, shaped like a trance gate plugin (step pattern, held notes, attack/decay/sustain/release, mix), and stays locked through seeks, pauses, scratches and speed changes.
 - **Make it yours.** 8 turntable finishes, 18 vinyl colors (clear and smoke included), 19 label colors, and a record condition from Mint to Poor that you can hear: wear, crackle, pops, wow and flutter.
 - **Your music stays yours.** Files are decoded and played entirely in your browser. Nothing is uploaded.
-- **YouTube links, when you run it yourself.** Paste a link and your own computer fetches the audio; the record then plays like any file, scratching and Trance Gate included.
+- **YouTube links, when you run it yourself.** Copy a video's link and press Ctrl+V (⌘V) anywhere in the studio, and your own computer fetches the audio; the record then plays like any file, scratching and Trance Gate included.
 
 | Close-up | Tempo and Trance Gate |
 | --- | --- |
@@ -70,7 +70,7 @@ The **BPM chip** next to the track name shows the tempo as it plays, with a conf
 | --- | --- |
 | **Tap the beat** | Tap along to set the tempo yourself when detection gets it wrong |
 | **Fix the beat** | Half or double time, an exact BPM, nudge earlier or later, or move the pattern by a beat |
-| **Trance Gate** | Pick a style: Breathe (slow swell), Bounce (held notes, the default), Push (sidechain swell), Trance (the classic chop), Pluck, Stutter or Gallop (triplets). Then shape it like a trance gate plugin: click steps on or off and drag across steps to hold one note, choose the rate (1/2 to 1/32, triplets), set Attack, Decay, Sustain and Release for every note, and Mix in the dry song. The display above the steps shows the gate's shape with a playhead |
+| **Trance Gate** | Pick a style: Breathe (slow swell, the default), Bounce (held notes), Push (sidechain swell), Trance (the classic chop), Pluck, Stutter or Gallop (triplets). Then shape it like a trance gate plugin: click steps on or off and drag across steps to hold one note, choose the rate (1/2 to 1/32, triplets), set Attack, Decay, Sustain and Release for every note, and Mix in the dry song. The display above the steps shows the gate's shape with a playhead |
 
 The gate never changes the record's speed or pitch. Reverb is coming soon.
 
@@ -104,7 +104,7 @@ uv run python app.py
 
 Open **http://127.0.0.1:42069** and stop the server with Ctrl+C. A graphics card helps: the studio is real-time 3D (WebGL 2), and **Graphics → Performance** lightens it on slower machines. Without WebGL, the full turntable still works as an interactive 2D deck.
 
-**Choose record → YouTube link** accepts a link to one video up to 20 minutes long; [yt-dlp](https://github.com/yt-dlp/yt-dlp) (installed by `uv sync`, with the deno JavaScript runtime it needs on macOS, Windows x64 and Linux x64/arm64; elsewhere install [deno](https://deno.com) yourself) fetches the original audio stream, so no ffmpeg is needed. Downloading from YouTube is subject to YouTube's terms; use it for audio you have the right to play. When YouTube changes and links stop working, update yt-dlp with `uv lock --upgrade-package yt-dlp && uv sync`.
+**Choose record → YouTube link** (or pasting a link anywhere in the studio) accepts a link to one video up to 20 minutes long, and the videos you played show up under **Recent links** in the same dialog (kept only in your browser); [yt-dlp](https://github.com/yt-dlp/yt-dlp) (installed by `uv sync`, with the deno JavaScript runtime it needs on macOS, Windows x64 and Linux x64/arm64; elsewhere install [deno](https://deno.com) yourself) fetches the original audio stream, so no ffmpeg is needed. Downloading from YouTube is subject to YouTube's terms; use it for audio you have the right to play. When YouTube changes and links stop working, update yt-dlp with `uv lock --upgrade-package yt-dlp && uv sync`.
 
 ## Host it on GitHub Pages
 

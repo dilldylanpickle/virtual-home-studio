@@ -60,7 +60,7 @@ def local_request(request):
 
 
 def download(url, folder):
-    """Download one video's audio into folder; return (path, title, ext)."""
+    """Download one video's audio into folder; return (path, title, ext, video id, seconds)."""
     options = {'format': FORMAT, 'noplaylist': True, 'quiet': True, 'no_warnings': True, 'noprogress': True,
                'outtmpl': str(Path(folder) / 'record.%(ext)s'), 'max_filesize': MAX_BYTES, 'socket_timeout': 20, 'retries': 2}
     with yt_dlp.YoutubeDL(options) as ydl:
@@ -79,7 +79,8 @@ def download(url, folder):
     path = Path(files[0]['filepath']) if files else None
     if not path or not path.is_file():  # yt-dlp skips files over max_filesize
         raise Unavailable('That video’s audio is too large to load.')
-    return path, (info.get('title') or 'YouTube record').strip(), path.suffix.lstrip('.').lower()
+    return (path, (info.get('title') or 'YouTube record').strip(), path.suffix.lstrip('.').lower(),
+            str(info.get('id') or ''), int(info.get('duration') or 0))
 
 
 def reason(error):
@@ -110,11 +111,12 @@ def fetch(link: Link, request: Request):
         raise HTTPException(429, 'The studio is still finishing earlier downloads. Try again in a moment.')
     folder = tempfile.mkdtemp(prefix='vhs-youtube-')
     try:
-        path, title, ext = download(url, folder)
+        path, title, ext, video, seconds = download(url, folder)
         if ext not in TYPES: raise Unavailable('YouTube offered no audio format the browser can play.')
         # The temporary copy is removed once the response has been sent.
         return FileResponse(path, media_type=TYPES[ext], background=BackgroundTask(shutil.rmtree, folder, ignore_errors=True),
-                            headers={'X-Record-Title': quote(title.encode('utf-8', 'replace'), safe=''), 'Cache-Control': 'no-store'})
+                            headers={'X-Record-Title': quote(title.encode('utf-8', 'replace'), safe=''), 'X-Record-Id': quote(video, safe=''),
+                                     'X-Record-Duration': str(seconds), 'Cache-Control': 'no-store'})
     except Exception as error:
         shutil.rmtree(folder, ignore_errors=True)
         if isinstance(error, Unavailable): raise HTTPException(422, str(error)) from None

@@ -53,7 +53,7 @@ export function styleName(gate) {
 }
 /** Steps in one pattern cycle: 16, or one bar (12) for triplets. */
 export const gateCycle = rate => GATE_RATES[rate] === 3 ? 12 : GATE_STEPS;
-export const DEFAULT_GATE = Object.freeze({ enabled: false, ...styleSettings('Bounce') });
+export const DEFAULT_GATE = Object.freeze({ enabled: false, ...styleSettings('Breathe') });
 
 export const DEFAULT_TEMPO = Object.freeze({ source: 'auto', manualBpm: null, anchor: null, multiplier: 1, offsetMs: 0, barShift: 0 });
 export const BPM_RANGE = Object.freeze([40, 250]);

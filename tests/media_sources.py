@@ -1,6 +1,7 @@
 """Local record chooser, drag/drop, onboarding, and the local-server YouTube link (mocked)."""
 import base64
 import json
+import re
 from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright
@@ -21,16 +22,19 @@ def youtube_links(page, state, modal, load, future, ready, out):
     status = page.locator('#youtube-status')
     submit = page.locator('#youtube-submit')
     url = page.locator('#youtube-url')
-    held = []
+    held, posted = [], []
 
     def answer(route):
         if route.request.method != 'POST': return route.continue_()
         body = route.request.post_data_json
+        posted.append(body['url'])
         mode = body['url'].rsplit('=', 1)[-1]
         if mode == 'hold': held.append(route); return
         if mode == 'private':
             return route.fulfill(status=502, json={'detail': 'That video is private, age-restricted or unavailable.'})
-        route.fulfill(status=200, body=RAW.read_bytes(), headers={'Content-Type': 'audio/mp4', 'X-Record-Title': 'Mocked%20Session%20%2F%20Live'})
+        video = re.search(r'(?:v=|youtu\.be/)([\w-]+)', body['url']).group(1)
+        title = 'Mocked%20Session%20%2F%20Live' if video == 'success' else f'Video%20{video}'
+        route.fulfill(status=200, body=RAW.read_bytes(), headers={'Content-Type': 'audio/mp4', 'X-Record-Title': title, 'X-Record-Id': video, 'X-Record-Duration': '199'})
 
     page.route('**/api/youtube', answer)
     page.set_viewport_size({'width': 1440, 'height': 1300})
@@ -71,8 +75,86 @@ def youtube_links(page, state, modal, load, future, ready, out):
     held[-1].fulfill(status=200, body=RAW.read_bytes(), headers={'Content-Type': 'audio/mp4', 'X-Record-Title': 'Superseded'}); page.wait_for_timeout(600)
     check(state()['filename'] == 'dropped.wav' and not submit.is_disabled(), 'A record dropped during a download supersedes it')
     page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    pastes(page, state, modal, load, future, held)
+    recents(page, modal, load, posted)
     page.unroute('**/api/youtube')
-    page.locator('#eject').click(); page.wait_for_function("turntable.state.recordPhase === 'empty'")
+
+
+PASTE = '''([text, selector]) => {
+  const data = new DataTransfer(); data.setData('text/plain', text);
+  const event = new ClipboardEvent('paste', {clipboardData: data, bubbles: true, cancelable: true});
+  document.querySelector(selector).dispatchEvent(event);
+  return event.defaultPrevented;
+}'''
+
+
+def pastes(page, state, modal, load, future, held):
+    """Paste button (clipboard), paste into the field and paste anywhere on the page."""
+    status = page.locator('#youtube-status')
+    submit = page.locator('#youtube-submit')
+    url = page.locator('#youtube-url')
+    HOLD = 'https://youtu.be/session?si=hold'  # The mock holds links ending in '=hold'.
+    paste = lambda text, selector='body': page.evaluate(PASTE, [text, selector])
+    page.context.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:42069')
+    first = len(held)
+    clipboard = lambda text: page.evaluate('text => navigator.clipboard.writeText(text)', text)
+    load.click(); future.click(); url.fill('')
+    check(submit.inner_text() == 'Paste' and not submit.is_disabled(), 'An empty link field offers a Paste button')
+    url.focus(); page.keyboard.type('y')
+    check(submit.inner_text() == 'Put it on', 'Typing in the link field turns Paste into Put it on')
+    url.fill(''); before = state()
+    clipboard('just some words'); submit.click()
+    page.wait_for_function("document.querySelector('#youtube-status').classList.contains('error')")
+    check(url.input_value() == '' and modal.is_visible() and state() == before and 'copy' in status.inner_text().lower(), 'Paste with no YouTube link on the clipboard explains itself and changes nothing')
+    clipboard(HOLD); submit.click()
+    page.wait_for_function('document.querySelector("#youtube-submit").disabled')
+    check(url.input_value() == HOLD and submit.inner_text() == 'Fetching…', 'Paste reads the clipboard link and starts fetching at once')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    load.click(); future.click(); url.fill('https://www.youtube.com/watch?v=stale')
+    check(paste(HOLD, '#youtube-url') and url.input_value() == HOLD and submit.is_disabled(), 'Pasting a link into the field replaces it and starts fetching without another click')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    check(not paste('not a link') and not paste('https://www.youtube.com/watch?v=x and more') and not modal.is_visible(), 'Ordinary pastes on the page are left alone')
+    page.locator('#help-open').click(); page.locator('#help').wait_for(state='visible')
+    check(not paste(HOLD, '#help') and not modal.is_visible(), 'Another open panel keeps its own paste')
+    page.keyboard.press('Escape'); page.wait_for_function("!document.querySelector('#help').open")
+    check(paste(HOLD) and modal.is_visible() and page.locator('#youtube-form').is_visible() and submit.is_disabled() and url.input_value() == HOLD, 'Pasting a YouTube link anywhere opens the chooser and starts fetching')
+    # Pasting again the moment the chooser closes replaces the abandoned download.
+    reopened = page.evaluate(f"args => {{ document.querySelector('#media-source-close').click(); return ({PASTE})(args); }}", ['https://youtu.be/success', 'body'])
+    check(reopened and modal.is_visible(), 'A paste right after closing reopens the chooser with the new link')
+    modal.wait_for(state='hidden')
+    page.wait_for_function("turntable.state.recordPhase === 'ready' && turntable.state.filename === 'Mocked Session - Live.m4a'")
+    load.click(); future.click()
+    check(url.input_value() == '' and submit.inner_text() == 'Paste', 'A record put on by pasting leaves the field clear for the next link')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    for route in held[first:]: route.abort()
+
+
+def recents(page, modal, load, posted):
+    """Recent links: played videos, newest first, one per video, kept in this browser."""
+    section = page.locator('#recent-links')
+    rows = lambda: page.locator('#recent-list .recent-play').evaluate_all('nodes => nodes.map(node => [node.querySelector(".recent-name").textContent, node.querySelector("small").textContent])')
+    paste = lambda text: page.evaluate(PASTE, [text, 'body'])
+    load.click()
+    check(section.is_visible() and rows() == [['Mocked Session - Live', '3:19']], 'Played links appear under Recent links with title and length, once per video')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    paste('https://www.youtube.com/watch?v=second1&si=tracking'); modal.wait_for(state='hidden')
+    page.wait_for_function("turntable.state.recordPhase === 'ready' && turntable.state.filename === 'Video second1.m4a'")
+    load.click()
+    check([name for name, _ in rows()] == ['Video second1', 'Mocked Session - Live'], 'The newest link comes first')
+    page.locator('#recent-list .recent-play').nth(1).click(); modal.wait_for(state='hidden')
+    page.wait_for_function("turntable.state.recordPhase === 'ready' && turntable.state.filename === 'Mocked Session - Live.m4a'")
+    check(posted[-1] == 'https://www.youtube.com/watch?v=success', 'A recent link puts its video on again through the same download')
+    load.click()
+    check([name for name, _ in rows()] == ['Mocked Session - Live', 'Video second1'], 'Playing a recent link moves it back to the top')
+    page.locator('#recent-list .recent-forget').first.click()
+    check([name for name, _ in rows()] == ['Video second1'] and page.evaluate("document.activeElement.classList.contains('recent-forget')"), 'Forgetting a link removes only it and keeps focus in the list')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
+    page.reload(); page.wait_for_function("window.turntable && !document.querySelector('#source-youtube').disabled")
+    load.click()
+    check([name for name, _ in rows()] == ['Video second1'], 'Recent links survive a reload in this browser')
+    page.locator('#recent-list .recent-forget').first.click()
+    check(section.is_hidden() and page.evaluate("document.activeElement.id") == 'source-youtube', 'Forgetting the last link hides the list and returns focus to the YouTube option')
+    page.keyboard.press('Escape'); modal.wait_for(state='hidden')
 
 
 def run():
@@ -293,6 +375,11 @@ def run():
         static.locator('#load').click()
         option = static.locator('#source-youtube')
         check(option.is_disabled() and 'run the studio yourself' in option.inner_text().lower() and not static.locator('#youtube-form').is_visible(), 'A static host (no server API) keeps YouTube links visibly unavailable')
+        static.evaluate("localStorage.setItem('vhs-recent-links', JSON.stringify([{url: 'https://www.youtube.com/watch?v=abcdefg', title: 'Left over', duration: 60}]))")
+        static.reload(); static.wait_for_function('window.turntable'); static.wait_for_timeout(300); static.locator('#load').click()
+        check(static.locator('#recent-links').is_hidden(), 'A static host never offers recent YouTube links')
+        static.keyboard.press('Escape'); static.locator('#media-source').wait_for(state='hidden')
+        check(not static.evaluate(PASTE, ['https://youtu.be/x', 'body']) and not static.locator('#media-source').is_visible(), 'A static host ignores pasted YouTube links')
         browser.close()
     (out / 'checks.json').write_text(json.dumps({'checks': checks, 'action_transitions': {'first_load': initial_load, 'replacement': replacement, 'eject': ejection, 'mobile_loading': mobile_loading}, 'action_geometry': layout_audit}, indent=2) + '\n')
     print(f'All {len(checks)} local media-source checks passed.', flush=True)

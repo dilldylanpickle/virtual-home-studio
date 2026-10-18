@@ -44,6 +44,8 @@ def run():
             check(after['assistPhase']=='idle' and after['stylusRaised']==before['stylusRaised'] and after['platterRunning']==before['platterRunning'] and abs(after['tonearmAngle']-before['tonearmAngle'])<1e-7, message)
 
         load(RAW)
+        # Repeat is on by default; these checks cover the plain run-out and manual Play again.
+        page.evaluate('turntable.controls.setReplayEnabled(false)')
         check(state()['labelColor']=='Blue' and state()['vinylColor']=='Black', 'Default record and shared material state are black with a blue label')
         page.evaluate('window.motion=[];turntable.controls.subscribe(s=>motion.push({phase:s.assistPhase,angle:s.tonearmAngle,raised:s.stylusRaised,rpm:s.actualRPM}))')
         started=time.monotonic()

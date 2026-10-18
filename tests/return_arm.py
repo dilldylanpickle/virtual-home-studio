@@ -47,6 +47,8 @@ def run():
         enter_turntable(page)
         page.locator('#file-input').set_input_files(fixture)
         page.wait_for_function("turntable.state.recordPhase==='ready'")
+        # Repeat is on by default; these checks cover Return Arm and the plain run-out.
+        page.evaluate('turntable.controls.setReplayEnabled(false)')
         state=lambda:page.evaluate('turntable.state')
         click=lambda name:page.locator('#'+name).click()
         g=page.evaluate('turntable.geometry')
